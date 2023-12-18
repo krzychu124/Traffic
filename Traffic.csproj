@@ -72,6 +72,9 @@
         <Reference Include="UnityEngine.IMGUIModule">
             <Private>false</Private>
         </Reference>
+        <Reference Include="UnityEngine.AudioModule">
+            <Private>false</Private>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>
@@ -89,6 +92,15 @@
     <ItemGroup>
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props"/>
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Tools\ValidationSystem.ValidateLaneConnectorTool.cs">
+        <DependentUpon>ValidationSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Tools\LaneConnectorToolSystem.Jobs.cs">
+        <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 </Project>

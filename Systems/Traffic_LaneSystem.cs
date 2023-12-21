@@ -400,8 +400,6 @@ namespace Traffic.Systems
                 m_PrefabAuxiliaryLanes = SystemAPI.GetBufferLookup<AuxiliaryNetLane>(true),
                 m_PrefabCompositionPieces = SystemAPI.GetBufferLookup<NetCompositionPiece>(true),
                 
-                // forbiddenConnections = SystemAPI.GetBufferLookup<ForbiddenConnection>(true),
-                forbiddenConnectionsType = SystemAPI.GetBufferTypeHandle<ForbiddenConnection>(true),
                 generatedConnectionsType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                 
@@ -665,11 +663,6 @@ namespace Traffic.Systems
             [ReadOnly]
             public BufferLookup<NetCompositionPiece> m_PrefabCompositionPieces;
             /*NON VANILLA - START*/
-            // [ReadOnly]
-            // public BufferLookup<ForbiddenConnection> forbiddenConnections;
-            //
-            [ReadOnly]
-            public BufferTypeHandle<ForbiddenConnection> forbiddenConnectionsType;
             [ReadOnly]
             public BufferTypeHandle<GeneratedConnection> generatedConnectionsType;
             [ReadOnly]
@@ -967,7 +960,6 @@ namespace Traffic.Systems
                     NativeList<ConnectPosition> targetMainCarConnectPositions = new NativeList<ConnectPosition>(32, Allocator.Temp);
                     NativeList<ConnectPosition> tempSourceConnectPositions = new NativeList<ConnectPosition>(32, Allocator.Temp);
                     NativeList<ConnectPosition> tempTargetConnectPositions = new NativeList<ConnectPosition>(32, Allocator.Temp);
-                    NativeParallelHashSet<ConnectionKey> tempForbiddenConnections = new NativeParallelHashSet<ConnectionKey>(4, Allocator.Temp);
                     NativeParallelHashSet<LaneEndKey> tempModifiedLaneEnds = new NativeParallelHashSet<LaneEndKey>(4, Allocator.Temp);
                     NativeHashSet<ConnectionKey> tempMainConnectionKeys = new NativeHashSet<ConnectionKey>(4, Allocator.Temp);
                     NativeList<MiddleConnection> middleConnections = new NativeList<MiddleConnection>(4, Allocator.Temp);
@@ -975,7 +967,6 @@ namespace Traffic.Systems
                     NativeArray<Orphan> orphanComponents = chunk.GetNativeArray(ref m_OrphanType);
                     NativeArray<NodeGeometry> nodeGeometryComponents = chunk.GetNativeArray(ref m_NodeGeometryType);
                     NativeArray<PrefabRef> prefabRefComponents = chunk.GetNativeArray(ref m_PrefabRefType);
-                    BufferAccessor<ForbiddenConnection> bannedConnections = chunk.GetBufferAccessor(ref forbiddenConnectionsType);
                     BufferAccessor<GeneratedConnection> generatedConnections = chunk.GetBufferAccessor(ref generatedConnectionsType);
                     BufferAccessor<ModifiedLaneConnections> modifiedLaneConnections = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
                 
@@ -1008,14 +999,7 @@ namespace Traffic.Systems
                             Unity.Mathematics.Random random4 = randomSeeds[entityIndex].GetRandom(PseudoRandomSeed.kSubLane);
                             
                             /*NON-STOCK*/
-                            // tempForbiddenConnections.Clear();
                             bool testKeys = false;
-                            if (bannedConnections.Length > 0)
-                            {
-                                DynamicBuffer<ForbiddenConnection> forbidden = bannedConnections[entityIndex];
-                                FillForbiddenConnectionsFromSource(forbidden, tempForbiddenConnections);
-                                // Logger.Debug($"Has Banned connections: {bannedConnections[entityIndex].Length}, calculated: {tempForbiddenConnections.Count()}");
-                            }
                             if (modifiedLaneConnections.Length > 0 && tempComponents.Length == 0)
                             {
                                 DynamicBuffer<ModifiedLaneConnections> connections = modifiedLaneConnections[entityIndex];
@@ -1305,7 +1289,6 @@ namespace Traffic.Systems
                             sourceMainCarConnectPositions.Clear();
                             targetMainCarConnectPositions.Clear();
                             tempTargetConnectPositions.Clear();
-                            tempForbiddenConnections .Clear();
                             tempModifiedLaneEnds.Clear();
                             UtilityTypes utilityTypes = FilterUtilityConnectPositions(targetNodeConnectPositions, targetMainCarConnectPositions);
                             UtilityTypes utilityTypes2 = UtilityTypes.WaterPipe;
@@ -5139,21 +5122,6 @@ namespace Traffic.Systems
                             sourceBuffer.Add(in value2);
                         }
                     }
-                }
-            }
-
-            private void FillForbiddenConnectionsFromSource(DynamicBuffer<ForbiddenConnection> forbidden, NativeParallelHashSet<ConnectionKey> output) {
-                for (var i = 0; i < forbidden.Length; i++)
-                {
-                    ForbiddenConnection connection = forbidden[i];
-                    // if (source.m_Owner == connection.sourceEntity && source.m_LaneData.m_Index == connection.laneIndexMap.x)
-                    // {
-                    // Logger.Debug($"Adding Forbidden connection: {connection.sourceEntity} - {connection.targetEntity} => {connection.laneIndexMap}");
-                        output.Add(new ConnectionKey(
-                            new ConnectPosition(){m_Owner = connection.sourceEntity, m_LaneData = new NetCompositionLane() {m_Index = (byte)connection.laneIndexMap.x}}, 
-                                new ConnectPosition() {m_Owner = connection.targetEntity, m_LaneData = new NetCompositionLane() {m_Index = (byte)connection.laneIndexMap.y}}
-                            ));
-                    // }
                 }
             }
 

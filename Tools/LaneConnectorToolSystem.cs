@@ -555,7 +555,6 @@ namespace Traffic.Tools
                 {
                     ecb.AddComponent<ModifiedConnections>(node);
                     ecb.AddBuffer<GeneratedConnection>(node);
-                    ecb.AddBuffer<ForbiddenConnection>(node);
                     ecb.AddBuffer<ModifiedLaneConnections>(node);
                     //TODO add logic to validate and remove when no longer valid
                 }
@@ -630,8 +629,6 @@ namespace Traffic.Tools
         private JobHandle ResetConnections(JobHandle handle) {
             DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnectionsEnumerable = EntityManager.GetBuffer<ModifiedLaneConnections>(_selectedNode, false);
             modifiedLaneConnectionsEnumerable.Clear();
-            DynamicBuffer<ForbiddenConnection> forbiddenConnections = EntityManager.GetBuffer<ForbiddenConnection>(_selectedNode, false);
-            forbiddenConnections.Clear();
             DynamicBuffer<GeneratedConnection> generatedConnections = EntityManager.GetBuffer<GeneratedConnection>(_selectedNode, false);
             generatedConnections.Clear();
             // update node and connected edges + their nodes

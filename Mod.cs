@@ -8,6 +8,7 @@ using Traffic.Rendering;
 using Traffic.Systems;
 using Traffic.Tools;
 using Traffic.UI;
+using ApplyLaneConnectionsSystem = Traffic.Systems.ApplyLaneConnectionsSystem;
 
 namespace Traffic
 {

@@ -3,6 +3,7 @@ using Game;
 using Game.Common;
 using Game.Net;
 using Game.Tools;
+using Traffic.LaneConnections;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,7 +11,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Edge = Game.Net.Edge;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Systems
 {
     public partial class ApplyLaneConnectionsSystem : GameSystemBase
     {
@@ -37,7 +38,6 @@ namespace Traffic.LaneConnections
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                 subLaneData = SystemAPI.GetBufferLookup<SubLane>(true),
                 connectedEdgesData = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                // forbiddenConnectionData = SystemAPI.GetBufferLookup<ForbiddenConnection>(true),
                 generatedConnectionData = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
                 modifiedLaneConnectionData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
@@ -59,7 +59,6 @@ namespace Traffic.LaneConnections
             [ReadOnly] public BufferLookup<SubLane> subLaneData;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgesData;
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionData;
-            // [ReadOnly] public BufferLookup<ForbiddenConnection> forbiddenConnectionData;
             [ReadOnly] public BufferLookup<ModifiedLaneConnections> modifiedLaneConnectionData;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
             public EntityCommandBuffer.ParallelWriter commandBuffer;

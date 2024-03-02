@@ -6,14 +6,24 @@ namespace Traffic
 {
     public static class Logger
     {
-        private static ILog _log = LogManager.GetLogger($"{nameof(Traffic)}.{nameof(Mod)}", false);
+        private static ILog _log = LogManager.GetLogger($"{nameof(Traffic)}.{nameof(Mod)}");
 
         public static void Info(string message, [CallerMemberName]string methodName = null) {
             _log.Info(message);
         }
         
+        [Conditional("DEBUG_TOOL")]
+        public static void DebugTool(string message) {
+            _log.Info(message);
+        }
+        
         [Conditional("DEBUG")]
         public static void Debug(string message) {
+            _log.Info(message);
+        }
+        
+        [Conditional("DEBUG_LANE_SYS")]
+        public static void DebugLaneSystem(string message) {
             _log.Info(message);
         }
 

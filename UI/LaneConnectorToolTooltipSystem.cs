@@ -1,11 +1,14 @@
-﻿using Game.Common;
+﻿using System;
+using Game.Common;
 using Game.Tools;
 using Game.UI.Localization;
 using Game.UI.Tooltip;
 using Traffic.Components;
 using Traffic.LaneConnections;
 using Traffic.Tools;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace Traffic.UI
 {
@@ -17,8 +20,12 @@ namespace Traffic.UI
         // private NetToolSystem _netTool;
         private StringTooltip _tooltip;
         private StringTooltip _tooltipWarnings;
+        private StringTooltip _tooltipErrors;
         private StringTooltip _tooltipDebug;
+        private StringTooltip _posTooltip;
+        private StringTooltip _posTooltip2;
         private EntityQuery _warnQuery;
+        private EntityQuery _errorQuery;
         // private NetPieceRequirements[] _warnRequirements = new[]
         // {
         //     NetPieceRequirements.ForbidStraight, NetPieceRequirements.ForbidLeftTurn, NetPieceRequirements.ForbidRightTurn, 
@@ -27,7 +34,7 @@ namespace Traffic.UI
 
         protected override void OnCreate() {
             base.OnCreate();
-            _toolSystem = World.GetExistingSystemManaged<ToolSystem>();
+            _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _laneConnectorTool = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
             // _netTool = World.GetExistingSystemManaged<NetToolSystem>();
             _tooltip = new StringTooltip
@@ -44,11 +51,31 @@ namespace Traffic.UI
                 path = "laneConnectorToolWarnings",
                 color = TooltipColor.Warning,
             };
+            _tooltipErrors = new StringTooltip()
+            {
+                path = "laneConnectorToolErrors",
+                color = TooltipColor.Error,
+            };
+            _posTooltip = new StringTooltip()
+            {
+                path = "laneConnectorToolPosition",
+                color = TooltipColor.Warning,
+            };
+            _posTooltip2 = new StringTooltip()
+            {
+                path = "laneConnectorToolPosition2",
+                color = TooltipColor.Warning,
+            };
             _stringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"Tools.INFO[{t:G}]");
             _warnQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
+            _errorQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Error>(), ComponentType.Exclude<Deleted>());
         }
 
         protected override void OnUpdate() {
+            if (_toolSystem.activeTool != _laneConnectorTool)
+            {
+                return;
+            }
             // TODO create feedback system
             // if (_toolSystem.activeTool == _netTool && _netTool.prefab && _netTool.prefab.Has<NetUpgrade>() && MatchingRequirement(_netTool.prefab.GetComponent<NetUpgrade>().m_SetState))
             // {
@@ -57,7 +84,31 @@ namespace Traffic.UI
             //     AddMouseTooltip(_tooltip);
             // }
             
-            if (_toolSystem.activeTool != _laneConnectorTool || (_laneConnectorTool.tooltip == LaneConnectorToolSystem.Tooltip.None && _laneConnectorTool.ToolModifiers == LaneConnectorToolSystem.StateModifier.AnyConnector))
+            //TEMP move to feedback system
+            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default && !_errorQuery.IsEmptyIgnoreFilter)
+            {
+                _tooltipErrors.value = "Modifying lane connections on selected intersection is not supported";
+                AddMouseTooltip(_tooltipErrors);
+                return;
+            }
+            
+            if (_laneConnectorTool.ToolState > LaneConnectorToolSystem.State.Default)
+            {
+                NativeList<ControlPoint> controlPoints = _laneConnectorTool.GetControlPoints(out JobHandle _);
+                if (controlPoints.Length > 0)
+                {
+                    _posTooltip.value = $"[0] {controlPoints[0].m_OriginalEntity} ({controlPoints[0].m_HitPosition})";
+                    AddMouseTooltip(_posTooltip);
+
+                    if (controlPoints.Length > 1)
+                    {
+                        _posTooltip2.value = $"[1] {controlPoints[1].m_OriginalEntity} ({controlPoints[1].m_HitPosition})";
+                        AddMouseTooltip(_posTooltip2);
+                    }
+                }
+            }
+
+            if ((_laneConnectorTool.tooltip == LaneConnectorToolSystem.Tooltip.None && _laneConnectorTool.ToolModifiers == LaneConnectorToolSystem.StateModifier.AnyConnector))
             {
                 return;
             }

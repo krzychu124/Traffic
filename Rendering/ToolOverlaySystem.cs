@@ -7,6 +7,7 @@ using Game.Pathfind;
 using Game.Rendering;
 using Game.Tools;
 using Traffic.Components;
+using Traffic.Debug;
 using Traffic.LaneConnections;
 using Traffic.Tools;
 using Unity.Burst.Intrinsics;
@@ -28,13 +29,20 @@ namespace Traffic.Rendering
         // private EntityQuery _definitionsQuery;
         private EntityQuery _connectorsQuery;
         private EntityQuery _connectionsQuery;
+        private EntityQuery _modifiedConnectionsQuery;
         private ConnectorColorSet _colorSet;
+#if DEBUG_GIZMO
+        private LaneConnectorDebugSystem _laneConnectorDebugSystem;
+#endif
     
         protected override void OnCreate() {
             base.OnCreate();
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _laneConnectorToolSystem = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
             _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
+#if DEBUG_GIZMO
+            _laneConnectorDebugSystem = World.GetExistingSystemManaged<LaneConnectorDebugSystem>();
+#endif
             // _queryConnections = new EntityQueryBuilder(Allocator.Temp)
             //     .WithAll<LaneConnectionDefinition>()
             //     .WithNone<Hidden, Deleted>()
@@ -59,13 +67,25 @@ namespace Traffic.Rendering
                 All = new []{ ComponentType.ReadOnly<Connection>() },
                 None = new []{ ComponentType.ReadOnly<Deleted>(), ComponentType.ReadOnly<CustomLaneConnection>(), },
             });
+            
+            _modifiedConnectionsQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new []{ ComponentType.ReadOnly<CreationDefinition>(), ComponentType.ReadOnly<ConnectionDefinition>(), ComponentType.ReadOnly<TempLaneConnection>(),  },
+                None = new []{ ComponentType.ReadOnly<Deleted>(), },
+            });
 
             _colorSet = new ConnectorColorSet
             {
                 fillSourceColor = Color.clear,
                 outlineSourceColor = new Color(0f, 0.83f, 1f, 0.85f),
+                fillSourceTrackColor = Color.clear,
+                outlineSourceTrackColor = new Color(0.87f, 0.6f, 0.26f, 0.85f),
+                outlineSourceMixedColor = new Color(0.87f, 0.4f, 0.43f, 0.85f),
                 fillTargetColor = Color.clear,
-                outlineTargetColor = new Color(0f, 0.52f, 0.87f, 0.85f),
+                outlineTargetColor = new Color(0f, 0.56f, 0.87f, 0.85f),
+                fillTargetTrackColor = Color.clear,
+                outlineTargetTrackColor = new Color(0.87f, 0.39f, 0.16f, 0.85f),
+                outlineTargetMixedColor = new Color(0.87f, 0.11f, 0.32f, 0.85f),
                 fillTwoWayColor = Color.clear,
                 outlineTwoWayColor =  new Color(1f, 0.92f, 0.02f, 0.85f),
             };
@@ -75,8 +95,8 @@ namespace Traffic.Rendering
         protected override void OnUpdate() {
             if (_toolSystem.activeTool == _laneConnectorToolSystem)
             {
-                JobHandle jobHandle;
-                LaneConnectorOverlayJob laneConnectorOverlayJob = new LaneConnectorOverlayJob
+                JobHandle jobHandle = default;
+                /*LaneConnectorOverlayJob laneConnectorOverlayJob = new LaneConnectorOverlayJob
                 {
                     editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
                     nodes = SystemAPI.GetComponentLookup<Game.Net.Node>(true),
@@ -89,7 +109,7 @@ namespace Traffic.Rendering
                 JobHandle deps = JobHandle.CombineDependencies(controlPointsJobHandle, overlayRenderJobHandle);
                 jobHandle = laneConnectorOverlayJob.Schedule(JobHandle.CombineDependencies(Dependency, outJobHandle, deps));
                 laneConnectorOverlayJob.definitionChunks.Dispose(jobHandle);
-                _overlayRenderSystem.AddBufferWriter(jobHandle);
+                _overlayRenderSystem.AddBufferWriter(jobHandle);*/
 
                 if (!_connectorsQuery.IsEmptyIgnoreFilter)
                 {
@@ -113,22 +133,48 @@ namespace Traffic.Rendering
                 
                 if (!_connectionsQuery.IsEmptyIgnoreFilter && _laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default)
                 {
-                    ConnectionsOverlayJob connectionsOverlayJob = new ConnectionsOverlayJob
+#if DEBUG_GIZMO
+                    bool overlays = !_laneConnectorDebugSystem.GizmoEnabled;
+#else
+                    const bool overlays = true;
+#endif
+
+                    if (overlays)
                     {
-                        curveData = SystemAPI.GetComponentLookup<Curve>(true),
-                        connectorsData = SystemAPI.GetComponentLookup<Connector>(true),
-                        nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                        connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
+                        ConnectionsOverlayJob connectionsOverlayJob = new ConnectionsOverlayJob
+                        {
+                            curveData = SystemAPI.GetComponentLookup<Curve>(true),
+                            connectorsData = SystemAPI.GetComponentLookup<Connector>(true),
+                            nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                            connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
+                            state = _laneConnectorToolSystem.ToolState,
+                            modifier = _laneConnectorToolSystem.ToolModifiers,
+                            controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle3),
+                            colorSet = _colorSet,
+                            overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle3)
+                        };
+                        JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle3, overlayRenderJobHandle3));
+                        jobHandle = connectionsOverlayJob.Schedule(_connectionsQuery, deps3);
+                        _overlayRenderSystem.AddBufferWriter(jobHandle);
+                    }
+                }
+
+                /* TODO DEBUG TempGeneratedConnection
+                if (!_modifiedConnectionsQuery.IsEmptyIgnoreFilter && _laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default && !_laneConnectorDebugSystem.GizmoEnabled)
+                {
+                    ModifiedConnectionsOverlayJob modifiedConnectionsOverlayJob = new ModifiedConnectionsOverlayJob()
+                    {
+                        connectionDefinitionDataTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
+                        tempConnectionsDataTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
                         state = _laneConnectorToolSystem.ToolState,
                         modifier = _laneConnectorToolSystem.ToolModifiers,
-                        controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle3),
                         colorSet = _colorSet,
-                        overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle3)
+                        overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle4)
                     };
-                    JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle3, overlayRenderJobHandle3));
-                    jobHandle = connectionsOverlayJob.Schedule(_connectionsQuery, deps3);
+                    JobHandle deps4 = JobHandle.CombineDependencies(jobHandle, overlayRenderJobHandle4);
+                    jobHandle = modifiedConnectionsOverlayJob.Schedule(_modifiedConnectionsQuery, deps4);
                     _overlayRenderSystem.AddBufferWriter(jobHandle);
-                }
+                }*/
 
                 Dependency = jobHandle;
             }
@@ -161,17 +207,19 @@ namespace Traffic.Rendering
                             {
                                 Node node = nodes[nodeEntity];
                                 float diameter = 10f;
+                                float3 position = node.m_Position;
                                 if (nodesGeometry.HasComponent(nodeEntity))
                                 {
                                     diameter = MathUtils.Size(nodesGeometry[nodeEntity].m_Bounds).x + 5f;
                                 }
+
                                 overlayBuffer.DrawCircle(
                                     selectColor,
                                     Color.clear,
                                     0.25f,
                                     0,
                                     new float2(0.0f, 1f),
-                                    node.m_Position,
+                                    position,
                                     diameter);
                             }
                         }
@@ -194,7 +242,8 @@ namespace Traffic.Rendering
                 {
                     diameter2 = MathUtils.Size(nodesGeometry[p.m_OriginalEntity].m_Bounds).x + 5f;
                 }
-                overlayBuffer.DrawCircle(highlightColor, Color.clear, 0.25f, OverlayRenderSystem.StyleFlags.Projected, new float2(0.0f, 1f), node2.m_Position, diameter2);
+                float3 position2 = node2.m_Position;
+                overlayBuffer.DrawCircle(highlightColor, Color.clear, 0.25f, 0, new float2(0.0f, 1f), position2, diameter2);
             }
         }
 
@@ -251,7 +300,9 @@ namespace Traffic.Rendering
                         if ((connector.connectorType & ConnectorType.Source) != 0 && (renderSource || isSource))
                         {
                             overlayBuffer.DrawCircle(
-                                colorSet.outlineSourceColor,
+                                connector.connectionType == ConnectionType.SharedCarTrack 
+                                    ? colorSet.outlineSourceMixedColor : connector.connectionType == ConnectionType.Track 
+                                        ? colorSet.outlineSourceTrackColor : colorSet.outlineSourceColor,
                                 colorSet.fillSourceColor,
                                 outline,
                                 0,//OverlayRenderSystem.StyleFlags.Projected,
@@ -262,7 +313,9 @@ namespace Traffic.Rendering
                         else if ((connector.connectorType & ConnectorType.Target) != 0 && renderTarget)
                         {
                             overlayBuffer.DrawCircle(
-                                colorSet.outlineTargetColor,
+                                connector.connectionType == ConnectionType.SharedCarTrack 
+                                    ? colorSet.outlineTargetMixedColor : connector.connectionType == ConnectionType.Track 
+                                        ? colorSet.outlineTargetTrackColor : colorSet.outlineTargetColor,
                                 colorSet.fillTargetColor,
                                 outline,
                                 0,//OverlayRenderSystem.StyleFlags.Projected,
@@ -332,36 +385,37 @@ namespace Traffic.Rendering
                         connectorNode2 = new PathNode(c2.edge, (ushort)c2.laneIndex);
                         previewConnection = true;
                     }
-                    floatingPosition = state == LaneConnectorToolSystem.State.SelectingTargetConnector && connector != connector2;
+                    floatingPosition = state == LaneConnectorToolSystem.State.SelectingTargetConnector && connector != connector2;//TODO bug
                 }
                 Color dimmMain = state == LaneConnectorToolSystem.State.SelectingTargetConnector ? new Color(1f, 1f, 1f, 0.5f) : Color.white;
                 BufferAccessor<Connection> connectionAccessor = chunk.GetBufferAccessor(ref connectionType);
                 NativeList<ConnectionRenderData> hovered = new NativeList<ConnectionRenderData>(Allocator.Temp);
                 Color dimm;
-                
+                LaneConnectorToolSystem.StateModifier currentModifier = modifier & ~LaneConnectorToolSystem.StateModifier.MakeUnsafe;
+                    
                 for (var i = 0; i < connectionAccessor.Length; i++)
                 {
                     
                     DynamicBuffer<Connection> connections = connectionAccessor[i];
                     foreach (Connection connection in connections)
                     {
-                        if (!curveData.HasComponent(connection.curve))
-                        {
-                            // TODO FIX_ME delete removed connections!
-                            continue;
-                        }
+                        // if (!curveData.HasComponent(connection.curve))
+                        // {
+                        //     // TODO FIX_ME delete removed connections!
+                        //     continue;
+                        // }
                         
                         Color color = (connection.method & PathMethod.Track) != 0 ? colorSet.outlineTwoWayColor : connection.isForbidden ? new Color(0.81f, 0f, 0.14f, 0.79f) : colorSet.outlineSourceColor;
                         Color color2 = (connection.method & PathMethod.Track) != 0 ? colorSet.fillTwoWayColor : colorSet.fillSourceColor;
                         float width = connection.isForbidden ? 0.2f : connection.isUnsafe ? 0.35f : 0.5f;
-                        Curve curve = curveData[connection.curve];
-                        if (IsNotMatchingModifier(modifier, connection))
+                        Bezier4x3 curve = connection.curve;
+                        if (IsNotMatchingModifier(currentModifier, connection))
                         {
                             dimm = new Color(1, 1, 1, 0.1f);
                         }
                         else
                         {
-                            dimm = connection.isUnsafe ? new Color(1f, 1f, 1f, 0.75f) : dimmMain;
+                            dimm = connection.isUnsafe ? new Color(1f, 1f, 1f, 0.65f) : dimmMain;
                         }
                         
                         if (AreEqual(connectorNode, connection.sourceNode))
@@ -373,12 +427,12 @@ namespace Traffic.Rendering
                             }
                             color = (state == LaneConnectorToolSystem.State.SelectingSourceConnector || AreEqual(connectorNode2, connection.targetNode)) 
                                 ? state == LaneConnectorToolSystem.State.SelectingTargetConnector 
-                                    ? new Color(0.88f, 0.76f, 0f) 
+                                    ? new Color(0.88f, 0.43f, 0f) 
                                     : connection.isForbidden ? Color.red : new Color(0f, 0.88f, 0f) 
                                 : connection.isForbidden ? Color.red : new Color(0f, 0.88f, 0f) * dimm;
                             color2 = Color.clear;
                             width = connection.isForbidden ? 0.25f : connection.isUnsafe ? 0.35f : 0.55f;
-                            hovered.Add(new ConnectionRenderData() {bezier = curve.m_Bezier, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
+                            hovered.Add(new ConnectionRenderData() {bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
                             continue;
                         }
                         else if (AreEqual(connectorNode, connection.targetNode))
@@ -386,7 +440,7 @@ namespace Traffic.Rendering
                             color = connection.isForbidden ? Color.red : new Color(0.75f, 0f, 0.34f);
                             color2 = Color.clear;
                             width = connection.isForbidden ? 0.25f : connection.isUnsafe ? 0.35f : 0.55f;
-                            hovered.Add(new ConnectionRenderData() {bezier = curve.m_Bezier, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
+                            hovered.Add(new ConnectionRenderData() {bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
                             continue;
                         }
                         if (connection.isUnsafe || connection.isForbidden)
@@ -399,7 +453,7 @@ namespace Traffic.Rendering
                                 color2 = color;
                                 color = colorSet.outlineSourceColor;
                             }
-                            overlayBuffer.DrawDashedCurve(color2 * dimm, color * dimm, outline, 0, curve.m_Bezier, width, 1.2f, 0.4f);
+                            overlayBuffer.DrawDashedCurve(color2 * dimm, color * dimm, outline, 0, curve, width, 1.2f, 0.4f);
                         }
                         else
                         {
@@ -411,7 +465,7 @@ namespace Traffic.Rendering
                                 color2 = color;
                                 color = colorSet.outlineSourceColor;
                             }
-                            overlayBuffer.DrawCurve(color2 * dimm, color * dimm, outline, 0, curve.m_Bezier, width, float2.zero);
+                            overlayBuffer.DrawCurve(color2 * dimm, color * dimm, outline, 0, curve, width, float2.zero);
                         }
                     }
                 }
@@ -422,7 +476,7 @@ namespace Traffic.Rendering
                         ConnectionRenderData data = hovered[i];
                         if (data.isUnsafe || data.isForbidden)
                         {
-                            overlayBuffer.DrawDashedCurve(data.color2, data.color, 0f, 0, data.bezier, data.width, 1.2f, 0.4f);
+                            overlayBuffer.DrawDashedCurve(data.color2, data.color, 0f, 0, data.bezier, data.width * 0.75f, 1.2f, 0.4f);
                         }
                         else
                         {
@@ -434,23 +488,39 @@ namespace Traffic.Rendering
 
                 if (floatingPosition)
                 {
+                    bool isUnsafe = (modifier & LaneConnectorToolSystem.StateModifier.MakeUnsafe) != 0;
                     if (!previewConnection)
                     {
                         Connector startCon = connectorsData[connector];
                         float3 cursorPos = targetControlPoint.m_Position;
-                        if (math.distancesq(cursorPos.xz, startCon.position.xz) < 1)
+                        if (targetControlPoint.m_OriginalEntity == Entity.Null || math.distancesq(cursorPos.xz, startCon.position.xz) < 1)
                         {
                             return;
                         }
                         float3 middlePos = nodeData[startCon.node].m_Position;
+                        cursorPos.y = startCon.position.y;
                         Bezier4x3 floatingBezier = NetUtils.FitCurve(new Line3.Segment(startCon.position, startCon.position + (startCon.direction * 2f)), new Line3.Segment(cursorPos, middlePos));
-                        overlayBuffer.DrawCurve(Color.yellow, Color.yellow, 0f, OverlayRenderSystem.StyleFlags.Projected, floatingBezier, 0.45f, float2.zero);
+                        if (isUnsafe)
+                        {
+                            overlayBuffer.DrawDashedCurve(Color.yellow, Color.yellow, 0f, 0, floatingBezier, 0.40f, 1f, 0.45f);
+                        }
+                        else
+                        {
+                            overlayBuffer.DrawCurve(Color.yellow, Color.yellow, 0f, 0, floatingBezier, 0.45f, float2.zero);
+                        }
                     }
                     else if (connectorsData.TryGetComponent(connector2, out Connector t) && t.connectorType == ConnectorType.Target)
                     {
                         Connector s = connectorsData[connector];
                         Bezier4x3 connectionBezier = NetUtils.FitCurve(s.position, s.direction, -t.direction, t.position);
-                        overlayBuffer.DrawCurve(new Color(0.63f, 1f, 0f), new Color(0.63f, 1f, 0f), 0f, OverlayRenderSystem.StyleFlags.Projected, connectionBezier, 0.45f, float2.zero);
+                        if (isUnsafe)
+                        {
+                            overlayBuffer.DrawDashedCurve(new Color(0.63f, 1f, 0f), new Color(0.63f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, 1.2f, 0.4f);
+                        }
+                        else
+                        {
+                            overlayBuffer.DrawCurve(new Color(0.63f, 1f, 0f), new Color(0.63f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, float2.zero);
+                        }
                     }
                 }
             }
@@ -467,12 +537,69 @@ namespace Traffic.Rendering
         }
 
 
+        private struct ModifiedConnectionsOverlayJob : IJobChunk
+        {
+            [ReadOnly] public ComponentTypeHandle<ConnectionDefinition> connectionDefinitionDataTypeHandle;
+            [ReadOnly] public BufferTypeHandle<TempLaneConnection> tempConnectionsDataTypeHandle;
+            [ReadOnly] public LaneConnectorToolSystem.State state;
+            [ReadOnly] public LaneConnectorToolSystem.StateModifier modifier;
+            [ReadOnly] public ConnectorColorSet colorSet;
+            public OverlayRenderSystem.Buffer overlayBuffer;
+            
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
+                NativeArray<ConnectionDefinition> connectionDefinitions = chunk.GetNativeArray(ref connectionDefinitionDataTypeHandle);
+                BufferAccessor<TempLaneConnection> tempConnectionsAccessor = chunk.GetBufferAccessor(ref tempConnectionsDataTypeHandle);
+
+                for (var i = 0; i < connectionDefinitions.Length; i++)
+                {
+                    // ConnectionDefinition definition = connectionDefinitions[i];
+                    DynamicBuffer<TempLaneConnection> connections = tempConnectionsAccessor[i];
+                    
+                    for (var j = 0; j < connections.Length; j++)
+                    {
+                        TempLaneConnection connection = connections[j];
+                        Color color;
+                        Color fillColor;
+                        if ((connection.flags & ConnectionFlags.Highlight) != 0)
+                        {
+                            color = new Color(1f, 0.26f, 0.01f);
+                            fillColor = new Color(1f, 0.26f, 0.01f);
+                        }
+                        else if ((connection.flags & ConnectionFlags.Create) != 0)
+                        {
+                            color = new Color(0.53f, 0f, 1f);
+                            fillColor = new Color(0.53f, 0f, 1f);
+                        }
+                        else
+                        {
+                            color = new Color(0f, 0.12f, 1f);
+                            fillColor = new Color(0f, 0.12f, 1f);
+                        }
+                        if (connection.isUnsafe)
+                        {
+                            overlayBuffer.DrawDashedCurve(color, fillColor, 0f, 0, connection.bezier, 0.3f, 1.2f, 0.4f);
+                        }
+                        else
+                        {
+                            overlayBuffer.DrawCurve(color, fillColor, 0f, 0, connection.bezier, 0.3f, float2.zero);
+                        }
+                    }
+                }
+            }
+        }
+
         private struct ConnectorColorSet
         {
             public Color fillSourceColor;
             public Color outlineSourceColor;
+            public Color fillSourceTrackColor;
+            public Color outlineSourceTrackColor;
+            public Color outlineSourceMixedColor;
             public Color fillTargetColor;
             public Color outlineTargetColor;
+            public Color fillTargetTrackColor;
+            public Color outlineTargetTrackColor;
+            public Color outlineTargetMixedColor;
             public Color fillTwoWayColor;
             public Color outlineTwoWayColor;
         }

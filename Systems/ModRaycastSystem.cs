@@ -70,6 +70,7 @@ namespace Traffic.Systems
             JobHandle jobHandle2 = job.Schedule(JobHandle.CombineDependencies(Dependency, jobHandle, dependencies));
             _searchSystem.AddSearchTreeReader(jobHandle2);
             jobHandle2.Complete();
+            //TODO change to accumulator to get best match instead overwriting results
             NativeReference<CustomRaycastResult> customRes = new NativeReference<CustomRaycastResult>(Allocator.TempJob);
             RaycastJobs.RaycastLaneConnectionSubObjects raycastLaneConnectionSubObjects = new RaycastJobs.RaycastLaneConnectionSubObjects()
             {

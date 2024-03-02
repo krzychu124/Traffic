@@ -1,7 +1,7 @@
-﻿using Game.Net;
+﻿using Colossal.Mathematics;
+using Game.Net;
 using Game.Pathfind;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace Traffic.LaneConnections
 {
@@ -11,27 +11,21 @@ namespace Traffic.LaneConnections
         public PathNode sourceNode;
         public PathNode targetNode;
         public PathNode ownerNode;
-        public Entity curve;
+        public Entity sourceEdge;
+        public Entity targetEdge;
+        public Bezier4x3 curve;
         public PathMethod method;
         public bool isUnsafe;
         public bool isForbidden;
-
-        public Connection(PathNode start, PathNode end, PathNode owner, Entity curveOwner, PathMethod pathMethod, bool isUnsafe, bool isForbidden) {
-            sourceNode = start;
-            targetNode = end;
-            ownerNode = owner;
-            curve = curveOwner;
-            method = pathMethod;
-            this.isUnsafe = isUnsafe;
-            this.isForbidden = isForbidden;
-        }
         
-        public Connection(Lane laneData, Entity curveOwner, PathMethod pathMethod, bool isUnsafe, bool isForbidden) {
+        public Connection(Lane laneData, Bezier4x3 curve, PathMethod pathMethod, Entity sourceEdge, Entity targetEdge, bool isUnsafe, bool isForbidden) {
             sourceNode = laneData.m_StartNode;
             targetNode = laneData.m_EndNode;
             ownerNode = laneData.m_MiddleNode;
-            curve = curveOwner;
             method = pathMethod;
+            this.curve = curve;
+            this.sourceEdge = sourceEdge;
+            this.targetEdge = targetEdge;
             this.isUnsafe = isUnsafe;
             this.isForbidden = isForbidden;
         }

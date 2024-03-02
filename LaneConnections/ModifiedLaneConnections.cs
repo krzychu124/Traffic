@@ -8,8 +8,13 @@ namespace Traffic.LaneConnections
     {
         public int laneIndex;
         public Entity edgeEntity;
-
-
+        public Entity modifiedConnections;
+        
+        /// <summary>
+        /// Equals for lane index and edge, ignores linked modifiedConnections entity!
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
         public bool Equals(ModifiedLaneConnections other) {
             return laneIndex == other.laneIndex && edgeEntity.Equals(other.edgeEntity);
         }

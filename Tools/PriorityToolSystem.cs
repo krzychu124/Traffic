@@ -41,7 +41,7 @@ namespace Traffic.Tools
             base.OnCreate();
             _applyAction = InputManager.instance.FindAction("Tool", "Apply");
             _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
-            _toolOutputBarrier = World.GetExistingSystemManaged<ToolOutputBarrier>();
+            _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
             _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
             Enabled = false;
         }

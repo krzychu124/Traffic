@@ -12,7 +12,8 @@ namespace Traffic.Helpers
 {
     public static class RaycastJobs
     {
-        public struct FindConnectionNodeFromTreeJob : IJob
+        /*TODO try measure performance with ParallelFor */
+        public struct FindConnectionNodeFromTreeJob : IJob 
         {
             private struct FindConnectionNodeIterator : INativeQuadTreeIterator<Entity, QuadTreeBoundsXZ>, IUnsafeQuadTreeIterator<Entity, QuadTreeBoundsXZ>
             {
@@ -69,15 +70,23 @@ namespace Traffic.Helpers
         
             public void Execute(int index) {
                 Entity entity = entities[index];
-                if (input.connectionType != ConnectionType.All && connectorData.TryGetComponent(entity, out Connector connector) && (connector.connectionType & input.connectionType) != input.connectionType)
+                bool isStrict = (input.connectionType & ConnectionType.Strict) != 0;
+                ConnectionType nonStrict = input.connectionType & ~ConnectionType.Strict;
+                if (connectorData.TryGetComponent(entity, out Connector connector) &&
+                    (connector.connectorType & input.connectorType) != 0 &&
+                    (isStrict ? (connector.connectionType & nonStrict) == nonStrict : (connector.connectionType & nonStrict) != 0))
                 {
-                    return;
+                    result.Value = new CustomRaycastResult()
+                    {
+                        hit = new RaycastHit() { },
+                        owner = entity
+                    };
+                    Logger.DebugTool($"OK: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) nonStr: {nonStrict}");
                 }
-                result.Value = new CustomRaycastResult()
+                else
                 {
-                    hit = new RaycastHit() {},
-                    owner = entity
-                };
+                    Logger.DebugTool($"Fail: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) nonStr: {nonStrict}");
+                }
             }
         }
     }

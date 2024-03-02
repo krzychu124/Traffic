@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Colossal.Collections;
 using Colossal.Mathematics;
 using Game;
 using Game.Common;
@@ -31,17 +32,20 @@ namespace Traffic.LaneConnections
             
             _modificationBarrier = base.World.GetOrCreateSystemManaged<ModificationBarrier5>();
             _definitionQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Updated>(), ComponentType.Exclude<Temp>(), ComponentType.Exclude<Deleted>());
-            _connectorsQuery = GetEntityQuery(ComponentType.ReadOnly<Connector>(), ComponentType.ReadOnly<Updated>(), ComponentType.Exclude<Deleted>());
+            _connectorsQuery = GetEntityQuery(ComponentType.ReadOnly<Connector>(), ComponentType.Exclude<Deleted>());
             
             RequireForUpdate(_definitionQuery);
         }
 
         protected override void OnUpdate() {
-            NativeHashMap<NodeEdgeLaneKey, Entity> connectorsMap = new (32, Allocator.TempJob);
+            Logger.Info($"GenerateConnectorsSystem.OnUpdate (frame: {UnityEngine.Time.renderedFrameCount})");
+            NativeParallelHashMap<NodeEdgeLaneKey, Entity> connectorsMap = new (128, Allocator.TempJob);
             EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             GenerateConnectorsJob job = new GenerateConnectorsJob
             {
+                entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                connectorElementType = SystemAPI.GetBufferTypeHandle<ConnectorElement>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                 tempData = SystemAPI.GetComponentLookup<Temp>(true),
@@ -66,14 +70,14 @@ namespace Traffic.LaneConnections
                 prefabCompositionLanes = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
                 commandBuffer = commandBuffer,
             };
-            Logger.Info($"Generate (def): {_definitionQuery.CalculateEntityCount()}");
+            Logger.Info($"Generate (def): {_definitionQuery.CalculateEntityCount()} | chunks: {_definitionQuery.CalculateChunkCount()}");
             JobHandle jobHandle = job.Schedule(_definitionQuery, Dependency);
-            JobHandle.ScheduleBatchedJobs();
+            // JobHandle.ScheduleBatchedJobs();
             jobHandle.Complete();
             commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
             
-            Logger.Info($"Generate (connectors): {_connectorsQuery.CalculateEntityCount()}");
+            Logger.Info($"Generated (connectors): {_connectorsQuery.CalculateEntityCount()} | chunks: {_connectorsQuery.CalculateChunkCount()}");
             CollectConnectorsJob collectConnectorsJob = new CollectConnectorsJob()
             {
                 entityType = SystemAPI.GetEntityTypeHandle(),
@@ -90,6 +94,7 @@ namespace Traffic.LaneConnections
                 carLaneData = SystemAPI.GetComponentLookup<CarLane>(true),
                 masterLaneData = SystemAPI.GetComponentLookup<MasterLane>(true),
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
+                curveData = SystemAPI.GetComponentLookup<Curve>(true),
                 connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 connectorsList = connectorsMap,
                 subLanesBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
@@ -109,12 +114,12 @@ namespace Traffic.LaneConnections
             
             [ReadOnly] public EntityTypeHandle entityType;
             [ReadOnly] public ComponentTypeHandle<Connector> connectorType;
-            public NativeHashMap<NodeEdgeLaneKey,Entity> resultMap;
+            public NativeParallelHashMap<NodeEdgeLaneKey,Entity> resultMap;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityType);
                 NativeArray<Connector> connectors = chunk.GetNativeArray(ref connectorType);
-                for (var i = 0; i < entities.Length; i++)
+                for (int i = 0; i < entities.Length; i++)
                 {
                     Entity e = entities[i];
                     Connector connector = connectors[i];
@@ -125,7 +130,9 @@ namespace Traffic.LaneConnections
 
         private struct GenerateConnectorsJob : IJobChunk
         {            
+            [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;
+            [ReadOnly] public BufferTypeHandle<ConnectorElement> connectorElementType;
             [ReadOnly] public ComponentLookup<Node> nodeData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
             [ReadOnly] public ComponentLookup<Temp> tempData;
@@ -152,11 +159,17 @@ namespace Traffic.LaneConnections
             public EntityCommandBuffer commandBuffer;
             
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
+                NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
                 NativeList<ConnectPosition> sourceConnectPositions = new NativeList<ConnectPosition>(32, Allocator.Temp);
                 NativeList<ConnectPosition> targetConnectPositions = new NativeList<ConnectPosition>(32, Allocator.Temp);
                 for (int i = 0; i < editIntersections.Length; i++)
                 {
+                    if (chunk.Has(ref connectorElementType))
+                    {
+                        Logger.Info("Skip creating connectors");
+                        continue;
+                    }
                     EditIntersection intersection = editIntersections[i];
                     Entity nodeEntity = intersection.node;
                     Logger.Info($"Check node entity: {nodeEntity}");
@@ -168,7 +181,7 @@ namespace Traffic.LaneConnections
                         bool hasEdges = false;
                         while (edgeIterator.GetNext(out value))
                         {
-                            Logger.Info($"Check edge: {value.m_Edge}");
+                            Logger.Info($"\tCheck edge: {value.m_Edge}");
                             GetNodeConnectors(nodeEntity, value.m_Edge, value.m_End, sourceConnectPositions, targetConnectPositions);
                             hasEdges = true;
                         }
@@ -176,7 +189,7 @@ namespace Traffic.LaneConnections
                         if (hasEdges)
                         {
                             Logger.Info($"Check node entity: {nodeEntity}. Has edges! Sources: {sourceConnectPositions.Length} Targets: {targetConnectPositions.Length}");
-                            CreateConnectors(nodeEntity, sourceConnectPositions, targetConnectPositions);
+                            CreateConnectors(entities[i], nodeEntity, sourceConnectPositions, targetConnectPositions);
                         }
                         sourceConnectPositions.Clear();
                         targetConnectPositions.Clear();
@@ -361,8 +374,9 @@ namespace Traffic.LaneConnections
                 // Logger.Info(sb.ToString());
             }
 
-            private void CreateConnectors(Entity node, NativeList<ConnectPosition> sourceConnectPositions, NativeList<ConnectPosition> targetConnectPositions) {
+            private void CreateConnectors(Entity selectedIntersection, Entity node, NativeList<ConnectPosition> sourceConnectPositions, NativeList<ConnectPosition> targetConnectPositions) {
                 //todo handle two-way connections
+                NativeList<Entity> connectors = new NativeList<Entity>(sourceConnectPositions.Length + targetConnectPositions.Length, Allocator.Temp);
                 for (int i = 0; i < sourceConnectPositions.Length; i++)
                 {
                     ConnectPosition connectPosition = sourceConnectPositions[i];
@@ -380,7 +394,9 @@ namespace Traffic.LaneConnections
                     commandBuffer.AddComponent<Connector>(entity, connector);
                     commandBuffer.AddComponent(entity, default(Updated));
                     commandBuffer.AddBuffer<LaneConnection>(entity);
+                    connectors.Add(entity);
                 }
+                
                 for (int i = 0; i < targetConnectPositions.Length; i++)
                 {
                     ConnectPosition connectPosition = targetConnectPositions[i];
@@ -398,7 +414,17 @@ namespace Traffic.LaneConnections
                     commandBuffer.AddComponent<Connector>(entity, connector);
                     commandBuffer.AddComponent(entity, default(Updated));
                     commandBuffer.AddBuffer<LaneConnection>(entity);
+                    connectors.Add(entity);
                 }
+                
+                DynamicBuffer<ConnectorElement> connectorElements = commandBuffer.AddBuffer<ConnectorElement>(selectedIntersection);
+                connectorElements.ResizeUninitialized(connectors.Length);
+                for (int i = 0; i < connectors.Length; i++)
+                {
+                    connectorElements[i] = new ConnectorElement() { entity = connectors[i] };
+                }
+
+                connectors.Dispose();
             }
 
             private ConnectionType GetConnectionType(LaneFlags flags) {
@@ -429,7 +455,8 @@ namespace Traffic.LaneConnections
             [ReadOnly] public ComponentLookup<CarLane> carLaneData;
             [ReadOnly] public ComponentLookup<MasterLane> masterLaneData;
             [ReadOnly] public ComponentLookup<Connector> connectorData;
-            [ReadOnly] public NativeHashMap<NodeEdgeLaneKey, Entity> connectorsList;
+            [ReadOnly] public ComponentLookup<Curve> curveData;
+            [ReadOnly] public NativeParallelHashMap<NodeEdgeLaneKey, Entity> connectorsList;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgesBuffer;
             [ReadOnly] public BufferLookup<SubLane> subLanesBuffer;
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionBuffer;
@@ -438,10 +465,9 @@ namespace Traffic.LaneConnections
  
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
-                Logger.Info($"Connectors: {connectorsList.Count}");
+                Logger.Info($"Connectors: {connectorsList.Count()}");
                 NativeParallelMultiHashMap<Entity, Connection> connections = new (8, Allocator.Temp);
-                NativeList<GeneratedConnection> tempConnections = new NativeList<GeneratedConnection>(8, Allocator.Temp);
-                NativeHashSet<ModifiedLaneConnections> tempModified = new NativeHashSet<ModifiedLaneConnections>(4, Allocator.Temp);
+                
                 for (int i = 0; i < editIntersections.Length; i++)
                 {
                     EditIntersection editIntersection = editIntersections[i];
@@ -461,7 +487,12 @@ namespace Traffic.LaneConnections
                             }
                             Lane lane = laneData[subLaneEntity];
                             Entity sourceEdge = FindEdge(connectedEdges, lane.m_StartNode);
-                            if (sourceEdge == Entity.Null)
+                            Entity targetEdge = sourceEdge;
+                            if (!lane.m_StartNode.OwnerEquals(lane.m_EndNode))
+                            {
+                                targetEdge = FindEdge(connectedEdges, lane.m_EndNode);
+                            }
+                            if (sourceEdge == Entity.Null || targetEdge == Entity.Null)
                             {
                                 continue;
                             }
@@ -473,30 +504,9 @@ namespace Traffic.LaneConnections
                                 isUnsafe = (carLane.m_Flags & CarLaneFlags.Unsafe) != 0;
                                 isForbidden = (carLane.m_Flags & CarLaneFlags.Forbidden) != 0;
                             }
-                            Connection connection = new Connection(lane, subLaneEntity, subLane.m_PathMethods, isUnsafe, isForbidden);
+                            Bezier4x3 bezier = curveData[subLaneEntity].m_Bezier;
+                            Connection connection = new Connection(lane, bezier, subLane.m_PathMethods, sourceEdge, targetEdge, isUnsafe, isForbidden);
                             connections.Add(sourceEdge, connection);
-                        }
-
-                        tempModified.Clear();
-                        if (modifiedLaneConnectionsBuffer.HasBuffer(node))
-                        {
-                            DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionBuffer[node];
-                            DynamicBuffer<ModifiedLaneConnections> laneConnectionsEnumerable = modifiedLaneConnectionsBuffer[node];
-                            for (var j = 0; j < laneConnectionsEnumerable.Length; j++)
-                            {
-                                ModifiedLaneConnections modifiedLaneConnections = laneConnectionsEnumerable[j];
-                                tempModified.Add(modifiedLaneConnections);
-
-                                for (var k = 0; k < generatedConnections.Length; k++)
-                                {
-                                    GeneratedConnection generatedConnection = generatedConnections[k];
-                                    // add matching existing connection
-                                    if (generatedConnection.sourceEntity == modifiedLaneConnections.edgeEntity && modifiedLaneConnections.laneIndex == generatedConnection.laneIndexMap.x)
-                                    {
-                                        tempConnections.Add(generatedConnection);
-                                    }
-                                }
-                            }
                         }
                         
                         foreach (ConnectedEdge connectedEdge in connectedEdges)
@@ -510,7 +520,7 @@ namespace Traffic.LaneConnections
                                 {
                                     connectionsBuffer.Add(connection);
 
-                                    Entity targetEdge = FindEdge(connectedEdges, connection.targetNode);
+                                    // Entity targetEdge = FindEdge(connectedEdges, connection.targetNode);
                                     int connectorIndex = connection.sourceNode.GetLaneIndex() & 0xff;
                                     if (connectorsList.TryGetValue(new NodeEdgeLaneKey(node.Index, edge.Index, connectorIndex), out Entity connector))
                                     {
@@ -518,45 +528,17 @@ namespace Traffic.LaneConnections
                                         commandBuffer.AppendToBuffer(connector, new LaneConnection() { connection = e });
                                     }
 
-                                    int2 indexMap = new int2(connectorIndex, connection.targetNode.GetLaneIndex() & 0xff);
-                                    Entity con = commandBuffer.CreateEntity();
-                                    commandBuffer.AddComponent(con, new ConnectionData(connection, edge, targetEdge, indexMap));
-                                    commandBuffer.AddComponent<CustomLaneConnection>(con);
-                                    
-                                    // generate connection if not connected to modified lane
-                                    if (generateConnections && targetEdge != Entity.Null && !tempModified.Contains(new ModifiedLaneConnections() {edgeEntity = edge, laneIndex = indexMap.x}))
-                                    {
-                                        tempConnections.Add(new GeneratedConnection
-                                        {
-                                            sourceEntity = edge,
-                                            targetEntity = targetEdge,
-                                            laneIndexMap = indexMap,
-                                            method = connection.method,
-                                            isUnsafe = connection.isUnsafe,
-                                        });
-                                    }
+                                    // int2 indexMap = new int2(connectorIndex, connection.targetNode.GetLaneIndex() & 0xff);
+                                    // Entity con = commandBuffer.CreateEntity();
+                                    // commandBuffer.AddComponent(con, new ConnectionData(connection, edge, targetEdge, indexMap));
                                 }
                             }
                         }
 
-                        if (generateConnections)
-                        {
-                            //update buffer with old and new generated connections
-                            DynamicBuffer<GeneratedConnection> generated = commandBuffer.SetBuffer<GeneratedConnection>(node);
-                            generated.ResizeUninitialized(tempConnections.Length);
-                            for (var j = 0; j < tempConnections.Length; j++)
-                            {
-                                generated[j] = tempConnections[j];
-                            }
-                        }
-
                         connections.Clear();
-                        tempConnections.Clear();
                     }
                 }
                 connections.Dispose();
-                tempConnections.Dispose();
-                tempModified.Dispose();
             }
 
             private Entity FindEdge(DynamicBuffer<ConnectedEdge> edges, PathNode node) {

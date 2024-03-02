@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Text;
 using Colossal.Collections;
 using Colossal.Entities;
 using Game.Audio;
@@ -37,8 +39,8 @@ namespace Traffic.Tools
             Default,
             SelectingSourceConnector,
             SelectingTargetConnector,
-            RemovingSourceConnections,
-            RemovingTargetConnections,
+            // RemovingSourceConnections,
+            // RemovingTargetConnections,
         }
 
         [Flags]
@@ -80,14 +82,21 @@ namespace Traffic.Tools
         private float _nodeElevation;
         private State _state;
         private StateModifier _stateModifiers = StateModifier.AnyConnector;
+        private bool _majorStateModifiersChange;
+        private bool _minorStateModifiersChange;
         private ControlPoint _lastControlPoint;
         private EntityQuery _definitionQuery;
         private EntityQuery _soundQuery;
         private EntityQuery _tempConnectionQuery;
+        private EntityQuery _tempQuery;
         private EntityQuery _raycastHelpersQuery;
+        private EntityQuery _editIntersectionQuery;
 
         private InputAction _delAction;
         private Camera _mainCamera;
+        private ComponentTypeSet _modifiedConnectionsTypeSet;
+
+        internal static Entity FakePrefabRef;
 
         public Mode ToolMode { get; set; }
 
@@ -126,20 +135,31 @@ namespace Traffic.Tools
             base.OnCreate();
             _controlPoints = new NativeList<ControlPoint>(4, Allocator.Persistent);
             _tooltip = new NativeValue<Tooltip>(Allocator.Persistent);
-            _delAction = new InputAction("LaneConnectorTool_Del", InputActionType.Button, "<keyboard>/delete");
+            _modifiedConnectionsTypeSet = new ComponentTypeSet(ComponentType.ReadWrite<ModifiedConnections>(), ComponentType.ReadWrite<ModifiedLaneConnections>());
+            // Systems
+            _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
             _modRaycastSystem = World.GetOrCreateSystemManaged<ModRaycastSystem>();
-            _applyAction = InputManager.instance.FindAction("Tool", "Apply");
-            _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
-            _toolOutputBarrier = World.GetExistingSystemManaged<ToolOutputBarrier>();
+            _audioManager = World.GetOrCreateSystemManaged<AudioManager>();
+            // Queries
             _definitionQuery = GetDefinitionQuery();
             _tempConnectionQuery = GetEntityQuery(new EntityQueryDesc { All = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<CustomLaneConnection>() }, None = new[] { ComponentType.ReadOnly<Deleted>(), } });
-            _audioManager = World.GetExistingSystemManaged<AudioManager>();
+            _tempQuery = GetEntityQuery(new EntityQueryDesc { All = new[] { ComponentType.ReadOnly<Temp>() } });
             _soundQuery = GetEntityQuery(ComponentType.ReadOnly<ToolUXSoundSettingsData>());
             _raycastHelpersQuery = GetEntityQuery(new EntityQueryDesc
             {
                 Any = new[] { ComponentType.ReadOnly<Connection>(), ComponentType.ReadOnly<Connector>(), ComponentType.ReadOnly<EditIntersection>(), },
                 None = new[] { ComponentType.ReadOnly<Deleted>() }
             });
+            _editIntersectionQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new [] { ComponentType.ReadOnly<EditIntersection>(), },
+                None = new[] { ComponentType.ReadOnly<Deleted>() }
+            });
+            // Actions
+            _delAction = new InputAction("LaneConnectorTool_Del", InputActionType.Button, "<keyboard>/delete");
+            _applyAction = InputManager.instance.FindAction("Tool", "Apply");
+            _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
+            FakePrefabRef = EntityManager.CreateEntity(ComponentType.ReadWrite<PrefabRef>());
             Enabled = false;
         }
 
@@ -156,21 +176,26 @@ namespace Traffic.Tools
 
         protected override void OnStartRunning() {
             base.OnStartRunning();
+            _mainCamera = Camera.main;
             _controlPoints.Clear();
             _lastControlPoint = default;
+            
+            _stateModifiers = StateModifier.AnyConnector;
+            _majorStateModifiersChange = false;
+            _minorStateModifiersChange = false;
+            _tooltip.value = Tooltip.None;
+            _state = State.Default;
+            ToolMode = Mode.Default;
+            
             _applyAction.shouldBeEnabled = true;
             _secondaryApplyAction.shouldBeEnabled = true;
             _modRaycastSystem.Enabled = true;
-            _tooltip.value = Tooltip.None;
-            ToolMode = Mode.Default;
-            _state = State.Default;
-            _stateModifiers = StateModifier.AnyConnector;
             _delAction.Enable();
-            _mainCamera = Camera.main;
         }
 
         protected override void OnStopRunning() {
             base.OnStopRunning();
+            _mainCamera = null;
             _selectedNode = Entity.Null;
             _nodeElevation = 0f;
             CleanupIntersectionHelpers();
@@ -178,14 +203,14 @@ namespace Traffic.Tools
             _secondaryApplyAction.shouldBeEnabled = false;
             _modRaycastSystem.Enabled = false;
             _delAction.Disable();
-            _mainCamera = null;
         }
 
         public override void InitializeRaycast() {
             base.InitializeRaycast();
 
-            if (_state <= State.SelectingSourceConnector)
+            if (_state == State.SelectingSourceConnector)
             {
+                StateModifier prev = _stateModifiers & ~StateModifier.MakeUnsafe;
                 if (Keyboard.current.ctrlKey.isPressed)
                 {
                     _stateModifiers = StateModifier.TrackOnly;
@@ -202,6 +227,11 @@ namespace Traffic.Tools
                         _stateModifiers = StateModifier.RoadOnly;
                     }
                 }
+
+                if (prev != _stateModifiers)
+                {
+                    _majorStateModifiersChange = true;
+                }
                 if (Keyboard.current.altKey.isPressed)
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
@@ -210,13 +240,31 @@ namespace Traffic.Tools
                 {
                     _stateModifiers &= ~StateModifier.MakeUnsafe;
                 }
+            } else if (_state == State.SelectingTargetConnector) {
+                StateModifier prev = _stateModifiers;
+                if (Keyboard.current.altKey.isPressed)
+                {
+                    _stateModifiers |= StateModifier.MakeUnsafe;
+                }
+                else
+                {
+                    _stateModifiers &= ~StateModifier.MakeUnsafe;
+                }
+                if (prev != _stateModifiers)
+                {
+                    _minorStateModifiersChange = true;
+                }
+            }
+            else
+            {
+                _stateModifiers = StateModifier.AnyConnector;
             }
 
             if (_mainCamera && _state > State.Default)
             {
                 CustomRaycastInput input;
                 input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
-                input.offset = new float3(0, _nodeElevation, 0);
+                input.offset = new float3(0, 0, 0);
                 input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
                 input.connectorType = _state switch
                 {
@@ -225,13 +273,24 @@ namespace Traffic.Tools
                     _ => ConnectorType.All
                 };
                 StateModifier mod = _stateModifiers & ~StateModifier.MakeUnsafe;
-                input.connectionType = mod switch
+                
+                //TODO FIX matching connector type
+                if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
+                    EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
                 {
-                    StateModifier.SharedRoadTrack => ConnectionType.All,
-                    0 => ConnectionType.All,
-                    StateModifier.TrackOnly => ConnectionType.Track,
-                    _ => ConnectionType.Road
-                };
+                    input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
+                }
+                else
+                {
+                    input.connectionType = mod switch
+                    {
+                        0 => ConnectionType.All,
+                        StateModifier.SharedRoadTrack => ConnectionType.SharedCarTrack,
+                        StateModifier.TrackOnly => ConnectionType.Track | ConnectionType.Strict,
+                        StateModifier.RoadOnly => ConnectionType.Road | ConnectionType.Strict,
+                        _ => ConnectionType.Road
+                    };
+                }
                 _modRaycastSystem.SetInput(input);
             }
             
@@ -270,6 +329,15 @@ namespace Traffic.Tools
             return false;
         }
 
+        private bool IsApplyAllowed(bool useVanilla = true) {
+            if (useVanilla)
+            {
+                return GetAllowApply();
+            }
+            // workaround for vanilla OriginalDeletedSystem result (fix bug)
+            return m_ToolSystem.ignoreErrors || m_ErrorQuery.IsEmptyIgnoreFilter;
+        }
+
         protected override JobHandle OnUpdate(JobHandle inputDeps) {
             if (m_FocusChanged)
             {
@@ -278,6 +346,7 @@ namespace Traffic.Tools
 
             if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
             {
+                
                 JobHandle result;
                 if (_state == State.SelectingSourceConnector && Keyboard.current.deleteKey.wasPressedThisFrame)
                 {
@@ -287,6 +356,10 @@ namespace Traffic.Tools
                 if (_secondaryApplyAction.WasPressedThisFrame())
                 {
                     result = Cancel(inputDeps);
+                }
+                else if (_majorStateModifiersChange || _minorStateModifiersChange)
+                {
+                    result = Update(inputDeps);
                 }
                 else if ((_state != 0 || !_applyAction.WasPressedThisFrame()) &&
                     (_state == State.Default || !_applyAction.WasReleasedThisFrame()))
@@ -308,16 +381,18 @@ namespace Traffic.Tools
             switch (_state)
             {
                 case State.Default:
-                    if (GetAllowApply() && GetRaycastResult(out Entity entity, out RaycastHit _) &&
+                    if (IsApplyAllowed(useVanilla: false) && GetRaycastResult(out Entity entity, out RaycastHit _) &&
                         EntityManager.HasComponent<Node>(entity))
                     {
                         applyMode = ApplyMode.None;
+                        _state = State.SelectingSourceConnector;
+                        _controlPoints.Clear();
                         return SelectIntersectionNode(inputDeps, entity);
                     }
                     return Update(inputDeps);
 
                 case State.SelectingSourceConnector:
-                    if (GetAllowApply())
+                    if (IsApplyAllowed(useVanilla: false))
                     {
                         applyMode = ApplyMode.Apply;
                         _controlPoints.Clear();
@@ -337,36 +412,63 @@ namespace Traffic.Tools
                     break;
 
                 case State.SelectingTargetConnector:
-                    if (GetAllowApply() && !_tempConnectionQuery.IsEmptyIgnoreFilter)
+                    // StringBuilder sb = new StringBuilder();
+                    // NativeArray<Entity> entityArray = _tempQuery.ToEntityArray(Allocator.Temp);
+                    // for (var i = 0; i < entityArray.Length; i++)
+                    // {
+                    //     var t = EntityManager.GetComponentTypes(entityArray[i]);
+                    //     sb.Append($"{entityArray[i]} [").Append(string.Join(", ", t.Select(tt => tt.GetManagedType().Name))).AppendLine("]");
+                    // }
+                    // entityArray.Dispose();
+                    // Logger.Debug($"Allow?: {GetAllowApply()} [{m_ToolSystem.ignoreErrors}|{m_ErrorQuery.IsEmptyIgnoreFilter}||{m_OriginalDeletedSystem.GetOriginalDeletedResult(0)}], hasTemp?: {!_tempConnectionQuery.IsEmptyIgnoreFilter} \n{sb}");
+                    if (IsApplyAllowed(useVanilla: false) && !_tempConnectionQuery.IsEmptyIgnoreFilter)
                     {
                         if (GetCustomRaycastResult(out ControlPoint controlPoint) && EntityManager.TryGetComponent(controlPoint.m_OriginalEntity, out Connector connector))
                         {
+                            Logger.Debug($"Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
                             if (connector.connectorType == ConnectorType.Target)
                             {
                                 _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
-                                _lastControlPoint = default;
-                                _controlPoints.Clear();
-                                _state = State.SelectingSourceConnector;
+                                if (_controlPoints.Length > 0)
+                                {
+
+                                    ControlPoint point = _controlPoints[0];
+                                    _lastControlPoint = point;
+                                    _controlPoints.Clear();
+                                    _controlPoints.Add(in point);
+                                    _state = State.SelectingTargetConnector;
+                                }
+                                else
+                                {
+                                    _lastControlPoint = default;
+                                    _controlPoints.Clear();
+                                    _state = State.SelectingSourceConnector;
+                                }
                                 applyMode = ApplyMode.Apply;
-                                return SelectIntersectionNode(inputDeps, _selectedNode);
+                                return UpdateDefinitions(inputDeps, true);
                             }
                         }
                     }
                     else
                     {
+                        applyMode = ApplyMode.Clear;
                         return Update(inputDeps);
                     }
                     break;
 
-                case State.RemovingSourceConnections:
-                case State.RemovingTargetConnections:
-                    break;
+                // case State.RemovingSourceConnections:
+                // case State.RemovingTargetConnections:
+                    // break;
             }
             return inputDeps;
         }
 
         private JobHandle Update(JobHandle inputHandle) {
             bool forceUpdate;
+            bool majorChange = _majorStateModifiersChange;
+            bool minorChange = _minorStateModifiersChange;
+            _majorStateModifiersChange = false;
+            _minorStateModifiersChange = false;
             if (_state == State.Default)
             {
                 if (GetRaycastResult(out ControlPoint controlPoint, out forceUpdate))
@@ -378,8 +480,8 @@ namespace Traffic.Tools
                         applyMode = ApplyMode.Clear;
                         return UpdateDefinitions(inputHandle);
                     }
-
-                    if (_lastControlPoint.Equals(controlPoint) && !forceUpdate)
+                    Logger.DebugTool($"[Update] Default, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
+                    if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint.m_OriginalEntity)/* TODO fix bug originalDeletedSystem && !forceUpdate*/)
                     {
                         applyMode = ApplyMode.None;
                     }
@@ -392,8 +494,8 @@ namespace Traffic.Tools
                     }
                     return inputHandle;
                 }
-
-                if (_lastControlPoint.Equals(controlPoint))
+                Logger.DebugTool($"[Update] Default, No Hit, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
+                if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint.m_OriginalEntity))
                 {
                     if (forceUpdate)
                     {
@@ -414,13 +516,25 @@ namespace Traffic.Tools
                 return inputHandle;
             }
 
+            if (majorChange)
+            {
+                _controlPoints.Clear();
+                _lastControlPoint = default;
+                _state = State.SelectingSourceConnector;
+                applyMode = ApplyMode.Clear;
+                return UpdateDefinitions(inputHandle, updateEditIntersection: true);
+            }
+
             if (GetCustomRaycastResult(out ControlPoint controlPoint2, out forceUpdate))
             {
+                Logger.DebugTool($"[Update] Hit: {controlPoint2.m_OriginalEntity}, f: {forceUpdate}");
                 switch (_state)
                 {
                     case State.SelectingSourceConnector:
+                        Logger.DebugTool($"[Update] SelectSource {controlPoint2.m_OriginalEntity}");
                         if (_controlPoints.Length > 0 && _controlPoints[0].m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
                         {
+                            Logger.DebugTool($"[Update] SelectSource-nothing");
                             applyMode = ApplyMode.None;
                             return inputHandle;
                         }
@@ -428,14 +542,23 @@ namespace Traffic.Tools
                         _controlPoints.Add(controlPoint2);
                         _lastControlPoint = controlPoint2;
                         applyMode = ApplyMode.Clear;
+                        Logger.DebugTool($"[Update] SelectSource-clear");
                         return UpdateDefinitions(inputHandle);
 
                     case State.SelectingTargetConnector:
-                        if (_controlPoints.Length > 1 &&
-                            !_controlPoints[0].m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity) &&
-                            _lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity) && controlPoint2.m_OriginalEntity != Entity.Null && EntityManager.HasComponent<Connector>(controlPoint2.m_OriginalEntity))
+                        Logger.DebugTool($"[Update] SelectTarget {controlPoint2.m_OriginalEntity}");
+                        if (!minorChange && _controlPoints.Length > 1 && _lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
                         {
+                            if (!_lastControlPoint.m_Position.Equals(controlPoint2.m_Position))
+                            {
+                                //soft update (position only)
+                                ControlPoint p1 = _controlPoints[0];
+                                _controlPoints.Clear();
+                                _controlPoints.Add(in p1);
+                                _controlPoints.Add(in controlPoint2);
+                            }
                             applyMode = ApplyMode.None;
+                            Logger.DebugTool($"[Update] SelectTarget-nothing");
                             return inputHandle;
                         }
                         _lastControlPoint = controlPoint2;
@@ -447,26 +570,36 @@ namespace Traffic.Tools
                             _controlPoints.Add(in controlPoint2);
                         }
                         applyMode = ApplyMode.Clear;
+                        Logger.DebugTool($"[Update] SelectTarget-clear");
                         return UpdateDefinitions(inputHandle);
-                    case State.RemovingSourceConnections:
-                    case State.RemovingTargetConnections:
-                        break;
                 }
             }
-            if (_lastControlPoint.Equals(controlPoint2))
+            // Logger.DebugTool($"[Update] {_state} No Hit: {controlPoint2.m_OriginalEntity}, f: {forceUpdate} | count: {_controlPoints.Length}");
+            //TODO needs more tests (not quite sure if reliable) 
+            if (_tempQuery.IsEmptyIgnoreFilter && !_definitionQuery.IsEmptyIgnoreFilter && !_editIntersectionQuery.IsEmptyIgnoreFilter && _selectedNode != Entity.Null)
             {
-                if (forceUpdate)
-                {
-                    _controlPoints.Clear();
-                    applyMode = ApplyMode.Clear;
-                    return UpdateDefinitions(inputHandle);
-                }
+                Logger.DebugTool($"[Update] Reset: {_lastControlPoint.m_OriginalEntity} | {_selectedNode}");
+                _lastControlPoint = default;
+                applyMode = ApplyMode.Clear;
+                return UpdateDefinitions(inputHandle);
+            }
+            if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
+            {
+                Logger.DebugTool($"[Update] TheSame: {_lastControlPoint.m_OriginalEntity}, force: {forceUpdate}");
+                 // improve Vanilla OriginalDeleted result for custom objects lifetime (fix bug)
+                //  if (forceUpdate || minorChange)
+                // {
+                //     _controlPoints.Clear();
+                //     applyMode = ApplyMode.Clear;
+                //     return UpdateDefinitions(inputHandle);
+                // }
 
                 applyMode = ApplyMode.None;
                 return inputHandle;
             }
             else if (!_lastControlPoint.Equals(default))
             {
+                Logger.DebugTool($"[Update] Different, updating: ({_lastControlPoint.m_Position}) {_lastControlPoint.m_OriginalEntity}");
                 _lastControlPoint = default;
                 if (_controlPoints.Length > 0)
                 {
@@ -476,6 +609,7 @@ namespace Traffic.Tools
                 applyMode = ApplyMode.Clear;
                 inputHandle = UpdateDefinitions(inputHandle);
             }
+            Logger.DebugTool($"[Update] SomethingElse {_lastControlPoint.m_HitPosition} | {_lastControlPoint.m_OriginalEntity}");
             return inputHandle;
         }
 
@@ -505,24 +639,53 @@ namespace Traffic.Tools
 
         private JobHandle Clear(JobHandle inputDeps) {
             base.applyMode = ApplyMode.Clear;
+            // Logger.DebugTool("Clearing...");
             return inputDeps;
         }
 
-        private JobHandle UpdateDefinitions(JobHandle inputDeps) {
+        /// <summary>
+        /// TODO FIX ME - double check when it's updated
+        /// </summary>
+        private JobHandle UpdateDefinitions(JobHandle inputDeps, bool updateEditIntersection = false) {
             JobHandle jobHandle = DestroyDefinitions(_definitionQuery, _toolOutputBarrier, inputDeps);
+            Entity editingIntersection = Entity.Null;
+            if (!_editIntersectionQuery.IsEmptyIgnoreFilter)
+            {
+                editingIntersection = _editIntersectionQuery.GetSingletonEntity();
+                if (editingIntersection != Entity.Null && updateEditIntersection)
+                {
+                    EntityQuery connectors = new EntityQueryBuilder(Allocator.Temp).WithAllRW<Connector, LaneConnection>().Build(EntityManager);
+                    EntityQuery connections = new EntityQueryBuilder(Allocator.Temp).WithAll<Connection>().Build(EntityManager);
+                    Logger.DebugTool($"Cleanup connections: connectors with LaneConnections: {connectors.CalculateEntityCount()}, connections: {connections.CalculateEntityCount()}");
+                    NativeArray<Entity> entities = connectors.ToEntityArray(Allocator.Temp);
+                    foreach (Entity entity in entities)
+                    {
+                        EntityManager.GetBuffer<LaneConnection>(entity).Clear();
+                    }
+                    EntityManager.DestroyEntity(connections);
+                    EntityManager.AddComponent<Updated>(editingIntersection);
+                    connectors.Dispose();
+                    connections.Dispose();
+                }
+            }
+            
+            Logger.DebugTool("Scheduling CreateDefinitionsJob");
             CreateDefinitionsJob job = new CreateDefinitionsJob()
             {
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 laneData = SystemAPI.GetComponentLookup<Lane>(true),
                 prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-                connectionsBuffer = SystemAPI.GetBufferLookup<LaneConnection>(true),
+                connectionsBuffer = SystemAPI.GetBufferLookup<LaneConnections.LaneConnection>(true),
                 connectionsBufferData = SystemAPI.GetBufferLookup<Connection>(true),
-                subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
+                modifiedConnectionBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                connectorElementsBuffer = SystemAPI.GetBufferLookup<ConnectorElement>(true),
                 controlPoints = GetControlPoints(out JobHandle pointDependencies),
                 state = ToolState,
                 stateModifier = ToolModifiers,
                 intersectionNode = _selectedNode,
+                editingIntersection = editingIntersection,
                 tooltip = _tooltip,
                 commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
             };
@@ -535,17 +698,25 @@ namespace Traffic.Tools
 
         private JobHandle SelectIntersectionNode(JobHandle inputDeps, Entity node) {
             CleanupIntersectionHelpers();
+            // if (node == Entity.Null && 
+            //     EntityManager.HasComponent<ModifiedConnections>(_selectedNode) &&
+            //     EntityManager.TryGetBuffer<ModifiedLaneConnections>(_selectedNode, true, out DynamicBuffer<ModifiedLaneConnections> buffer) &&
+            //     buffer.Length == 0)
+            // {
+            //     EntityManager.RemoveComponent(_selectedNode, in _modifiedConnectionsTypeSet);
+            // }
             _selectedNode = node;
             if (node != Entity.Null)
             {
-                _state = State.SelectingSourceConnector;
-                _controlPoints.Clear();
+                // _state = State.SelectingSourceConnector;
+                // _controlPoints.Clear();
 
                 //TODO move to job
                 EntityCommandBuffer ecb = _toolOutputBarrier.CreateCommandBuffer();
                 Entity e = ecb.CreateEntity();
                 ecb.AddComponent(e, new EditIntersection() { node = node });
                 ecb.AddComponent<Updated>(e);
+                Logger.DebugTool($"Inline Create EditIntersection entity {e}");
                 _nodeElevation = 0;
                 if (EntityManager.HasComponent<Elevation>(node))
                 {
@@ -553,9 +724,7 @@ namespace Traffic.Tools
                 }
                 if (!EntityManager.HasComponent<ModifiedConnections>(node))
                 {
-                    ecb.AddComponent<ModifiedConnections>(node);
-                    ecb.AddBuffer<GeneratedConnection>(node);
-                    ecb.AddBuffer<ModifiedLaneConnections>(node);
+                    ecb.AddComponent(node, in _modifiedConnectionsTypeSet);
                     //TODO add logic to validate and remove when no longer valid
                 }
 
@@ -620,17 +789,27 @@ namespace Traffic.Tools
         }
 
         private void CleanupIntersectionHelpers() {
+            Logger.DebugTool("CleanupIntersectionHelpers!");
             if (!_raycastHelpersQuery.IsEmptyIgnoreFilter)
             {
+                Logger.DebugTool($"CleanupIntersectionHelpers! {_raycastHelpersQuery.CalculateEntityCount()}");
                 EntityManager.AddComponent<Deleted>(_raycastHelpersQuery);
             }
         }
 
         private JobHandle ResetConnections(JobHandle handle) {
             DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnectionsEnumerable = EntityManager.GetBuffer<ModifiedLaneConnections>(_selectedNode, false);
+            for (var i = 0; i < modifiedLaneConnectionsEnumerable.Length; i++)
+            {
+                var modified = modifiedLaneConnectionsEnumerable[i].modifiedConnections;
+                if (modified != Entity.Null)
+                {
+                    EntityManager.AddComponent<Deleted>(modified);
+                }
+            }
             modifiedLaneConnectionsEnumerable.Clear();
-            DynamicBuffer<GeneratedConnection> generatedConnections = EntityManager.GetBuffer<GeneratedConnection>(_selectedNode, false);
-            generatedConnections.Clear();
+            // DynamicBuffer<GeneratedConnection> generatedConnections = EntityManager.GetBuffer<GeneratedConnection>(_selectedNode, false);
+            // generatedConnections.Clear();
             // update node and connected edges + their nodes
             EntityManager.AddComponent<Updated>(_selectedNode);
             DynamicBuffer<ConnectedEdge> edges = EntityManager.GetBuffer<ConnectedEdge>(_selectedNode, true);
@@ -645,6 +824,7 @@ namespace Traffic.Tools
                     EntityManager.AddComponent<Updated>(otherNode);
                 }
             }
+            applyMode = ApplyMode.Clear;
             return SelectIntersectionNode(handle, _selectedNode);
         }
 

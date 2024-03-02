@@ -13,16 +13,15 @@ namespace Traffic.Systems
 {
     public partial class ModificationDataSyncSystem : GameSystemBase
     {
-        private ModificationBarrier3 _modificationBarrier;
+        private ModificationBarrier4B _modificationBarrier;
         private EntityQuery _query;
 
         protected override void OnCreate() {
             base.OnCreate();
-            _modificationBarrier = World.GetExistingSystemManaged<ModificationBarrier3>();
+            _modificationBarrier = World.GetOrCreateSystemManaged<ModificationBarrier4B>();
             _query = GetEntityQuery(new EntityQueryDesc
             {
-                All = new[] { ComponentType.ReadOnly<ModifiedLaneConnections>(), ComponentType.ReadOnly<Node>(), },
-                Any = new[] { ComponentType.ReadOnly<Updated>(), ComponentType.ReadOnly<Deleted>() },
+                All = new[] { ComponentType.ReadOnly<ModifiedLaneConnections>(), ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<Deleted>() },
                 None = new[] { ComponentType.ReadOnly<Temp>(), }
             });
             RequireForUpdate(_query);
@@ -32,13 +31,15 @@ namespace Traffic.Systems
             SyncModificationDataJob job = new SyncModificationDataJob()
             {
                 entityType = SystemAPI.GetEntityTypeHandle(),
-                nodeType = SystemAPI.GetComponentTypeHandle<Node>(true),
-                connectedEdges = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-                tempData = SystemAPI.GetComponentLookup<Temp>(true),
-                hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
+                // nodeType = SystemAPI.GetComponentTypeHandle<Node>(true),
+                tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                deletedType = SystemAPI.GetComponentTypeHandle<Deleted>(true),
+                // connectedEdges = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                // edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                // tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                // hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
-                generatedConnectionsType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
+                // generatedConnectionsType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
                 commandBuffer = _modificationBarrier.CreateCommandBuffer().AsParallelWriter(),
             };
             JobHandle jobHandle = job.Schedule(_query, Dependency);
@@ -49,27 +50,49 @@ namespace Traffic.Systems
         private struct SyncModificationDataJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityType;
-            [ReadOnly] public ComponentTypeHandle<Node> nodeType;
-            [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdges;
-            [ReadOnly] public ComponentLookup<Edge> edgeData;
-            [ReadOnly] public ComponentLookup<Temp> tempData;
-            [ReadOnly] public ComponentLookup<Hidden> hiddenData;
+            // [ReadOnly] public ComponentTypeHandle<Node> nodeType;
+            [ReadOnly] public ComponentTypeHandle<Temp> tempType;
+            [ReadOnly] public ComponentTypeHandle<Deleted> deletedType;
+            // [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdges;
+            // [ReadOnly] public ComponentLookup<Edge> edgeData;
+            // [ReadOnly] public ComponentLookup<Temp> tempData;
+            // [ReadOnly] public ComponentLookup<Hidden> hiddenData;
             [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
-            [ReadOnly] public BufferTypeHandle<GeneratedConnection> generatedConnectionsType;
+            // [ReadOnly] public BufferTypeHandle<GeneratedConnection> generatedConnectionsType;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
-                if (chunk.Has<Deleted>())
+                if (chunk.Has(ref deletedType))
                 {
-                    NativeArray<Node> nodes = chunk.GetNativeArray(ref nodeType);
-
+                    NativeArray<Entity> entities = chunk.GetNativeArray(entityType);
+                    BufferAccessor<ModifiedLaneConnections> modifiedConnectionsBuffer = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
+                    if (chunk.Has(ref tempType))
+                    {
+                        Logger.Info($"Removing Temp node connections (node count: {entities.Length})");
+                    }
+                    
+                    for (var i = 0; i < entities.Length; i++)
+                    {
+                        var modifiedConnections = modifiedConnectionsBuffer[i];
+                        Logger.Info($"Removing node connections {entities[i]} count: ({modifiedConnections.Length})");
+                        for (var j = 0; j < modifiedConnections.Length; j++)
+                        {
+                            ModifiedLaneConnections connections = modifiedConnections[j];
+                            if (connections.modifiedConnections != Entity.Null)
+                            {
+                                Logger.Debug($"Removing generated connections from {entities[i]} [{j}]  -> {connections.modifiedConnections}");
+                                commandBuffer.AddComponent<Deleted>(unfilteredChunkIndex, connections.modifiedConnections);
+                            }
+                        }
+                    }
                 }
-                else if (chunk.Has<Updated>())
+                /*else if (chunk.Has<Updated>())
                 {
                     NativeHashSet<Entity> tempEntities = new NativeHashSet<Entity>(4, Allocator.Temp);
                     NativeArray<Entity> entities = chunk.GetNativeArray(entityType);
                     BufferAccessor<ModifiedLaneConnections> modifiedConnectionsBuffer = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
-                    BufferAccessor<GeneratedConnection> generatedConnectionsBuffer = chunk.GetBufferAccessor(ref generatedConnectionsType);
+                    //TODO FIX generated connections
+                    // BufferAccessor<GeneratedConnection> generatedConnectionsBuffer = chunk.GetBufferAccessor(ref generatedConnectionsType);
                     for (var i = 0; i < entities.Length; i++)
                     {
                         DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedConnectionsBuffer[i];
@@ -78,7 +101,7 @@ namespace Traffic.Systems
                         {
                             continue;
                         }
-                        
+
                         for (var j = 0; j < modifiedConnections.Length; j++)
                         {
                             ModifiedLaneConnections modifiedLaneConnection = modifiedConnections[j];
@@ -97,14 +120,15 @@ namespace Traffic.Systems
                         }
 
                         NativeArray<Entity> edges = tempEntities.ToNativeArray(Allocator.Temp);
-                        DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionsBuffer[i];
+
+                        // DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionsBuffer[i];
                         int beforeModified = modifiedConnections.Length;
-                        int beforeGenerated = generatedConnections.Length;
+                        // int beforeGenerated = generatedConnections.Length;
                         for (var j = 0; j < edges.Length; j++)
                         {
-                            Logger.Info($"Removing connections with edge {edges[j]}"); 
+                            Logger.Info($"Removing connections with edge {edges[j]}");
                             RemoveWithEdge(modifiedConnections, edges[j]);
-                            RemoveWithEdge(generatedConnections, edges[j]);
+                            // RemoveWithEdge(generatedConnections, edges[j]);
                         }
                         edges.Dispose();
                         Entity node = entities[i];
@@ -118,19 +142,19 @@ namespace Traffic.Systems
                                 laneConnectionsEnumerable[j] = modifiedConnections[j];
                             }
                         }
-                        if (beforeGenerated != generatedConnections.Length)
-                        {
-                            Logger.Info($"Removing GeneratedConnection {beforeGenerated} != {generatedConnections.Length}");
-                            DynamicBuffer<GeneratedConnection> generatedConnectionsEnumerable = commandBuffer.SetBuffer<GeneratedConnection>(unfilteredChunkIndex, node);
-                            for (var j = 0; j < generatedConnectionsEnumerable.Length; j++)
-                            {
-                                generatedConnectionsEnumerable[j] = generatedConnections[j];
-                            }
-                        }
+                        // if (beforeGenerated != generatedConnections.Length)
+                        // {
+                        //     Logger.Info($"Removing GeneratedConnection {beforeGenerated} != {generatedConnections.Length}");
+                        //     DynamicBuffer<GeneratedConnection> generatedConnectionsEnumerable = commandBuffer.SetBuffer<GeneratedConnection>(unfilteredChunkIndex, node);
+                        //     for (var j = 0; j < generatedConnectionsEnumerable.Length; j++)
+                        //     {
+                        //         generatedConnectionsEnumerable[j] = generatedConnections[j];
+                        //     }
+                        // }
                         tempEntities.Clear();
                     }
                     tempEntities.Dispose();
-                }
+                }*/
             }
 
             public void RemoveWithEdge(DynamicBuffer<ModifiedLaneConnections> buffer, Entity edge) {

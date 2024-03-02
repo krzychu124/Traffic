@@ -22,6 +22,7 @@
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <DefineConstants>TRACE;DEBUG_GIZMO;</DefineConstants>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -52,6 +53,9 @@
             <Private>false</Private>
         </Reference>
         <Reference Include="Unity.InputSystem">
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="Unity.RenderPipelines.Core.Runtime">
             <Private>false</Private>
         </Reference>
         <Reference Include="UnityEngine.CoreModule">

@@ -12,7 +12,7 @@
 	<!--Screenshot, can be set multiple-->
 	<Screenshot Value="" />
 	<!--Tag, can be set multiple-->
-	<Tag Value="Mod" />
+	<Tag Value="Code Mod" />
 	<!--Link to the forum post where the mod can be discussed-->
 	<ForumLink Value="" />
 	<!--Version of the mod-->

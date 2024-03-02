@@ -288,7 +288,7 @@ namespace Traffic.Systems
             base.OnCreate();
             m_CityConfigurationSystem = base.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             m_ToolSystem = base.World.GetOrCreateSystemManaged<ToolSystem>();
-            m_TerrainSystem = base.World.GetExistingSystemManaged<TerrainSystem>();
+            m_TerrainSystem = base.World.GetOrCreateSystemManaged<TerrainSystem>();
             m_ModificationBarrier = base.World.GetOrCreateSystemManaged<ModificationBarrier4>();
             m_OwnerQuery = GetEntityQuery(new EntityQueryDesc[]
             {
@@ -316,11 +316,12 @@ namespace Traffic.Systems
             m_AppliedTypes = new ComponentTypeSet(ComponentType.ReadWrite<Applied>(), ComponentType.ReadWrite<Created>(), ComponentType.ReadWrite<Updated>());
             m_DeletedTempTypes = new ComponentTypeSet(ComponentType.ReadWrite<Deleted>(), ComponentType.ReadWrite<Temp>());
             RequireForUpdate(m_OwnerQuery);
-            // Logger.Debug("Traffic_LaneSystem Created!");
+            // Logger.DebugLaneSystem("Traffic_LaneSystem Created!");
             // _heights = new NativeArray<ushort>(4, Allocator.Persistent);
         }
 
         protected override void OnUpdate() {
+            Logger.Debug("TrafficLaneSystem Update!");
             CustomUpdateLanesJob jobData = new CustomUpdateLanesJob
             {
                 m_EntityType = SystemAPI.GetEntityTypeHandle(),
@@ -402,6 +403,7 @@ namespace Traffic.Systems
                 
                 generatedConnectionsType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
+                generatedConnections = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
                 
                 m_LeftHandTraffic = m_CityConfigurationSystem.leftHandTraffic,
                 m_EditorMode = m_ToolSystem.actionMode.IsEditor(),
@@ -417,11 +419,13 @@ namespace Traffic.Systems
                 // m_TrafficUpgradeData = SystemAPI.GetComponentLookup<TrafficUpgrade>(true),
                 // NON-STOCK-END
             };
+            /*TODO switch to parallel*/
             JobHandle jobHandle = jobData.Schedule(m_OwnerQuery, Dependency);
             
             m_TerrainSystem.AddCPUHeightReader(jobHandle);
             m_ModificationBarrier.AddJobHandleForProducer(jobHandle);
             Dependency = jobHandle;
+            Logger.Debug("TrafficLaneSystem Update Finished!");
         }
 
         // [BurstCompile]
@@ -667,6 +671,8 @@ namespace Traffic.Systems
             public BufferTypeHandle<GeneratedConnection> generatedConnectionsType;
             [ReadOnly]
             public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
+            [ReadOnly]
+            public BufferLookup<GeneratedConnection> generatedConnections;
             /*NON VANILLA - END*/
             
             [ReadOnly]
@@ -719,19 +725,14 @@ namespace Traffic.Systems
                         }
                     }
                 }
-
-                if (chunk.Has<Edge>())
+#if DEBUG_LANE_SYS
+                if (chunk.Has<Edge>() || chunk.Has<Node>())
                 {
                     NativeArray<ComponentType> componentTypes = chunk.Archetype.GetComponentTypes();
-                    Logger.Debug($"Deleting: {string.Join(", ", componentTypes.Select(c => c.GetManagedType().Name))}");
+                    Logger.DebugLaneSystem($"Deleting: {string.Join(", ", componentTypes.Select(c => c.GetManagedType().Name))}");
                     componentTypes.Dispose();
-                    // NativeArray<Edge> edges = chunk.GetNativeArray(ref m_EdgeType);
-                    // BufferAccessor<ModifiedLaneConnections> modifiedLaneConnections = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
-                    // for (var i = 0; i < edges.Length; i++)
-                    // {
-                    //     if (modifiedLaneConnections.)
-                    // }
                 }
+#endif
             }
 
             private void UpdateLanes(ArchetypeChunk chunk, int chunkIndex) {
@@ -967,7 +968,6 @@ namespace Traffic.Systems
                     NativeArray<Orphan> orphanComponents = chunk.GetNativeArray(ref m_OrphanType);
                     NativeArray<NodeGeometry> nodeGeometryComponents = chunk.GetNativeArray(ref m_NodeGeometryType);
                     NativeArray<PrefabRef> prefabRefComponents = chunk.GetNativeArray(ref m_PrefabRefType);
-                    BufferAccessor<GeneratedConnection> generatedConnections = chunk.GetBufferAccessor(ref generatedConnectionsType);
                     BufferAccessor<ModifiedLaneConnections> modifiedLaneConnections = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
                 
                     for (int entityIndex = 0; entityIndex < entities.Length; entityIndex++)
@@ -1000,13 +1000,10 @@ namespace Traffic.Systems
                             
                             /*NON-STOCK*/
                             bool testKeys = false;
-                            if (modifiedLaneConnections.Length > 0 && tempComponents.Length == 0)
+                            if (modifiedLaneConnections.Length > 0 /*&& tempComponents.Length == 0*/)
                             {
                                 DynamicBuffer<ModifiedLaneConnections> connections = modifiedLaneConnections[entityIndex];
                                 FillModifiedLaneConnections(connections, tempModifiedLaneEnds);
-                            }
-                            if (generatedConnections.Length > 0)
-                            {
                                 testKeys = true;
                             }
                             /*NON-STOCK*/
@@ -1156,41 +1153,57 @@ namespace Traffic.Systems
                                     
                                     ProcessCarConnectPositions(chunkIndex, ref nodeLaneIndex, ref random4, entity3, laneBuffer, middleConnections, createdConnections, tempSourceConnectPositions, tempTargetConnectPositions, sourceNodeConnectPositions,
                                             tempComponents.Length != 0, ownerTemp3, yield, /*NON-STOCK*/ tempModifiedLaneEnds, tempMainConnectionKeys);
-                                    // Logger.Debug("ProcessCarConnectPositions Done!");
+                                    // Logger.DebugLaneSystem("ProcessCarConnectPositions Done!");
                                     /*
                                      *
                                      */
-                                    if (generatedConnections.Length > 0 && tempComponents.Length == 0)
+                                    if (modifiedLaneConnections.Length > 0 /*&& tempComponents.Length == 0*/)
                                     {
-                                        DynamicBuffer<GeneratedConnection> connections = generatedConnections[entityIndex];
-                                        int idx = prevLaneIndex;
-                                        int index = 9999;
-                                        
-                                        for (var i = 0; i < connections.Length; i++)
+                                        DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedLaneConnections[entityIndex];
+                                        for (var i = 0; i < modifiedConnections.Length; i++)
                                         {
-                                            var connection = connections[i];
-                                            
-                                            ConnectPosition cs = FindNodeConnectPosition(tempSourceConnectPositions, connection.sourceEntity, connection.laneIndexMap.x, out _);
-                                            ConnectPosition ct = FindNodeConnectPosition(tempTargetConnectPositions, connection.targetEntity, connection.laneIndexMap.y, out int targetPosIndex);
-                                            ConnectionKey key = new ConnectionKey(cs, ct);
-                                            if (!createdConnections.Contains(key) && cs.m_Owner != Entity.Null && ct.m_Owner != Entity.Null && cs.m_Owner == sourceMainCarConnectPos.m_Owner && cs.m_LaneData.m_Group == sourceMainCarConnectPos.m_LaneData.m_Group)
+                                            ModifiedLaneConnections connectionsEntity = modifiedConnections[i];
+                                            if (connectionsEntity.edgeEntity != sourceMainCarConnectPos.m_Owner || connectionsEntity.modifiedConnections == Entity.Null || !generatedConnections.HasBuffer(connectionsEntity.modifiedConnections))
                                             {
-                                                if (connection.isUnsafe && targetPosIndex < tempTargetConnectPositions.Length)
+                                                Logger.DebugLaneSystem($"Skip 1 {connectionsEntity.edgeEntity} != {sourceMainCarConnectPos.m_Owner}, {connectionsEntity.modifiedConnections} | {!generatedConnections.HasBuffer(connectionsEntity.modifiedConnections)}");
+                                                continue;
+                                            }
+                                        
+                                            DynamicBuffer<GeneratedConnection> connections = generatedConnections[connectionsEntity.modifiedConnections];
+                                            ConnectPosition cs = FindNodeConnectPosition(tempSourceConnectPositions, connectionsEntity.edgeEntity, connectionsEntity.laneIndex, TrackTypes.None,  out _);
+                                            if (cs.m_Owner == Entity.Null || cs.m_Owner != sourceMainCarConnectPos.m_Owner || cs.m_LaneData.m_Group != sourceMainCarConnectPos.m_LaneData.m_Group)
+                                            {
+                                                Logger.DebugLaneSystem($"Skip 2 o: {cs.m_Owner} | sO: {sourceMainCarConnectPos.m_Owner} ||g: {cs.m_LaneData.m_Group} sG: {sourceMainCarConnectPos.m_LaneData.m_Group}");
+                                                continue;
+                                            }
+                                            
+                                            int idx = prevLaneIndex;
+                                            int index = 9999;
+                                            
+                                            for (var j = 0; j < connections.Length; j++)
+                                            {
+                                                GeneratedConnection connection = connections[j];
+                                                ConnectPosition ct = FindNodeConnectPosition(tempTargetConnectPositions, connection.targetEntity, connection.laneIndexMap.y, TrackTypes.None, out int targetPosIndex);
+                                                ConnectionKey key = new ConnectionKey(cs, ct);
+                                                if (ct.m_Owner != Entity.Null && !createdConnections.Contains(key))
                                                 {
-                                                    // update target connect pos to set more accurate flag of the main connection later (standalone/master)
-                                                    ct.m_UnsafeCount++;
-                                                    tempTargetConnectPositions[targetPosIndex] = ct;
+                                                    if (connection.isUnsafe && targetPosIndex < tempTargetConnectPositions.Length)
+                                                    {
+                                                        // update target connect pos to set more accurate flag of the main connection later (standalone/master)
+                                                        ct.m_UnsafeCount++;
+                                                        tempTargetConnectPositions[targetPosIndex] = ct;
+                                                    }
+                                                    int yield2 = CalculateYieldOffset(cs, sourceMainCarConnectPositions, targetMainCarConnectPositions);
+                                                    uint group = (uint)(cs.m_GroupIndex | (ct.m_GroupIndex << 16));
+                                                    bool isTurn = IsTurn(cs, ct, out bool right, out bool gentle, out bool uturn);
+                                                    float curviness = -1;
+                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, false, false, false, false, false))
+                                                    {
+                                                        createdConnections.Add(key);
+                                                        tempMainConnectionKeys.Add(new ConnectionKey(cs.m_Owner.Index, cs.m_LaneData.m_Group, ct.m_Owner.Index, ct.m_LaneData.m_Group));
+                                                        Logger.DebugLaneSystem($"Added CustomGenerated ({key.GetString()}) to created! [ {cs.m_GroupIndex} | {ct.m_GroupIndex} -> {group} || G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
+                                                    }    
                                                 }
-                                                int yield2 = CalculateYieldOffset(cs, sourceMainCarConnectPositions, targetMainCarConnectPositions);
-                                                uint group = (uint)(cs.m_GroupIndex | (ct.m_GroupIndex << 16));
-                                                bool isTurn = IsTurn(cs, ct, out bool right, out bool gentle, out bool uturn);
-                                                float curviness = -1;
-                                                if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, false, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, false, false, false, false, false))
-                                                {
-                                                    createdConnections.Add(key);
-                                                    tempMainConnectionKeys.Add(new ConnectionKey(cs.m_Owner.Index, cs.m_LaneData.m_Group, ct.m_Owner.Index, ct.m_LaneData.m_Group));
-                                                    Logger.Debug($"Added CustomGenerated ({key.GetString()}) to created! [ {cs.m_GroupIndex} | {ct.m_GroupIndex} -> {group} || G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
-                                                }    
                                             }
                                         }
                                     }
@@ -1230,7 +1243,7 @@ namespace Traffic.Systems
                                             uint group = (uint)(sourceMainCarConnectPos.m_GroupIndex | (targetPosition.m_GroupIndex << 16));
                                             if (testKeys && !tempMainConnectionKeys.Contains(new ConnectionKey(sourceMainCarConnectPos.m_Owner.Index, sourceMainCarConnectPos.m_LaneData.m_Group, targetPosition.m_Owner.Index, targetPosition.m_LaneData.m_Group)))
                                             {
-                                                Logger.Debug($"Skipped Master Lane connection! {new ConnectionKey(sourceMainCarConnectPos, targetPosition).GetString()} [ {sourceMainCarConnectPos.m_GroupIndex}[{sourceMainCarConnectPos.m_GroupIndex >> 8}] ({sourceMainCarConnectPos.m_LaneData.m_Group}) | {targetPosition.m_GroupIndex}[{targetPosition.m_GroupIndex >> 8}] ({targetPosition.m_LaneData.m_Group})] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
+                                                Logger.DebugLaneSystem($"Skipped Master Lane connection! {new ConnectionKey(sourceMainCarConnectPos, targetPosition).GetString()} [ {sourceMainCarConnectPos.m_GroupIndex}[{sourceMainCarConnectPos.m_GroupIndex >> 8}] ({sourceMainCarConnectPos.m_LaneData.m_Group}) | {targetPosition.m_GroupIndex}[{targetPosition.m_GroupIndex >> 8}] ({targetPosition.m_LaneData.m_Group})] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
                                                 continue;
                                             }
                                             
@@ -1240,17 +1253,15 @@ namespace Traffic.Systems
                                                 isForbidden, tempComponents.Length != 0, trackOnly: false, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false, isRightLimit: false,
                                                 isMergeLeft: false, isMergeRight: false, fixedTangents: false))
                                             {
-                                                Logger.Debug($"Added Master Lane connection {new ConnectionKey(sourceMainCarConnectPos, targetPosition).GetString()} [ {sourceMainCarConnectPos.m_GroupIndex}[{sourceMainCarConnectPos.m_GroupIndex >> 8}] ({sourceMainCarConnectPos.m_LaneData.m_Group}) | {targetPosition.m_GroupIndex}[{targetPosition.m_GroupIndex >> 8}] ({targetPosition.m_LaneData.m_Group})] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
+                                                Logger.DebugLaneSystem($"Added Master Lane connection {new ConnectionKey(sourceMainCarConnectPos, targetPosition).GetString()} [ {sourceMainCarConnectPos.m_GroupIndex}[{sourceMainCarConnectPos.m_GroupIndex >> 8}] ({sourceMainCarConnectPos.m_LaneData.m_Group}) | {targetPosition.m_GroupIndex}[{targetPosition.m_GroupIndex >> 8}] ({targetPosition.m_LaneData.m_Group})] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
                                                 createdConnections.Add(new ConnectionKey(sourceMainCarConnectPos, targetPosition));
                                             }
-                                            // Logger.Debug("Adding Master Lane connections done!");
+                                            // Logger.DebugLaneSystem("Adding Master Lane connections done!");
                                         }
                                     }
                                     prevLaneIndex += 256;
                                 }
                                 tempTargetConnectPositions.Clear();
-
-                                
                             }
                             sourceMainCarConnectPositions.Clear();
                             targetMainCarConnectPositions.Clear();
@@ -1273,6 +1284,53 @@ namespace Traffic.Systems
                                                 int nodeLaneIndex2 = prevLaneIndex;
                                                 ProcessTrackConnectPositions(chunkIndex, ref nodeLaneIndex2, ref random4, entity3, laneBuffer, middleConnections, createdConnections, tempSourceConnectPositions, tempTargetConnectPositions,
                                                     tempComponents.Length != 0, ownerTemp3, /*NON-STOCK*/tempModifiedLaneEnds);
+                                                
+                                                /*NON-STOCK*/ //TODO OPTIMIZE!
+                                                if (modifiedLaneConnections.Length > 0 /*&& tempComponents.Length == 0*/)
+                                                {
+                                                    DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedLaneConnections[entityIndex];
+                                                    for (var i = 0; i < modifiedConnections.Length; i++)
+                                                    {
+                                                        ModifiedLaneConnections connectionsEntity = modifiedConnections[i];
+                                                        ConnectPosition sourcePosition = FindNodeConnectPosition(tempSourceConnectPositions, connectionsEntity.edgeEntity, connectionsEntity.laneIndex, trackTypes2, out int sIndex);
+                                                        if (connectionsEntity.edgeEntity != sourcePosition.m_Owner || sourcePosition.m_Owner == Entity.Null || connectionsEntity.modifiedConnections == Entity.Null || !generatedConnections.HasBuffer(connectionsEntity.modifiedConnections))
+                                                        {
+                                                            Logger.DebugLaneSystem(
+                                                                $"Skip Track {connectionsEntity.edgeEntity} != {sourcePosition.m_Owner}, {connectionsEntity.modifiedConnections} | {!generatedConnections.HasBuffer(connectionsEntity.modifiedConnections)}");
+                                                            continue;
+                                                        }
+
+                                                        DynamicBuffer<GeneratedConnection> connections = generatedConnections[connectionsEntity.modifiedConnections];
+                                                        for (var j = 0; j < connections.Length; j++)
+                                                        {
+                                                            GeneratedConnection connection = connections[j];
+                                                            if ((connection.method & PathMethod.Track) == (PathMethod)0)
+                                                            {
+                                                                continue;
+                                                            }
+                                                            ConnectPosition targetPosition = FindNodeConnectPosition(tempTargetConnectPositions, connection.targetEntity, connection.laneIndexMap.y, trackTypes2, out int _);
+                                                            if (targetPosition.m_Owner == Entity.Null)
+                                                            {
+                                                                Logger.DebugLaneSystem($"Skip Track no target pos for {trackTypes}");
+                                                                continue;
+                                                            }
+                                                            bool isTurn = IsTurn(sourcePosition, targetPosition, out bool right, out bool gentle, out bool uturn);
+                                                            float curviness = -1f;
+                                                            if (CreateNodeLane(chunkIndex, ref nodeLaneIndex2, ref random4, ref curviness, entity3, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false,
+                                                                isTemp: tempComponents.Length != 0 /*todo*/,
+                                                                trackOnly: true, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false /*todo*/, isRightLimit: false /*todo*/, isMergeLeft: false, isMergeRight: false,
+                                                                fixedTangents: false))
+                                                            {
+                                                                ConnectionKey key = new ConnectionKey(sourcePosition, targetPosition);
+                                                                createdConnections.Add(key);
+                                                                tempMainConnectionKeys.Add(new ConnectionKey(sourcePosition.m_Owner.Index, sourcePosition.m_LaneData.m_Group, targetPosition.m_Owner.Index, targetPosition.m_LaneData.m_Group));
+                                                                Logger.DebugLaneSystem($"Added CustomGenerated Track: {trackTypes} | ({key.GetString()}) to created! [ {sourcePosition.m_GroupIndex} | {targetPosition.m_GroupIndex} -> 0 ");
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                                /*NON-STOCK*/
                                                 tempSourceConnectPositions.Clear();
                                                 prevLaneIndex += 256;
                                             }
@@ -1337,17 +1395,24 @@ namespace Traffic.Systems
                 laneBuffer.Dispose();
             }
 
-            private ConnectPosition FindNodeConnectPosition(NativeList<ConnectPosition> connectPositions, Entity owner, int laneIndex, out int index) {
-                index = -1;
-                for (var i = 0; i < connectPositions.Length; i++)
+            private ConnectPosition FindNodeConnectPosition(NativeList<ConnectPosition> connectPositions, Entity owner, int laneIndex, TrackTypes trackTypes, out int index) {
+                for (int i = 0; i < connectPositions.Length; i++)
                 {
                     ConnectPosition p = connectPositions[i];
-                    if (p.m_Owner == owner && p.m_LaneData.m_Index == laneIndex)
+                    // if (trackTypes != 0)
+                    // {
+                    //     Logger.DebugLaneSystem($"\tTest connect pos ({i} | {owner} idx: {laneIndex} [{trackTypes}]): {p.m_Owner}, {p.m_LaneData.m_Index}, track: {p.m_TrackTypes}");
+                    // }
+                    if (p.m_Owner == owner &&
+                        p.m_LaneData.m_Index == laneIndex &&
+                        (trackTypes == 0 || (p.m_TrackTypes & trackTypes) != 0))
                     {
                         index = i;
                         return p;
                     }
                 }
+                
+                index = -1;
                 return new ConnectPosition();
             }
 
@@ -3292,7 +3357,7 @@ namespace Traffic.Systems
                     // if (m_CustomPriorityData.HasComponent(middleConnection.m_ConnectPosition.m_Owner))
                     // {
                     //     CustomPriority priority = m_CustomPriorityData[middleConnection.m_ConnectPosition.m_Owner];
-                    //     //Logger.Debug($"[Edge_middle] Owner: {middleConnection.m_ConnectPosition.m_Owner} has CustomPriority data! {middleConnection.m_ConnectPosition.m_IsEnd} priority: {priority.left} | {priority.right}");
+                    //     //Logger.DebugLaneSystem($"[Edge_middle] Owner: {middleConnection.m_ConnectPosition.m_Owner} has CustomPriority data! {middleConnection.m_ConnectPosition.m_IsEnd} priority: {priority.left} | {priority.right}");
                     //     if (middleConnection.m_ConnectPosition.m_IsEnd && priority.right != 0)
                     //     {
                     //         component4.m_Flags |= priority.right == PriorityType.Stop ? CarLaneFlags.Stop :
@@ -3675,7 +3740,7 @@ namespace Traffic.Systems
                     /*if (m_CustomPriorityData.HasComponent(connectPosition.m_Owner))
                     {
                         CustomPriority priority = m_CustomPriorityData[connectPosition.m_Owner];
-                        Logger.Debug($"[Edge] Owner: {connectPosition.m_Owner} has CustomPriority data! {connectPosition.m_IsEnd} priority: {priority.left} | {priority.right}");
+                        Logger.DebugLaneSystem($"[Edge] Owner: {connectPosition.m_Owner} has CustomPriority data! {connectPosition.m_IsEnd} priority: {priority.left} | {priority.right}");
                         if (connectPosition.m_IsEnd && priority.right != 0)
                         {
                             component4.m_Flags |= priority.right == PriorityType.Stop ? CarLaneFlags.Stop :
@@ -3995,7 +4060,7 @@ namespace Traffic.Systems
                     //     bool2 tempEnd = (edgeDelta == new float2(0.5f, 1f));
                     //     bool2 tempEndIndex = (segmentIndex == new int2(2, 4));
                     //     bool isEnd = tempEnd.x && tempEnd.y && tempEndIndex.x && tempEndIndex.y;
-                    //     //Logger.Debug($"[Edge] Owner: {owner} has CustomPriority data! s: {isStart} e: {isEnd} priority: {priority.left} | {priority.right}");
+                    //     //Logger.DebugLaneSystem($"[Edge] Owner: {owner} has CustomPriority data! s: {isStart} e: {isEnd} priority: {priority.left} | {priority.right}");
                     //     if (isEnd && priority.right != 0)
                     //     {
                     //         component5.m_Flags |= priority.right == PriorityType.Stop ? CarLaneFlags.Stop :
@@ -4588,6 +4653,7 @@ namespace Traffic.Systems
                 EdgeTarget value2 = default(EdgeTarget);
                 while (edgeIterator.GetNext(out value))
                 {
+                    Logger.DebugLaneSystem($"(GetMiddleConnectionCurves) Iterating edges of ({node}): {value.m_Edge} isTemp: {m_TempData.HasComponent(value.m_Edge)} isEnd: {value.m_End} isMiddle: {value.m_Middle}");
                     if (value.m_Middle)
                     {
                         Edge edge = m_EdgeData[value.m_Edge];
@@ -4716,6 +4782,7 @@ namespace Traffic.Systems
                 EdgeIteratorValue value;
                 while (edgeIterator.GetNext(out value))
                 {
+                    Logger.DebugLaneSystem($"(GetMiddleConnections) Iterating edges of ({owner}): {value.m_Edge} isTemp: {m_TempData.HasComponent(value.m_Edge)} isEnd: {value.m_End} isMiddle: {value.m_Middle}");
                     DynamicBuffer<ConnectedNode> dynamicBuffer = m_Nodes[value.m_Edge];
                     for (int i = 0; i < dynamicBuffer.Length; i++)
                     {
@@ -4813,6 +4880,7 @@ namespace Traffic.Systems
                 EdgeIteratorValue value;
                 while (edgeIterator.GetNext(out value))
                 {
+                    Logger.DebugLaneSystem($"(GetNodeConnectPos) Iterating edges of ({owner}): {value.m_Edge} isTemp: {m_TempData.HasComponent(value.m_Edge)} isEnd: {value.m_End} isMiddle: {value.m_Middle}");
                     GetNodeConnectPositions(owner, value.m_Edge, value.m_End, groupIndex++, curvePosition, elevation, prefabGeometryData, sourceBuffer, targetBuffer, includeAnchored, ref middleRadius, ref roundaboutSize, ref anchorPrefabs);
                     hasConnectedEdges = true;
                 }
@@ -5311,7 +5379,7 @@ namespace Traffic.Systems
                 // if (m_CustomPriorityData.HasComponent(source.m_Owner))
                 // {
                 //     CustomPriority priority = m_CustomPriorityData[source.m_Owner];
-                //     //Logger.Debug($"[Node] Owner: {source.m_Owner} has CustomPriority data! {source.m_IsEnd} priority: {priority.left} | {priority.right}");
+                //     //Logger.DebugLaneSystem($"[Node] Owner: {source.m_Owner} has CustomPriority data! {source.m_IsEnd} priority: {priority.left} | {priority.right}");
                 //     if (source.m_IsEnd && priority.right != 0)
                 //     {
                 //         return priority.right == PriorityType.Stop ? 2 :
@@ -5401,7 +5469,7 @@ namespace Traffic.Systems
                     {
                         sb.Append("\ti[").Append(targetBuffer[i].m_LaneData.m_Index).Append("] g[").Append(targetBuffer[i].m_LaneData.m_Group).Append("] gi[").Append(targetBuffer[i].m_GroupIndex).Append("] ").Append(targetBuffer[i].m_Owner).Append(" f[").Append(targetBuffer[i].m_LaneData.m_Flags.ToString()).AppendLine("]");
                     }
-                    Logger.Debug($"Sorted targets\n  S({sourcePosition.m_Owner} | {sourcePosition.m_LaneData.m_Index}[{sourcePosition.m_GroupIndex}] ({sourcePosition.m_LaneData.m_Group}) -> [{sourcePosition.m_LaneData.m_Flags}]), nLaneIdx: {nodeLaneIndex}, owner: {owner}:\n{sb}");
+                    Logger.DebugLaneSystem($"Sorted targets\n  S({sourcePosition.m_Owner} | {sourcePosition.m_LaneData.m_Index}[{sourcePosition.m_GroupIndex}] ({sourcePosition.m_LaneData.m_Group}) -> [{sourcePosition.m_LaneData.m_Flags}]), nLaneIdx: {nodeLaneIndex}, owner: {owner}:\n{sb}");
                     CreateNodeCarLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, middleConnections, createdConnections, sourceBuffer, targetBuffer, allSources, isTemp, ownerTemp, yield, modifiedLaneEndConnections, createdGroups);
                 }
             }
@@ -5916,21 +5984,21 @@ namespace Traffic.Systems
                         if ((sourcePosition3.m_CompositionData.m_RoadFlags & connectPosition11.m_CompositionData.m_RoadFlags & Game.Prefabs.RoadFlags.UseHighwayRules) == 0 || !((flag8 & (@int.x > 0)) | (flag9 & (@int.y > 0))))
                         {
                             LaneEndKey item = new LaneEndKey(sourcePosition3.m_Owner, sourcePosition3.m_LaneData.m_Index);
-                            // Logger.Debug($"Creating Node Lane ({m}): {item.GetString()}");
+                            // Logger.DebugLaneSystem($"Creating Node Lane ({m}): {item.GetString()}");
                             if (modifiedLaneEndConnections.Contains(item))
                             {
-                                // Logger.Debug("Banned, skipping");
+                                // Logger.DebugLaneSystem("Banned, skipping");
                                 continue;
                             }
-                            // Logger.Debug("Not banned!");
+                            // Logger.DebugLaneSystem("Not banned!");
                             float curviness = -1f;
                             if (CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition3, connectPosition11, group, (ushort)laneIndex, isUnsafe, isForbidden, isTemp, trackOnly: false, yield, ownerTemp,
                                 isTurn, isRight, isGentle, isUTurn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft, isMergeRight, fixedTangents: false))
                             {
-                                Logger.Debug($"Added Node Lane connections {new ConnectionKey(sourcePosition3, connectPosition11).GetString()} [ {sourcePosition3.m_GroupIndex}[{sourcePosition3.m_GroupIndex >> 8}] ({sourcePosition3.m_LaneData.m_Group}) | {connectPosition11.m_GroupIndex}[{connectPosition11.m_GroupIndex >> 8}] ({connectPosition11.m_LaneData.m_Group}) ] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
+                                Logger.DebugLaneSystem($"Added Node Lane connections {new ConnectionKey(sourcePosition3, connectPosition11).GetString()} [ {sourcePosition3.m_GroupIndex}[{sourcePosition3.m_GroupIndex >> 8}] ({sourcePosition3.m_LaneData.m_Group}) | {connectPosition11.m_GroupIndex}[{connectPosition11.m_GroupIndex >> 8}] ({connectPosition11.m_LaneData.m_Group}) ] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
                                 createdConnections.Add(new ConnectionKey(sourcePosition3, connectPosition11));
                                 createdGroups.Add(new ConnectionKey(sourcePosition3.m_Owner.Index, sourcePosition3.m_LaneData.m_Group, connectPosition11.m_Owner.Index, connectPosition11.m_LaneData.m_Group));
-                                // Logger.Debug("Adding to created! (CreateNodeCarLanes)");
+                                // Logger.DebugLaneSystem("Adding to created! (CreateNodeCarLanes)");
                             }
                             if (isForbidden)
                             {
@@ -6013,6 +6081,12 @@ namespace Traffic.Systems
                 for (int k = 0; k < sourceBuffer.Length; k++)
                 {
                     ConnectPosition sourcePosition = sourceBuffer[k];
+                    /*NON-STOCK*/
+                    if (modifiedLaneEndConnections.Contains(new LaneEndKey(sourcePosition.m_Owner, sourcePosition.m_LaneData.m_Index)))
+                    {
+                        continue;
+                    }
+                    /*NON-STOCK-END*/
                     for (int l = 0; l < num2; l++)
                     {
                         ConnectPosition targetPosition = targetBuffer[num + l];
@@ -6044,12 +6118,6 @@ namespace Traffic.Systems
                         bool uturn;
                         bool isTurn = IsTurn(sourcePosition, targetPosition, out right, out gentle, out uturn);
                         float curviness = -1f;
-                        /*NON-STOCK*/
-                        if (modifiedLaneEndConnections.Contains(new LaneEndKey(sourcePosition.m_Owner, sourcePosition.m_LaneData.m_Index)))
-                        {
-                            continue;
-                        }
-                        /*NON-STOCK-END*/
                         CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false, isTemp,
                             trackOnly: true, 0, ownerTemp, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft: false, isMergeRight: false, fixedTangents: false);
                     }
@@ -6213,7 +6281,7 @@ namespace Traffic.Systems
                 NetCompositionData netCompositionData2 = m_PrefabCompositionData[targetPosition.m_NodeComposition];
                 if (isUTurn && (netCompositionData.m_State & CompositionState.BlockUTurn) != 0)
                 {
-                    // Logger.Debug("CreateNodeLane: Block Uturn!");
+                    // Logger.DebugLaneSystem("CreateNodeLane: Block Uturn!");
                     return false;
                 }
 

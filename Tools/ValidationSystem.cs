@@ -1,6 +1,7 @@
 ﻿using Game;
 using Game.Common;
 using Game.Net;
+using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
 using Traffic.LaneConnections;
@@ -16,14 +17,13 @@ namespace Traffic.Tools
 
         protected override void OnCreate() {
             base.OnCreate();
-            _modificationBarrier = World.GetExistingSystemManaged<ModificationEndBarrier>();
+            _modificationBarrier = World.GetOrCreateSystemManaged<ModificationEndBarrier>();
             _tempQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<EditIntersection>(), },
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
             RequireForUpdate(_tempQuery);
-            //TODO fix update requirements
         }
 
         protected override void OnUpdate() {
@@ -32,7 +32,10 @@ namespace Traffic.Tools
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
                 upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
+                deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                compositionData = SystemAPI.GetComponentLookup<Composition>(true),
+                netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
                 warnResetUpgradeBuffer = SystemAPI.GetBufferLookup<WarnResetUpgrade>(true),
                 connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 commandBuffer = _modificationBarrier.CreateCommandBuffer(),

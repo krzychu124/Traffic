@@ -5,8 +5,9 @@ using Traffic.Debug;
 using Traffic.Helpers;
 using Traffic.Tools;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
-namespace Traffic.UI
+namespace Traffic.UISystems
 {
     public partial class ModUISystem : UISystemBase
     {

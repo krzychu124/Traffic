@@ -23,6 +23,7 @@ namespace Traffic.Debug
 
         private Option _connectorOption;
         private Option _connectionsOption;
+        private Option _tempOnlyOption;
 
         public bool GizmoEnabled => _connectionsOption.enabled;
 
@@ -38,6 +39,7 @@ namespace Traffic.Debug
 
             _connectorOption = AddOption("Connectors", false);
             _connectionsOption = AddOption("Connections", false);
+            _tempOnlyOption = AddOption("Temp Only", false);
             RequireForUpdate(_query);
         }
 
@@ -48,6 +50,7 @@ namespace Traffic.Debug
             {
                 connectorOption = _connectorOption.enabled,
                 connectionsOption = _connectionsOption.enabled,
+                tempOnlyOption = _tempOnlyOption.enabled,
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 connectorType = SystemAPI.GetComponentTypeHandle<Connector>(true),
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
@@ -136,6 +139,7 @@ namespace Traffic.Debug
             [ReadOnly] public BufferTypeHandle<GeneratedConnection> generatedConnectionType;
             [ReadOnly] public bool connectorOption;
             [ReadOnly] public bool connectionsOption;
+            [ReadOnly] public bool tempOnlyOption;
             public GizmoBatcher gizmoBatcher;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
@@ -208,6 +212,11 @@ namespace Traffic.Debug
                         }
                     }
                 }
+
+                if (!hasTemp && tempOnlyOption)
+                {
+                    return;
+                }
 #if DEBUG_GIZMO
                 if (chunk.Has(ref generatedConnectionType))
                 {
@@ -219,7 +228,7 @@ namespace Traffic.Debug
                         for (var j = 0; j < dynamicBuffer.Length; j++)
                         {
                             GeneratedConnection connection = dynamicBuffer[j];
-                            Color color = hasTemp ? new Color(1f, 0.48f, 0f) : Color.yellow;
+                            Color color = (hasTemp && tempOnlyOption) ? new Color(1f, 0.48f, 0f) : Color.yellow;
                             gizmoBatcher.DrawCurve(connection.debug_bezier, MathUtils.Length(connection.debug_bezier), color);
                             float3 pos = MathUtils.Position(connection.debug_bezier, 0.5f);
                             float3 dir = math.normalize(MathUtils.Tangent(connection.debug_bezier, 0.5f));

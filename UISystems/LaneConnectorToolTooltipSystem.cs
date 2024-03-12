@@ -10,7 +10,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 
-namespace Traffic.UI
+namespace Traffic.UISystems
 {
     public partial class LaneConnectorToolTooltipSystem : TooltipSystemBase
     {

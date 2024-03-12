@@ -321,7 +321,7 @@ namespace Traffic.Systems
         }
 
         protected override void OnUpdate() {
-            Logger.Debug("TrafficLaneSystem Update!");
+            // Logger.Debug("TrafficLaneSystem Update!");
             CustomUpdateLanesJob jobData = new CustomUpdateLanesJob
             {
                 m_EntityType = SystemAPI.GetEntityTypeHandle(),
@@ -425,7 +425,7 @@ namespace Traffic.Systems
             m_TerrainSystem.AddCPUHeightReader(jobHandle);
             m_ModificationBarrier.AddJobHandleForProducer(jobHandle);
             Dependency = jobHandle;
-            Logger.Debug("TrafficLaneSystem Update Finished!");
+            // Logger.Debug("TrafficLaneSystem Update Finished!");
         }
 
         // [BurstCompile]

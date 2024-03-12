@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Colossal.Animations;
 using Game;
 using Game.Common;
 using Game.Net;
@@ -7,9 +8,11 @@ using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
 using Traffic.Tools;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace Traffic.LaneConnections
 {
@@ -18,22 +21,56 @@ namespace Traffic.LaneConnections
     /// </summary>
     public partial class SyncCustomLaneConnectionsSystem : GameSystemBase
     {
+        private EntityQuery _nodeEdgeQuery;
         private EntityQuery _query;
-        
-        protected override void OnCreate() {
+
+        protected override void OnCreate()
+        {
             base.OnCreate();
+            _nodeEdgeQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<ConnectedEdge>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
+                None = new[] { ComponentType.ReadOnly<Deleted>(), }
+            }, new EntityQueryDesc()
+            {
+                All = new[] { ComponentType.ReadOnly<Edge>(), ComponentType.ReadOnly<ConnectedNode>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
+                None = new[] { ComponentType.ReadOnly<Deleted>(), }
+            });
+
             _query = GetEntityQuery(new EntityQueryDesc
             {
-                All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
-                None = new[] { ComponentType.ReadOnly<Deleted>(), ComponentType.Exclude<ModifiedLaneConnections>(),  }
+                All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<ConnectedEdge>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
+                None = new[] { ComponentType.ReadOnly<Deleted>(), ComponentType.Exclude<ModifiedLaneConnections>(), }
             });
             RequireForUpdate(_query);
         }
 
-        protected override void OnUpdate() {
-            Logger.Debug("SyncCustomLaneConnectionsSystem Update!");
+        protected override void OnUpdate()
+        {
             NativeArray<Entity> updatedNodes = _query.ToEntityArray(Allocator.TempJob);
+            Logger.Debug($"SyncCustomLaneConnectionsSystem Update! ({updatedNodes.Length})");
             EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+
+            JobHandle mapJobHandle = default;
+            if (!_nodeEdgeQuery.IsEmptyIgnoreFilter)
+            {
+                int entityCount = _nodeEdgeQuery.CalculateEntityCount();
+                NativeParallelHashMap<NodeEdgeKey, Entity> tempMap = new NativeParallelHashMap<NodeEdgeKey, Entity>(entityCount * 2, Allocator.TempJob);
+                MapOriginalEntities mapEntities = new MapOriginalEntities()
+                {
+                    entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                    tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                    edgeTypeHandle = SystemAPI.GetComponentTypeHandle<Edge>(true),
+                    nodeTypeHandle = SystemAPI.GetComponentTypeHandle<Node>(true),
+                    connectedEdgeTypeHandle = SystemAPI.GetBufferTypeHandle<ConnectedEdge>(true),
+                    tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                    nodeEdgeMap = tempMap
+                };
+
+                mapJobHandle = mapEntities.Schedule(_nodeEdgeQuery, Dependency);
+                tempMap.Dispose(mapJobHandle);
+            }
+            
             SyncConnectionsJob job = new SyncConnectionsJob()
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
@@ -53,7 +90,7 @@ namespace Traffic.LaneConnections
                 tempNodes = updatedNodes.AsReadOnly(),
                 commandBuffer = commandBuffer.AsParallelWriter(),
             };
-            JobHandle jobHandle = job.Schedule(updatedNodes.Length, 1, Dependency);
+            JobHandle jobHandle = job.Schedule(updatedNodes.Length, JobHandle.CombineDependencies(Dependency, mapJobHandle));
             jobHandle.Complete();
             commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
@@ -62,7 +99,116 @@ namespace Traffic.LaneConnections
             Logger.Debug("SyncCustomLaneConnectionsSystem Update finished!");
         }
 
-        private struct SyncConnectionsJob : IJobParallelFor
+
+        private struct MapOriginalEntities : IJobChunk
+        {
+            [ReadOnly] public EntityTypeHandle entityTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<Edge> edgeTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<Node> nodeTypeHandle;
+            [ReadOnly] public BufferTypeHandle<ConnectedEdge> connectedEdgeTypeHandle;
+            [ReadOnly] public ComponentLookup<Temp> tempData;
+            public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
+                NativeArray<Temp> temps = chunk.GetNativeArray(ref tempTypeHandle);
+                NativeArray<Edge> edges = chunk.GetNativeArray(ref edgeTypeHandle);
+                NativeArray<Node> nodes = chunk.GetNativeArray(ref nodeTypeHandle);
+
+                for (int i = 0; i < edges.Length; i++)
+                {
+                    Entity entity = entities[i];
+                    Temp temp = temps[i];
+                    Edge edge = edges[i];
+                    if ((temp.m_Flags & TempFlags.Delete) != 0)
+                    {
+                        Logger.Debug($"|Edge|Delete {entity} T[{temp.m_Original} | {temp.m_Flags}]");
+                        continue;
+                    }
+                    if (temp.m_Original != Entity.Null && (temp.m_Flags & (TempFlags.Replace | TempFlags.Combine)) != 0)
+                    {
+                        Temp startNodeTemp = tempData[edge.m_Start];
+                        if (startNodeTemp.m_Original != Entity.Null && (startNodeTemp.m_Flags & (TempFlags.Delete | TempFlags.Replace)) == 0)
+                        {
+                            nodeEdgeMap.Add(new NodeEdgeKey(startNodeTemp.m_Original, temp.m_Original), temp.m_Original);
+                            nodeEdgeMap.Add(new NodeEdgeKey(startNodeTemp.m_Original, entity), temp.m_Original);
+                        }
+                        Temp endNodeTemp = tempData[edge.m_End];
+                        if (endNodeTemp.m_Original != Entity.Null && (endNodeTemp.m_Flags & (TempFlags.Delete | TempFlags.Replace)) == 0)
+                        {
+                            nodeEdgeMap.Add(new NodeEdgeKey(endNodeTemp.m_Original, temp.m_Original), temp.m_Original);
+                            nodeEdgeMap.Add(new NodeEdgeKey(endNodeTemp.m_Original, entity), temp.m_Original);
+                        }
+                        Logger.Debug($"|Edge|Has Original | {entity} T[{temp.m_Original} | {temp.m_Flags}] | S[{edge.m_Start}] E[{edge.m_End}] -> SO[{startNodeTemp.m_Original}| {startNodeTemp.m_Flags}] EO[{endNodeTemp.m_Original}| {endNodeTemp.m_Flags}]");
+                    }
+                    else
+                    {
+                        Logger.Debug($"|Edge|Else | {entity} T[{temp.m_Original} | {temp.m_Flags}] | S[{edge.m_Start}] E[{edge.m_End}]");
+                    }
+                }
+                if (nodes.Length == 0)
+                {
+                    return;
+                }
+
+                BufferAccessor<ConnectedEdge> connectedEdgesAccessor = chunk.GetBufferAccessor(ref connectedEdgeTypeHandle);
+                for (int i = 0; i < nodes.Length; i++)
+                {
+                    Entity entity = entities[i];
+                    Temp temp = temps[i];
+                    DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesAccessor[i];
+                    if ((temp.m_Flags & TempFlags.Delete) != 0)
+                    {
+                        Logger.Debug($"|Node|Delete | {entity} T[{temp.m_Original} | {temp.m_Flags}] ConnectedEdges {connectedEdges.Length}");
+                        continue;
+                    }
+                    if (temp.m_Original != Entity.Null && (temp.m_Flags & (TempFlags.Delete | TempFlags.Replace)) == 0)
+                    {
+                        Logger.Debug($"|Node|Has Original | {entity} T[{temp.m_Original} | {temp.m_Flags}] ConnectedEdges {connectedEdges.Length}");
+                    }
+                    else
+                    {
+                        Logger.Debug($"|Node|Else | {entity} T[{temp.m_Original} | {temp.m_Flags}] ConnectedEdges {connectedEdges.Length}");
+                        
+                    }
+                }
+            }
+        }
+
+        internal struct NodeEdgeKey : IEquatable<NodeEdgeKey>
+        {
+            public Entity node;
+            public Entity edge;
+
+            public NodeEdgeKey(Entity node, Entity edge)
+            {
+                this.edge = edge;
+                this.node = node;
+            }
+
+
+            public bool Equals(NodeEdgeKey other)
+            {
+                return node.Equals(other.node) && edge.Equals(other.edge);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is NodeEdgeKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (node.GetHashCode() * 397) ^ edge.GetHashCode();
+                }
+            }
+        }
+
+        private struct SyncConnectionsJob : IJobFor
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
@@ -81,12 +227,13 @@ namespace Traffic.LaneConnections
             public NativeArray<Entity>.ReadOnly tempNodes;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
 
-            public void Execute(int index) {
+            public void Execute(int index)
+            {
                 Entity entity = tempNodes[index];
                 Temp temp = tempData[entity];
 
                 //todo test node composition entity (modifiedConnections edge -> isStart/End node? -> (edge) start/End composition) ((maybe check lane index if still the same))
-                Logger.Debug($"({index}) Testing {entity} Temp node: {temp.m_Original} flags: {temp.m_Flags}");
+                Logger.Debug($"({index}) Testing {entity} Temp entity: {temp.m_Original} flags: {temp.m_Flags}");
 
                 if (temp.m_Original == Entity.Null)
                 {
@@ -94,7 +241,14 @@ namespace Traffic.LaneConnections
                     return;
                 }
 
-                if (nodeData.HasComponent(temp.m_Original) && modifiedConnectionsBuffer.HasBuffer(temp.m_Original))
+                if (!nodeData.HasComponent(temp.m_Original))
+                {
+                    Logger.Debug($"\tSkip, temp {entity} is not a node! (probably edge split)");
+                    //todo handle edge split
+                    return;
+                }
+
+                if (modifiedConnectionsBuffer.HasBuffer(temp.m_Original))
                 {
 
                     if ((temp.m_Flags & TempFlags.Delete) == 0)
@@ -112,37 +266,25 @@ namespace Traffic.LaneConnections
                                 Temp tempEdge = tempData[edgeValue.m_Edge];
                                 Temp startTemp = tempData[edge.m_Start];
                                 Temp endTemp = tempData[edge.m_End];
-                                bool compositionChanged = false;
-                                string compositionStr = "\nComposition";
+                                Logger.Debug($"Edge(temp): {edgeValue.m_Edge}:\n\t\t\t\t\t\t\t\t\tStart:[{edge.m_Start}] End:[{edge.m_End}], nodeFlags  S[{startTemp.m_Original} - {startTemp.m_Flags}], E[{endTemp.m_Original} - {endTemp.m_Flags}]");
+
+                                bool2 compositionChanged = false;
                                 if (compositionData.HasComponent(edgeValue.m_Edge) && compositionData.HasComponent(tempEdge.m_Original))
                                 {
                                     Composition composition = compositionData[edgeValue.m_Edge];
-                                    NetCompositionData data1 = netCompositionData[composition.m_Edge];
-                                    NetCompositionData data2 = netCompositionData[composition.m_StartNode];
-                                    NetCompositionData data3 = netCompositionData[composition.m_EndNode];
-                                    compositionStr += $"\n\t(E: {edgeValue.m_Edge} | cE: {composition.m_Edge} cStart: {composition.m_StartNode} cEnd: {composition.m_EndNode} |";
-                                    compositionStr += $"\n\t\t(NetComposition(Edge):  |G {data1.m_Flags.m_General} |L {data1.m_Flags.m_Left} |R {data1.m_Flags.m_Right} |";
-                                    compositionStr += $"\n\t\t(NetComposition(Start): |G {data2.m_Flags.m_General} |L {data2.m_Flags.m_Left} |R {data2.m_Flags.m_Right} |";
-                                    compositionStr += $"\n\t\t(NetComposition(End):   |G {data3.m_Flags.m_General} |L {data3.m_Flags.m_Left} |R {data3.m_Flags.m_Right} |";
+                                    LogCompositionData($"\n\tTemp Edge Composition {edgeValue.m_Edge}", composition.m_Edge, composition.m_StartNode, composition.m_EndNode);
                                     Composition originalComposition = compositionData[tempEdge.m_Original];
-                                    data1 = netCompositionData[originalComposition.m_Edge];
-                                    data2 = netCompositionData[originalComposition.m_StartNode];
-                                    data3 = netCompositionData[originalComposition.m_EndNode];
-                                    compositionStr += $"\n\t(oE: {tempEdge.m_Original} | cE: {originalComposition.m_Edge} cStart: {originalComposition.m_StartNode} cEnd: {originalComposition.m_EndNode} |";
-                                    compositionStr += $"\n\t\t(NetComposition(Edge):  |G {data1.m_Flags.m_General} |L {data1.m_Flags.m_Left} |R {data1.m_Flags.m_Right} |";
-                                    compositionStr += $"\n\t\t(NetComposition(Start): |G {data2.m_Flags.m_General} |L {data2.m_Flags.m_Left} |R {data2.m_Flags.m_Right} |";
-                                    compositionStr += $"\n\t\t(NetComposition(End):   |G {data3.m_Flags.m_General} |L {data3.m_Flags.m_Left} |R {data3.m_Flags.m_Right} |";
+                                    LogCompositionData($"\n\tOriginal Edge Composition {tempEdge.m_Original}", originalComposition.m_Edge, originalComposition.m_StartNode, originalComposition.m_EndNode);
                                     compositionChanged = CheckComposition(entity, temp.m_Original, tempEdge.m_Original, originalComposition, edgeValue.m_Edge, composition, !edgeValue.m_End, (tempEdge.m_Flags & TempFlags.Modify) != 0);
                                     // compositionStr += $"(E: {composition.m_Edge} sN: {composition.m_StartNode} eN: {composition.m_EndNode} [s ({netCompositionData[composition.m_StartNode].m_Flags.m_General}) e: ({netCompositionData[composition.m_EndNode].m_Flags.m_General})] " +
                                     // $"|old| sN: {originalComposition.m_StartNode} eN: {originalComposition.m_EndNode} [s ({netCompositionData[originalComposition.m_StartNode].m_Flags.m_General}) e: ({netCompositionData[originalComposition.m_EndNode].m_Flags.m_General})])";
                                 }
-                                Logger.Debug($"Edge: {edgeValue.m_Edge}: \n\t\t\t\t\t\t\t\t\tStart({edge.m_Start}) End({edge.m_End}), nodeFlags ({startTemp.m_Original}): [{startTemp.m_Flags}], ({endTemp.m_Original}): [{endTemp.m_Flags}] | {compositionStr}");
-                                edgeMap.Add(tempEdge.m_Original, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = true, compositionChanged = compositionChanged });
+                                edgeMap.Add(tempEdge.m_Original, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = true, isStart = !edgeValue.m_End, compositionChanged = compositionChanged });
                             }
                             else
                             {
-                                edgeMap.Add(edgeValue.m_Edge, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = false, compositionChanged = false });
-                                Logger.Debug($"Edge: {edgeValue.m_Edge}: \n\t\t\t\t\t\t\t\t\tStart({edge.m_Start}) End({edge.m_End})");
+                                edgeMap.Add(edgeValue.m_Edge, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = false, isStart = !edgeValue.m_End, compositionChanged = false });
+                                Logger.Debug($"Edge: {edgeValue.m_Edge}: \n\t\t\t\t\t\t\t\t\tStart:[{edge.m_Start}] End:[{edge.m_End}]");
                             }
                         }
                         Logger.Debug($"======= Iterating edges of {entity} finished =======");
@@ -164,39 +306,66 @@ namespace Traffic.LaneConnections
                             Temp newModifiedConnectionTemp = new Temp(connection.modifiedConnections, 0);
                             commandBuffer.AddComponent<DataOwner>(index, genEntity, new DataOwner(entity));
                             commandBuffer.AddComponent<PrefabRef>(index, genEntity, new PrefabRef(LaneConnectorToolSystem.FakePrefabRef));
-                            if (edgeMap.TryGetValue(connection.edgeEntity, out EdgeInfo newEdgeInfo) && !newEdgeInfo.compositionChanged)
+                            if (edgeMap.TryGetValue(connection.edgeEntity, out EdgeInfo newEdgeInfo))
                             {
-                                Logger.Debug($"Edge ({connection.edgeEntity}): {newEdgeInfo.edge} {newEdgeInfo.wasTemp}");
-                                DynamicBuffer<GeneratedConnection> newConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, genEntity);
-                                DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionBuffer[connection.modifiedConnections];
-                                for (var k = 0; k < generatedConnections.Length; k++)
+                                //!math.any(newEdgeInfo.compositionChanged)
+                                if (!(newEdgeInfo.isStart ? newEdgeInfo.compositionChanged.x : newEdgeInfo.compositionChanged.y))
                                 {
-                                    GeneratedConnection generatedConnection = generatedConnections[k];
-                                    if (edgeMap.TryGetValue(generatedConnection.targetEntity, out EdgeInfo genEdgeInfo) && !genEdgeInfo.compositionChanged)
+                                    Logger.Debug($"Edge ({connection.edgeEntity}): {newEdgeInfo.edge} {newEdgeInfo.wasTemp} start: {newEdgeInfo.isStart} | {newEdgeInfo.compositionChanged}");
+                                    DynamicBuffer<GeneratedConnection> newConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, genEntity);
+                                    DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionBuffer[connection.modifiedConnections];
+                                    for (var k = 0; k < generatedConnections.Length; k++)
                                     {
-                                        Logger.Debug($"Target ({generatedConnection.targetEntity}): {genEdgeInfo.edge} {genEdgeInfo.wasTemp}");
-                                        GeneratedConnection newConnection = new GeneratedConnection()
+                                        GeneratedConnection generatedConnection = generatedConnections[k];
+                                        if (edgeMap.TryGetValue(generatedConnection.targetEntity, out EdgeInfo genEdgeInfo))
                                         {
-                                            sourceEntity = newEdgeInfo.edge,
-                                            targetEntity = genEdgeInfo.edge,
-                                            method = generatedConnection.method,
-                                            isUnsafe = generatedConnection.isUnsafe,
-                                            laneIndexMap = generatedConnection.laneIndexMap,
+                                            //!math.any(genEdgeInfo.compositionChanged)
+                                            if (!(genEdgeInfo.isStart ? genEdgeInfo.compositionChanged.y : genEdgeInfo.compositionChanged.x))
+                                            {
+                                                Logger.Debug($"Target ({generatedConnection.targetEntity}): {genEdgeInfo.edge} {genEdgeInfo.wasTemp} start: {genEdgeInfo.isStart} | {genEdgeInfo.compositionChanged}");
+                                                GeneratedConnection newConnection = new GeneratedConnection()
+                                                {
+                                                    sourceEntity = newEdgeInfo.edge,
+                                                    targetEntity = genEdgeInfo.edge,
+                                                    method = generatedConnection.method,
+                                                    isUnsafe = generatedConnection.isUnsafe,
+                                                    laneIndexMap = generatedConnection.laneIndexMap,
 #if DEBUG_GIZMO
-                                            debug_bezier = generatedConnection.debug_bezier,
+                                                    debug_bezier = generatedConnection.debug_bezier,
 #endif
-                                        };
-                                        newConnections.Add(newConnection);
+                                                };
+                                                newConnections.Add(newConnection);
+                                            }
+                                            else
+                                            {
+                                                Logger.Debug($"Target composition changed ({generatedConnection.targetEntity}): {genEdgeInfo.edge} {genEdgeInfo.wasTemp} start: {genEdgeInfo.isStart} | {genEdgeInfo.compositionChanged}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Logger.Debug($"No Target ({generatedConnection.targetEntity}): ");
+                                        }
                                     }
+                                    newModifiedConnections.Add(new ModifiedLaneConnections()
+                                    {
+                                        edgeEntity = newEdgeInfo.edge,
+                                        laneIndex = connection.laneIndex,
+                                        modifiedConnections = genEntity,
+                                    });
+                                    newModifiedConnectionTemp.m_Flags |= (newConnections.Length == 0 && generatedConnections.Length > 0) ? TempFlags.Delete : TempFlags.Modify;
+                                    Logger.Debug($"Generated connections for {entity}({temp.m_Original})[{connection.edgeEntity}] => ({newEdgeInfo.edge}): {newConnections.Length} Flags: {newModifiedConnectionTemp.m_Flags}");
                                 }
-                                newModifiedConnections.Add(new ModifiedLaneConnections()
+                                else
                                 {
-                                    edgeEntity = newEdgeInfo.edge,
-                                    laneIndex = connection.laneIndex,
-                                    modifiedConnections = genEntity,
-                                });
-                                newModifiedConnectionTemp.m_Flags |= (newConnections.Length == 0 && generatedConnections.Length > 0) ? TempFlags.Delete : TempFlags.Modify;
-                                Logger.Debug($"Generated connections for {entity}({temp.m_Original})[{connection.edgeEntity}] => ({newEdgeInfo.edge}): {newConnections.Length} Flags: {newModifiedConnectionTemp.m_Flags}");
+                                    newModifiedConnections.Add(new ModifiedLaneConnections()
+                                    {
+                                        edgeEntity = connection.edgeEntity,
+                                        laneIndex = connection.laneIndex,
+                                        modifiedConnections = genEntity,
+                                    });
+                                    newModifiedConnectionTemp.m_Flags |= TempFlags.Delete;
+                                    Logger.Debug($"Edge composition changed! {entity}({temp.m_Original})[{connection.edgeEntity}] NewEdge: {newEdgeInfo.edge} {newEdgeInfo.wasTemp} | {newEdgeInfo.compositionChanged}");
+                                }
                             }
                             else
                             {
@@ -209,8 +378,10 @@ namespace Traffic.LaneConnections
                                 newModifiedConnectionTemp.m_Flags |= TempFlags.Delete;
                                 Logger.Debug($"Edge not found! {entity}({temp.m_Original})[{connection.edgeEntity}]");
                             }
+
                             commandBuffer.AddComponent<Temp>(index, genEntity, newModifiedConnectionTemp);
                         }
+
                         Logger.Debug($"Regenerated connections for node: {entity}({temp.m_Original}) ({newModifiedConnections.Length})");
                         if (newModifiedConnections.Length > 0)
                         {
@@ -220,14 +391,15 @@ namespace Traffic.LaneConnections
 
 
                         /*
-                     * OLD IMPL.
-                     */
+                         * OLD IMPL.
+                         */
                         bool hasTempConnectedEdges = connectedEdgeBuffer.HasBuffer(entity);
                         BufferLookup<GeneratedConnection> buffer = generatedConnectionBuffer;
                         Logger.Debug($"Modified Connections at node: {temp.m_Original}:\n\t" +
                             string.Join("\n\t",
                                 laneConnections.AsNativeArray().Select(l => $"e: {l.edgeEntity} | l: {l.laneIndex} |: c: {l.modifiedConnections} \n\t\t" +
-                                    string.Join("\n\t\t", buffer.TryGetBuffer(l.modifiedConnections, out var data) ? data.ToNativeArray(Allocator.Temp).Select(d => $"[s: {d.sourceEntity} t: {d.targetEntity} idx: {d.laneIndexMap}]") : Array.Empty<string>())))
+                                    string.Join("\n\t\t",
+                                        buffer.TryGetBuffer(l.modifiedConnections, out var data) ? data.ToNativeArray(Allocator.Temp).Select(d => $"[s: {d.sourceEntity} t: {d.targetEntity} idx: {d.laneIndexMap}]") : Array.Empty<string>())))
                         );
                         if (connectedEdgeBuffer.HasBuffer(temp.m_Original))
                         {
@@ -272,7 +444,21 @@ namespace Traffic.LaneConnections
                 }
             }
 
-            private bool CheckComposition(Entity tempNode, Entity originalNode, Entity originalEdge, Composition originalComposition, Entity tempEdge, Composition tempComposition, bool isStartEdge, bool isModifyFlag) {
+            private void LogCompositionData(string text, Entity edgeComposition, Entity startNodeComposition, Entity endNodeComposition)
+            {
+
+                NetCompositionData data1 = netCompositionData[edgeComposition];
+                NetCompositionData data2 = netCompositionData[startNodeComposition];
+                NetCompositionData data3 = netCompositionData[endNodeComposition];
+                string compositionStr = $"{text}\n\t\tEdge:  {edgeComposition} \n\t\tStart: {startNodeComposition} \n\t\tEnd:   {endNodeComposition}";
+                compositionStr += $"\n\t(NetComposition(Edge):  |G {data1.m_Flags.m_General} |L {data1.m_Flags.m_Left} |R {data1.m_Flags.m_Right} |";
+                compositionStr += $"\n\t(NetComposition(Start): |G {data2.m_Flags.m_General} |L {data2.m_Flags.m_Left} |R {data2.m_Flags.m_Right} |";
+                compositionStr += $"\n\t(NetComposition(End):   |G {data3.m_Flags.m_General} |L {data3.m_Flags.m_Left} |R {data3.m_Flags.m_Right} |";
+                Logger.Debug(compositionStr);
+            }
+
+            private bool2 CheckComposition(Entity tempNode, Entity originalNode, Entity originalEdge, Composition originalComposition, Entity tempEdge, Composition tempComposition, bool isStartEdge, bool isModifyFlag)
+            {
                 Entity tPrefab = prefabData[tempEdge];
                 Entity oPrefab = prefabData[originalEdge];
                 Logger.Debug($"|CheckComposition| tN: {tempNode}, oN: {originalNode} | tE: {tempEdge}, oE: {originalEdge} | iS: {isStartEdge}, modifying: {isModifyFlag} | tPref: {tPrefab}, oPref: {oPrefab}");
@@ -287,13 +473,14 @@ namespace Traffic.LaneConnections
                 Logger.Debug($"|CheckComposition|Direction| tNode: {tempNode}, wasStart: {wasStartEdge} || ");
                 if (isStartEdge != wasStartEdge)
                 {
-                    Logger.Debug($"|CheckComposition| Different edge direction! {wasStartEdge} => {isStartEdge}");
+                    Logger.Debug($"|CheckComposition|Direction| Different edge direction! {wasStartEdge} => {isStartEdge}");
                     return true;
                 }
 
                 if (oPrefab == tPrefab)
                 {
-                    CompositionFlags.Side importantFlags = CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidRightTurn | CompositionFlags.Side.PrimaryTrack | CompositionFlags.Side.SecondaryTrack | CompositionFlags.Side.TertiaryTrack | CompositionFlags.Side.QuaternaryTrack;
+                    CompositionFlags.Side importantFlags = CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidRightTurn | CompositionFlags.Side.PrimaryTrack | CompositionFlags.Side.SecondaryTrack |
+                        CompositionFlags.Side.TertiaryTrack | CompositionFlags.Side.QuaternaryTrack;
                     //same prefab, same edge direction
                     // check road composition
                     NetCompositionData origEdgeNetCompositionData = netCompositionData[originalComposition.m_Edge];
@@ -306,7 +493,7 @@ namespace Traffic.LaneConnections
                     if (oELeft != tELeft || oERight != tERight)
                     {
                         Logger.Debug($"|CheckComposition| Different Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
-                        return true;
+                        return new bool2(oELeft != tELeft, oERight != tERight);
                     }
                     Logger.Debug($"|CheckComposition| Acceptable Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
 
@@ -325,7 +512,7 @@ namespace Traffic.LaneConnections
                         if (oNLeft != tNLeft || oNRight != tNRight)
                         {
                             Logger.Debug($"|CheckComposition| Different Node Composition flags = Left: [{oNLeft}]->[{tNLeft}] Right: [{oNRight}]->[{tNRight}]");
-                            return true;
+                            return new bool2(oNLeft != tNLeft, oNRight != tNRight);
                         }
                         Logger.Debug($"|CheckComposition| Acceptable Node Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
                     }
@@ -344,7 +531,8 @@ namespace Traffic.LaneConnections
         {
             public Entity edge;
             public bool wasTemp;
-            public bool compositionChanged;
+            public bool isStart;
+            public bool2 compositionChanged;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define DEBUG_CONNECTIONS
+using System;
 using Game;
 using Game.Common;
 using Game.Net;
@@ -52,6 +53,7 @@ namespace Traffic.LaneConnections
                 tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
                 connectedEdgeTypeHandle = SystemAPI.GetBufferTypeHandle<ConnectedEdge>(true),
                 tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 tempNodes = tempNodes.AsParallelWriter(),
                 tempEntityMap = tempEntityMap,
             };
@@ -137,6 +139,7 @@ namespace Traffic.LaneConnections
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
             [ReadOnly] public BufferTypeHandle<ConnectedEdge> connectedEdgeTypeHandle;
+            [ReadOnly] public ComponentLookup<Node> nodeData;
             [ReadOnly] public ComponentLookup<Temp> tempData;
 
             public NativeList<Entity>.ParallelWriter tempNodes;
@@ -147,17 +150,25 @@ namespace Traffic.LaneConnections
                 NativeArray<Temp> temps = chunk.GetNativeArray(ref tempTypeHandle);
                 BufferAccessor<ConnectedEdge> connectedEdgeAccessor = chunk.GetBufferAccessor(ref connectedEdgeTypeHandle);
 
-                Logger.Info($"Run FillTempNodeMap ({entities.Length})[{unfilteredChunkIndex}]");
+                Logger.DebugConnections($"Run FillTempNodeMap ({entities.Length})[{unfilteredChunkIndex}]");
 
                 for (int i = 0; i < entities.Length; i++)
                 {
                     Entity entity = entities[i];
                     Temp temp = temps[i];
                     tempNodes.AddNoResize(entity);
-                    if (temp.m_Original != Entity.Null)
+                    if (temp.m_Original != Entity.Null && nodeData.HasComponent(temp.m_Original))
                     {
-                        Logger.Info($"Cache node: {temp.m_Original} -> {entity}");
-                        tempEntityMap.TryAdd(temp.m_Original, entity);
+                        //temp on node entity can split an edge -> edge entity will be set in m_Original + temp.m_CurvePosition will be larger than 0.0f
+                        if (tempEntityMap.TryAdd(temp.m_Original, entity))
+                        {
+                            Logger.DebugConnections($"Cache node: {temp.m_Original} -> {entity} flags: {temp.m_Flags}");
+                        }
+                    }
+                    else
+                    {
+                        //todo handle edge split
+                        Logger.DebugConnections($"Not a node: {temp.m_Original} -> {entity} flags: {temp.m_Flags}");
                     }
                     if (connectedEdgeAccessor.Length > 0)
                     {
@@ -170,8 +181,10 @@ namespace Traffic.LaneConnections
                                 Temp tempEdge = tempData[edge];
                                 if (tempEdge.m_Original != Entity.Null)
                                 {
-                                    Logger.Info($"Cache edge: {tempEdge.m_Original} -> {edge}");
-                                    tempEntityMap.TryAdd(tempEdge.m_Original, edge);
+                                    if (tempEntityMap.TryAdd(tempEdge.m_Original, edge))
+                                    {
+                                        Logger.DebugConnections($"Cache edge of ({temp.m_Original}): {tempEdge.m_Original} -> {edge} flags: {tempEdge.m_Flags}");
+                                    }
                                 }
                             }
                         }

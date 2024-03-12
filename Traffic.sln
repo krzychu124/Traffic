@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Traffic", "Traffic.csproj", "{30CC228D-0020-48EB-84CE-69FAFDFF5649}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Traffic", "Code\Traffic.csproj", "{30CC228D-0020-48EB-84CE-69FAFDFF5649}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

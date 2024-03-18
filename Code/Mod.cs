@@ -18,6 +18,7 @@ namespace Traffic
     [UsedImplicitly]
     public class Mod : IMod
     {
+        public const string MOD_NAME = "Traffic";
 
         public void OnLoad(UpdateSystem updateSystem) {
             Logger.Info(nameof(OnLoad));
@@ -44,6 +45,8 @@ namespace Traffic
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnections.SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
+            
+            updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);
 #if DEBUG_TOOL
             // updateSystem.UpdateAt<CleanUp>(SystemUpdatePhase.Cleanup);
             // updateSystem.UpdateAt<ApplyTool>(SystemUpdatePhase.ApplyTool);

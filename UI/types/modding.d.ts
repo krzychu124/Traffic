@@ -2,14 +2,15 @@ declare module "cs2/modding" {
   import { ComponentType } from 'react';
   
   export type ModuleRegistryExtend = <T extends ComponentType<any>>(curr: T) => (props: any) => JSX.Element;
-  export type ModuleRegistryAppend = ComponentType<any> | (() => JSX.Element);
+  export type ModuleRegistryAppend = ComponentType<{}> | (() => JSX.Element);
+  export type AppendHookTargets = "Menu" | "Editor" | "Game" | "GameTopLeft" | "GameTopRight" | "GameBottomRight";
   export type ModuleRegistry = {
   	get(modulePath: string, exportName: string): any;
   	add(modulePath: string, module: Record<string, any>): void;
   	override(modulePath: string, exportName: string, newValue: any): void;
   	extend(modulePath: string, exportNameOrSCSSValue: string | any, extendCb?: ModuleRegistryExtend): void;
-  	append(target: "Menu" | "Editor" | "Game" | "GameTopLeft" | "GameTopRight" | "GameBottomRight", appendedComponent: ModuleRegistryAppend, _?: never): void;
-  	append(modulePath: string, exportName: string, appendedComponent?: ModuleRegistryAppend | null): void;
+  	append(modulePath: string, exportName: string, appendedComponent?: ModuleRegistryAppend, index?: number): void;
+  	append(target: AppendHookTargets, appendedComponent: ModuleRegistryAppend, index?: number, _?: never): void;
   	registry: Map<string, Record<string, any>>;
   	find(query: string | RegExp): [
   		path: string,

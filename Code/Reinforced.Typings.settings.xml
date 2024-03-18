@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build">
+	<PropertyGroup>
+		<UIProjectTypescriptFolderPath>$(ProjectDir)\..\UI\src\types\traffic.d.ts</UIProjectTypescriptFolderPath>
+	</PropertyGroup>
+	<PropertyGroup>
+		<RtTargetFile>$(UIProjectTypescriptFolderPath)</RtTargetFile>
+		<RtConfigurationMethod>Traffic.Utils.ReinforcedTypingsConfiguration.Configure</RtConfigurationMethod>
+		<RtDivideTypesAmongFiles>false</RtDivideTypesAmongFiles>
+		<RtBypassTypeScriptCompilation>false</RtBypassTypeScriptCompilation>
+		<RtDisable>false</RtDisable>
+		<RtSuppress>RTW0013;RTW0014;RT0008</RtSuppress>
+	</PropertyGroup>
+	
+	<!--
+		If you want Reinforced.Typings to lookup for attributed classes not only current
+		project's assembly but also another assembly then you can specify it in RtAdditionalAssembly
+		item group. 
+		
+		Reinforced.Typings receives reference assemblies list from CoreCompile task so you
+		can specify here assemblies from your project's references (with or without .dll extension).
+		If desired assembly is not in references list of current project then you will have
+		to specify full path to it.
+	-->
+	
+	<ItemGroup>
+<!--		<RtAdditionalAssembly Include="My.Project.Assembly"/>-->
+<!--		<RtAdditionalAssembly Include="My.Project.Assembly.dll"/>-->
+<!--		<RtAdditionalAssembly Include="C:\Full\Path\To\Assembly\My.Project.Assembly.dll"/>-->
+	</ItemGroup>
+</Project>

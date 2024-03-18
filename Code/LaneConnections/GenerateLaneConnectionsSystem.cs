@@ -1,4 +1,4 @@
-﻿#define DEBUG_CONNECTIONS
+﻿// #define DEBUG_CONNECTIONS
 using System;
 using Game;
 using Game.Common;
@@ -40,7 +40,7 @@ namespace Traffic.LaneConnections
         }
 
         protected override void OnUpdate() {
-            Logger.Debug("Run GenerateLaneConnectionsSystem");
+            Logger.DebugConnections("Run GenerateLaneConnectionsSystem");
             int count = _query.CalculateEntityCount();
             NativeParallelHashSet<Entity> createdModifiedLaneConnections = new NativeParallelHashSet<Entity>(16, Allocator.TempJob);
             NativeList<Entity> tempNodes = new NativeList<Entity>(count, Allocator.TempJob);
@@ -250,6 +250,7 @@ namespace Traffic.LaneConnections
                         //     generatedConnections[j] = tempConnections[j];
                         // }
 
+#if DEBUG_CONNECTIONS
                         Logger.Debug($"Create modified connection: {tempNodeEntity} source: {sourceEdgeEntity}");
                         Logger.Debug($"Temp Connections ({tempConnections.Length}):");
                         for (var k = 0; k < tempConnections.Length; k++)
@@ -257,6 +258,7 @@ namespace Traffic.LaneConnections
                             Logger.Debug($"[{k}] {tempConnections[k].ToString()}");
                         }
                         Logger.Debug("");
+#endif
                         createdModifiedConnections.Add(tempNodeEntity, new TempModifiedConnections
                         {
                             dataOwner = tempNodeEntity,
@@ -283,15 +285,15 @@ namespace Traffic.LaneConnections
 
             public void Execute(int index) {
                 Entity nodeEntity = keys[index];
-                Logger.Debug($"Checking node: {nodeEntity}");
+                Logger.DebugConnections($"Checking node: {nodeEntity}");
                 if (processedEntities.Contains(nodeEntity))
                 {
-                    Logger.Debug($"Oh, for some reason already processed!!! {nodeEntity}");
+                    Logger.DebugConnections($"Oh, for some reason already processed!!! {nodeEntity}");
                     return;
                 }
                 if (!processedEntities.Add(nodeEntity))
                 {
-                    Logger.Debug($"Adding entity {nodeEntity} to processed entities failed!!");
+                    Logger.DebugConnections($"Adding entity {nodeEntity} to processed entities failed!!");
                 }
                 if (createdModifiedConnections.TryGetFirstValue(nodeEntity, out TempModifiedConnections item, out NativeParallelMultiHashMapIterator<Entity> iterator))
                 {
@@ -299,12 +301,12 @@ namespace Traffic.LaneConnections
                     DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections;
                     if (!modifiedConnectionsBuffer.HasBuffer(nodeEntity))
                     {
-                        Logger.Debug($"No buffer in: {nodeEntity} ({valueCount})");
+                        Logger.DebugConnections($"No buffer in: {nodeEntity} ({valueCount})");
                         modifiedLaneConnections = commandBuffer.AddBuffer<ModifiedLaneConnections>(index, nodeEntity);
                     }
                     else
                     {
-                        Logger.Debug($"Has buffer in: {nodeEntity} ({valueCount})");
+                        Logger.DebugConnections($"Has buffer in: {nodeEntity} ({valueCount})");
                         modifiedLaneConnections = commandBuffer.SetBuffer<ModifiedLaneConnections>(index, nodeEntity);
                     }
                     
@@ -337,7 +339,7 @@ namespace Traffic.LaneConnections
                             laneIndex = item.laneIndex,
                             modifiedConnections = modifiedConnectionEntity,
                         });
-                        Logger.Debug($"Added modified connection to {nodeEntity}: {modifiedConnectionEntity}, e: {item.edgeEntity} i: {item.laneIndex}, connections: {length}");
+                        Logger.DebugConnections($"Added modified connection to {nodeEntity}: {modifiedConnectionEntity}, e: {item.edgeEntity} i: {item.laneIndex}, connections: {length}");
                     } while (createdModifiedConnections.TryGetNextValue(out item, ref iterator));
                 }
             }

@@ -6,15 +6,32 @@
         <IsPackable>false</IsPackable>
         <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
         <Configurations>Debug;Release</Configurations>
-        <Platforms>AnyCPU</Platforms>
+        <ProductionBuildCommand>npm run build</ProductionBuildCommand>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <BuildCommand>npm run build</BuildCommand>
+        <BuildDependsOn>
+            
+        </BuildDependsOn>
+    </PropertyGroup>
+    <PropertyGroup>
+        <StartupCommand>npm run dev</StartupCommand>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <PublishCommand>npm run build</PublishCommand>
+    </PropertyGroup>
+    
+<!--    <ItemGroup>-->
+<!--        &lt;!&ndash; Don't publish the SPA source files, but do show them in the project files list &ndash;&gt;-->
+<!--        <Content Remove="$(SpaRoot)**"/>-->
+<!--        <None Remove="$(SpaRoot)**"/>-->
+<!--        <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**"/>-->
+<!--    </ItemGroup>-->
 
     <ItemGroup>
-        <!-- Don't publish the SPA source files, but do show them in the project files list -->
-        <Content Remove="$(SpaRoot)**"/>
-        <None Remove="$(SpaRoot)**"/>
-        <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**"/>
+        <Script Include="**" Exclude="*.esproj;**\obj\**;**\node_modules\**" />
     </ItemGroup>
     
     <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">

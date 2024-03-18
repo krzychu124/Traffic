@@ -32,7 +32,7 @@
     <!--Imports must be after PropertyGroup block-->
     <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.props"/>
     <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.targets"/>
-
+    
     <ItemGroup>
         <Reference Include="Colossal.Collections">
             <Private>false</Private>
@@ -105,6 +105,12 @@
       <Compile Update="Tools\LaneConnectorToolSystem.Jobs.cs">
         <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
       </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Reinforced.Typings" Version="1.6.3">
+          <PrivateAssets>true</PrivateAssets>
+      </PackageReference>
     </ItemGroup>
 
 </Project>

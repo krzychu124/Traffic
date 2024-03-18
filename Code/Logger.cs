@@ -22,6 +22,11 @@ namespace Traffic
             _log.Info(message);
         }
         
+        [Conditional("DEBUG_CONNECTIONS_SYNC")]
+        public static void DebugConnectionsSync(string message) {
+            _log.Info(message);
+        }
+        
         [Conditional("DEBUG")]
         public static void Debug(string message) {
             _log.Info(message);

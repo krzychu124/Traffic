@@ -1,0 +1,12 @@
+
+.info {
+  position: absolute;
+  top: 20rem;
+  left: 120rem;
+  background-color: white;
+
+  &.inEditor {
+    top: 105rem;
+    left: 220rem;
+  }
+}

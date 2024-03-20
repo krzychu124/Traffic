@@ -1,0 +1,59 @@
+
+.popup {
+  position: absolute;
+  display: block;
+  background-color: rgba(255,255,255,0.8);
+  z-index: 0;
+  pointer-events: auto;
+
+  p+p {
+    margin-top: 0!important;
+  }
+
+  &:hover {
+    z-index: 1;
+    background-color: rgba(255,255,255,1);
+    box-shadow: 0.4em 0.5em 0.5em rgba(68, 68, 68, 0.33);
+  }
+}
+.disableHover {
+  pointer-events: none;
+}
+
+.titleText {
+  font-size: 12rem;
+}
+
+.subtitleText {
+  font-size: 11.5rem;
+}
+
+.text {
+  font-size: 11rem;
+}
+
+.temp {
+  background-color: #e59c55;
+}
+
+.flags {
+  color: #0350a9;
+}
+
+.netPartTitle {
+  display: flex;
+  flex-direction: row;
+
+  background-color: #6df879;
+  border-bottom: 1px solid #058d00;
+
+  &.isEdge {
+    background-color: #6dccf8;
+    border-bottom: 1px solid #00688d;
+  }
+}
+
+.d-flex-row {
+  display: flex;
+  flex-direction: row;
+}

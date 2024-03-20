@@ -19,6 +19,11 @@ declare module "cs2/modding" {
   	reset(): void;
   };
   export type ModRegistrar = (moduleRegistry: ModuleRegistry) => void;
+  export export const findModule: (query: string | RegExp) => [
+  	path: string,
+  	...exports: string[]
+  ][];
+  export export const getModule: (modulePath: string, exportName: string) => any;
   // https://coherent-labs.com/Documentation/cpp-gameface/d1/dea/shape_morphing.html
   // https://coherent-labs.com/Documentation/cpp-gameface/d4/d08/interface_morph_animation.html
   export export interface HTMLImageElement {

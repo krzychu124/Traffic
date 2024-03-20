@@ -1,4 +1,8 @@
-﻿using System.Diagnostics;
+﻿// #define DEBUG_CONNECTIONS
+// #define DEBUG_CONNECTIONS_SYNC
+using System;
+using System.Diagnostics;
+using System.Linq;
 using Game;
 using Game.Common;
 using Game.Net;
@@ -20,7 +24,7 @@ namespace Traffic.LaneConnections
     /// - Node update (when composition didn't change, e.g.: traffic lights, stop signs set/unset)
     /// - Edge update (when composition didn't change significantly e.g.: added sidewalk, barrier, lights, trees)
     /// - Edge split (edge has been split into one or more edges)
-    /// TODO Handle node reduction (Edge tempFlags.Combine - removing 3rd edge may trigger node reduction - generate edge joining two remaining nodes (when matching composition/asset))
+    /// - Edge combine (node reduction) after removing 3rd edge, remaining two may trigger node reduction - generate updated edge joining two remaining nodes (when matching composition/asset))
     /// </summary>
     public partial class SyncCustomLaneConnectionsSystem : GameSystemBase
     {
@@ -66,13 +70,14 @@ namespace Traffic.LaneConnections
                     tempData = SystemAPI.GetComponentLookup<Temp>(true),
                     edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                     nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                    connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                     nodeEdgeMap = tempMap
                 };
                 mapJobHandle = mapEntities.Schedule(_nodeEdgeQuery, Dependency);
 #if DEBUG_CONNECTIONS
                 mapJobHandle.Complete();
                 NativeKeyValueArrays<NodeEdgeKey, Entity> keyValueArrays = tempMap.GetKeyValueArrays(Allocator.Temp);
-                string s = "NodeEdgeKeyPairs:\n";
+                string s = "NodeEdgeKeyPairs (Sync):\n";
                 for (var i = 0; i < keyValueArrays.Length; i++)
                 {
                     var pair = (keyValueArrays.Keys[i], keyValueArrays.Values[i]);
@@ -122,6 +127,7 @@ namespace Traffic.LaneConnections
             [ReadOnly] public ComponentLookup<Temp> tempData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
             [ReadOnly] public ComponentLookup<Node> nodeData;
+            [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
             public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
@@ -145,19 +151,63 @@ namespace Traffic.LaneConnections
                         Temp startNodeTemp = tempData[edge.m_Start];
                         Temp endNodeTemp = tempData[edge.m_End];
                         Logger.DebugConnections($"|Edge|Replace| {entity} T[{temp.m_Original} | {temp.m_Flags}]\n" +
-                            $"Start: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}]\n" +
-                            $"End:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}]");
+                            $"\t\t\t\tStart: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}]\n" +
+                            $"\t\t\t\tEnd:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}]");
 #endif
                     }
                     else if (temp.m_Original != Entity.Null)
                     {
-#if DEBUG_CONNECTIONS
+#if !DEBUG_CONNECTIONS
                         Temp startNodeTemp = tempData[edge.m_Start];
                         Temp endNodeTemp = tempData[edge.m_End];
                         Logger.DebugConnections($"|Edge|HasOriginal| {entity} T[{temp.m_Original} | {temp.m_Flags}]\n" +
                             $"Start: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}]\n" +
                             $"End:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}]");
 #endif
+                        if ((temp.m_Flags & TempFlags.Combine) != 0)
+                        {
+#if DEBUG_CONNECTIONS
+                            Temp startNodeTemp = tempData[edge.m_Start];
+                            Temp endNodeTemp = tempData[edge.m_End];
+                            Edge originalEdge = edgeData[temp.m_Original];
+                            Logger.DebugConnections($"|Edge|HasOriginal|Combine {entity} T[{temp.m_Original} | {temp.m_Flags}]\n" +
+                            $"\t\tO_Start: {originalEdge.m_Start} |T_Start: {edge.m_Start} | T[{startNodeTemp.m_Original} | {startNodeTemp.m_Flags}]\n" +
+                            $"\t\tO_End:   {originalEdge.m_End} |T_End:   {edge.m_End} | T[{endNodeTemp.m_Original} | {endNodeTemp.m_Flags}]");
+
+                            bool2 isSameNode = new bool2(originalEdge.m_Start.Equals(startNodeTemp.m_Original), originalEdge.m_End.Equals(endNodeTemp.m_Original));
+                            bool isStartChanged = !isSameNode.x;
+                            Entity deletedNode = isStartChanged ? originalEdge.m_Start : originalEdge.m_End;
+                            Entity otherNode = !isStartChanged ? originalEdge.m_Start : originalEdge.m_End;
+                            if (connectedEdgeBuffer.HasBuffer(deletedNode))
+                            {
+                                Entity replacementSourceEdge = Entity.Null;
+                                DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeBuffer[deletedNode];
+                                for (var j = 0; j < connectedEdges.Length; j++)
+                                {
+                                    ConnectedEdge deletedConnectedEdge = connectedEdges[j];
+                                    Edge deletedEdge = edgeData[deletedConnectedEdge.m_Edge];
+                                    if (deletedConnectedEdge.m_Edge.Equals(temp.m_Original))
+                                    {
+                                        Logger.DebugConnections($"|Edge|HasOriginal|Combine|TestConnected({j})|Skip| {deletedConnectedEdge.m_Edge} | [{deletedEdge.m_Start}; {deletedEdge.m_End}] ||Nodes deleted: {deletedNode} common: {otherNode}");
+                                        continue;
+                                    }
+                                    Entity node = !deletedEdge.m_Start.Equals(deletedNode) ? deletedEdge.m_Start : deletedEdge.m_End;
+                                    Logger.DebugConnections($"|Edge|HasOriginal|Combine|TestConnected({j})| {deletedConnectedEdge.m_Edge} | [{deletedEdge.m_Start}; {deletedEdge.m_End}] ||Nodes deleted: {deletedNode} common: {otherNode}");
+                                    if (node.Equals(otherNode))
+                                    {
+                                        replacementSourceEdge = deletedConnectedEdge.m_Edge;
+                                        break;
+                                    }
+                                }
+                                if (replacementSourceEdge != Entity.Null)
+                                {
+                                    Logger.DebugConnections($"|Edge|HasOriginal|Combine|FoundDeletedEdge {replacementSourceEdge}");
+                                    nodeEdgeMap.Add(new NodeEdgeKey(otherNode, replacementSourceEdge), entity);
+                                    nodeEdgeMap.Add(new NodeEdgeKey(isStartChanged ? edge.m_End : edge.m_Start, entity), replacementSourceEdge);
+                                }
+                            }
+#endif
+                        }
                     }
                     else
                     {
@@ -167,8 +217,8 @@ namespace Traffic.LaneConnections
                         bool startOriginalIsNode = startNodeTemp.m_Original != Entity.Null && nodeData.HasComponent(startNodeTemp.m_Original);
                         bool endOriginalIsNode = endNodeTemp.m_Original != Entity.Null && nodeData.HasComponent(endNodeTemp.m_Original);
                         Logger.DebugConnections($"|Edge|Else| {entity} T[{temp.m_Original} | {temp.m_Flags}]\n" +
-                            $"Start: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}] isNode: {startOriginalIsNode}\n" +
-                            $"End:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}] isNode: {endOriginalIsNode}");
+                            $"\t\t\t\tStart: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}] isNode: {startOriginalIsNode}\n" +
+                            $"\t\t\t\tEnd:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}] isNode: {endOriginalIsNode}");
 #endif
 
                         // Node Edge mapping
@@ -237,7 +287,6 @@ namespace Traffic.LaneConnections
                 if (!nodeData.HasComponent(temp.m_Original))
                 {
                     Logger.DebugConnectionsSync($"\tSkip, temp {entity} is not a node! (probably edge split)");
-                    //todo handle edge split
                     return;
                 }
 
@@ -271,8 +320,6 @@ namespace Traffic.LaneConnections
                                     LogCompositionData($"\n\tOriginal Edge Composition {tempEdge.m_Original}", originalComposition.m_Edge, originalComposition.m_StartNode, originalComposition.m_EndNode);
 #endif
                                     compositionChanged = CheckComposition(entity, temp.m_Original, tempEdge.m_Original, originalComposition, edgeValue.m_Edge, composition, !edgeValue.m_End, (tempEdge.m_Flags & TempFlags.Modify) != 0);
-                                    // compositionStr += $"(E: {composition.m_Edge} sN: {composition.m_StartNode} eN: {composition.m_EndNode} [s ({netCompositionData[composition.m_StartNode].m_Flags.m_General}) e: ({netCompositionData[composition.m_EndNode].m_Flags.m_General})] " +
-                                    // $"|old| sN: {originalComposition.m_StartNode} eN: {originalComposition.m_EndNode} [s ({netCompositionData[originalComposition.m_StartNode].m_Flags.m_General}) e: ({netCompositionData[originalComposition.m_EndNode].m_Flags.m_General})])";
                                 }
                                 if (tempEdge.m_Original != Entity.Null)
                                 {
@@ -497,7 +544,7 @@ namespace Traffic.LaneConnections
                 {
                     CompositionFlags.Side importantFlags = CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidRightTurn | CompositionFlags.Side.PrimaryTrack | CompositionFlags.Side.SecondaryTrack |
                         CompositionFlags.Side.TertiaryTrack | CompositionFlags.Side.QuaternaryTrack;
-                    //same prefab, same edge direction
+                    // same prefab, same edge direction
                     // check road composition
                     NetCompositionData origEdgeNetCompositionData = netCompositionData[originalComposition.m_Edge];
                     NetCompositionData newEdgeNetCompositionData = netCompositionData[tempComposition.m_Edge];

@@ -19,7 +19,6 @@ namespace Traffic.LaneConnections
         private EntityQuery _query;
         private EntityQuery _definitionQuery;
         private ModificationBarrier3 _modificationBarrier;
-        // private NativeParallelHashMap<Entity, Entity> _tempEntityMap;
 
         protected override void OnCreate() {
             base.OnCreate();
@@ -34,7 +33,6 @@ namespace Traffic.LaneConnections
                 All = new[] { ComponentType.ReadOnly<CreationDefinition>(), ComponentType.ReadOnly<ConnectionDefinition>(), ComponentType.ReadOnly<Updated>() },
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
-            // _tempEntityMap  = new NativeParallelHashMap<Entity, Entity>(8, Allocator.Persistent);
 
             RequireForUpdate(_query);
         }
@@ -102,29 +100,6 @@ namespace Traffic.LaneConnections
                 createdModifiedConnections.Dispose();
                 // UGLY CODE END
             }
-            
-            // GenerateConnectionsJob job = new GenerateConnectionsJob
-            // {
-            //     entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
-            //     tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
-            //     connectedEdgeTypeHandle = SystemAPI.GetBufferTypeHandle<ConnectedEdge>(true),
-            //     nodeData = SystemAPI.GetComponentLookup<Node>(true),
-            //     edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-            //     tempData = SystemAPI.GetComponentLookup<Temp>(true),
-            //     hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
-            //     dataOwnerData = SystemAPI.GetComponentLookup<DataOwner>(true),
-            //     compositionData = SystemAPI.GetComponentLookup<Composition>(true),
-            //     netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
-            //     prefabData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-            //     modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
-            //     connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-            //     generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
-            //     createdModifiedLaneConnections = createdModifiedLaneConnections.AsReadOnly(),
-            //     tempNodes = tempNodes.AsReadOnly(),
-            //     commandBuffer = _modificationBarrier.CreateCommandBuffer().AsParallelWriter(),
-            // };
-            // Logger.Debug($"Other connections {tempNodes.Length}");
-            // JobHandle generateOtherConnectionsHandle = job.Schedule(tempNodes, 1, jobHandle);
 
             tempNodes.Dispose(jobHandle);
             tempEntityMap.Dispose(jobHandle);
@@ -167,7 +142,6 @@ namespace Traffic.LaneConnections
                     }
                     else
                     {
-                        //todo handle edge split
                         Logger.DebugConnections($"Not a node: {temp.m_Original} -> {entity} flags: {temp.m_Flags}");
                     }
                     if (connectedEdgeAccessor.Length > 0)
@@ -220,11 +194,6 @@ namespace Traffic.LaneConnections
                         tempEntityMap.TryGetValue(connectionDefinition.edge, out Entity sourceEdgeEntity))
                     {
                         DynamicBuffer<TempLaneConnection> tempLaneConnections = tempConnectionsAccessor[i];
-                        // Entity modifiedConnectionEntity = commandBuffer.CreateEntity(unfilteredChunkIndex);
-                        // commandBuffer.AddComponent<Temp>(unfilteredChunkIndex, modifiedConnectionEntity, new Temp(connectionDefinition.owner, connectionDefinition.owner != Entity.Null ? TempFlags.Modify : TempFlags.Create));
-                        // commandBuffer.AddComponent<CustomLaneConnection>(unfilteredChunkIndex, modifiedConnectionEntity);
-                        // commandBuffer.AddComponent<DataOwner>(unfilteredChunkIndex, modifiedConnectionEntity, new DataOwner(tempNodeEntity));
-
                         for (int j = 0; j < tempLaneConnections.Length; j++)
                         {
                             if (tempEntityMap.TryGetValue(tempLaneConnections[j].targetEntity, out Entity targetEdgeEntity))
@@ -242,14 +211,6 @@ namespace Traffic.LaneConnections
                                 });
                             }
                         }
-                        //
-                        // DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(unfilteredChunkIndex, modifiedConnectionEntity);
-                        // generatedConnections.ResizeUninitialized(tempConnections.Length);
-                        // for (int j = 0; j < tempLaneConnections.Length; j++)
-                        // {
-                        //     generatedConnections[j] = tempConnections[j];
-                        // }
-
 #if DEBUG_CONNECTIONS
                         Logger.Debug($"Create modified connection: {tempNodeEntity} source: {sourceEdgeEntity}");
                         Logger.Debug($"Temp Connections ({tempConnections.Length}):");
@@ -318,28 +279,20 @@ namespace Traffic.LaneConnections
                         commandBuffer.AddComponent<CustomLaneConnection>(index, modifiedConnectionEntity);
                         commandBuffer.AddComponent<PrefabRef>(index, modifiedConnectionEntity, new PrefabRef(LaneConnectorToolSystem.FakePrefabRef));
                         DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, modifiedConnectionEntity);
+#if DEBUG_CONNECTIONS
                         int length = item.generatedConnections.Length;
-                        // Logger.Debug($"Generated Connections ({item.generatedConnections.Length}):");
-                        // for (var i = 0; i < item.generatedConnections.Length; i++)
-                        // {
-                        //     Logger.Debug($"[{i}] {item.generatedConnections[i].ToString()}");
-                        // }
-                        // Logger.Debug("");
+#endif
                         generatedConnections.CopyFrom(item.generatedConnections);
                         item.generatedConnections.Dispose();
-                        // Logger.Debug($"Generated Connections (clone) ({generatedConnections.Length}):");
-                        // for (var i = 0; i < generatedConnections.Length; i++)
-                        // {
-                        //     Logger.Debug($"[{i}] {generatedConnections[i].ToString()}");
-                        // }
-                        // Logger.Debug("");
                         modifiedLaneConnections.Add(new ModifiedLaneConnections()
                         {
                             edgeEntity = item.edgeEntity,
                             laneIndex = item.laneIndex,
                             modifiedConnections = modifiedConnectionEntity,
                         });
+#if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"Added modified connection to {nodeEntity}: {modifiedConnectionEntity}, e: {item.edgeEntity} i: {item.laneIndex}, connections: {length}");
+#endif
                     } while (createdModifiedConnections.TryGetNextValue(out item, ref iterator));
                 }
             }

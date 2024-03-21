@@ -1,5 +1,5 @@
 ﻿<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="build" type="js.build_tools.npm" nameIsGenerated="true">
+  <configuration default="false" name="UI build" type="js.build_tools.npm">
     <package-json value="$PROJECT_DIR$/UI/package.json" />
     <command value="run" />
     <scripts>

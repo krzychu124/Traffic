@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.VisualStudio.JavaScript.SDK/1.0.628833">
     <PropertyGroup>
-        <SpaRoot>.\</SpaRoot>
+        <UIRoot>.\</UIRoot>
         <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
         <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
         <IsPackable>false</IsPackable>
         <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
         <Configurations>Debug;Release</Configurations>
         <ProductionBuildCommand>npm run build</ProductionBuildCommand>
+        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -25,22 +26,22 @@
     
 <!--    <ItemGroup>-->
 <!--        &lt;!&ndash; Don't publish the SPA source files, but do show them in the project files list &ndash;&gt;-->
-<!--        <Content Remove="$(SpaRoot)**"/>-->
-<!--        <None Remove="$(SpaRoot)**"/>-->
-<!--        <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**"/>-->
+<!--        <Content Remove="$(UIRoot)**"/>-->
+<!--        <None Remove="$(UIRoot)**"/>-->
+<!--        <None Include="$(UIRoot)**" Exclude="$(UIRoot)node_modules\**"/>-->
 <!--    </ItemGroup>-->
 
     <ItemGroup>
         <Script Include="**" Exclude="*.esproj;**\obj\**;**\node_modules\**" />
     </ItemGroup>
     
-    <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
+    <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(UIRoot)node_modules') ">
         <!-- Ensure Node.js is installed -->
         <Exec Command="node --version" ContinueOnError="true">
             <Output TaskParameter="ExitCode" PropertyName="ErrorCode"/>
         </Exec>
         <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE."/>
         <Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..."/>
-        <Exec WorkingDirectory="$(SpaRoot)" Command="npm install"/>
+        <Exec WorkingDirectory="$(UIRoot)" Command="npm install"/>
     </Target>
 </Project>

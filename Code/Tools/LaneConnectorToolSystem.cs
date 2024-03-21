@@ -79,7 +79,7 @@ namespace Traffic.Tools
         private NativeValue<Tooltip> _tooltip;
 
         private Entity _selectedNode;
-        private float _nodeElevation;
+        private NativeValue<float2> _nodeElevation;
         private State _state;
         private StateModifier _stateModifiers = StateModifier.AnyConnector;
         private bool _majorStateModifiersChange;
@@ -136,6 +136,7 @@ namespace Traffic.Tools
             _controlPoints = new NativeList<ControlPoint>(4, Allocator.Persistent);
             _tooltip = new NativeValue<Tooltip>(Allocator.Persistent);
             _modifiedConnectionsTypeSet = new ComponentTypeSet(ComponentType.ReadWrite<ModifiedConnections>(), ComponentType.ReadWrite<ModifiedLaneConnections>());
+            _nodeElevation = new NativeValue<float2>(Allocator.Persistent);
             // Systems
             _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
             _modRaycastSystem = World.GetOrCreateSystemManaged<ModRaycastSystem>();
@@ -156,11 +157,19 @@ namespace Traffic.Tools
                 None = new[] { ComponentType.ReadOnly<Deleted>() }
             });
             // Actions
-            _delAction = new InputAction("LaneConnectorTool_Del", InputActionType.Button, "<keyboard>/delete");
+            _delAction = new InputAction("LaneConnectorTool_Delete", InputActionType.Button, "<keyboard>/delete");
             _applyAction = InputManager.instance.FindAction("Tool", "Apply");
             _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
             FakePrefabRef = EntityManager.CreateEntity(ComponentType.ReadWrite<PrefabRef>());
             Enabled = false;
+        }
+
+        protected override void OnDestroy()
+        {
+            _controlPoints.Dispose();
+            _nodeElevation.Dispose();
+            _tooltip.Dispose();
+            base.OnDestroy();
         }
 
         public void OnKeyPressed(EventModifiers modifiers, KeyCode code) {
@@ -178,6 +187,7 @@ namespace Traffic.Tools
             base.OnStartRunning();
             _mainCamera = Camera.main;
             _controlPoints.Clear();
+            _nodeElevation.Clear();
             _lastControlPoint = default;
             
             _stateModifiers = StateModifier.AnyConnector;
@@ -197,7 +207,7 @@ namespace Traffic.Tools
             base.OnStopRunning();
             _mainCamera = null;
             _selectedNode = Entity.Null;
-            _nodeElevation = 0f;
+            _nodeElevation.value = 0f;
             CleanupIntersectionHelpers();
             _applyAction.shouldBeEnabled = false;
             _secondaryApplyAction.shouldBeEnabled = false;
@@ -696,83 +706,29 @@ namespace Traffic.Tools
             return jobHandle;
         }
 
-        private JobHandle SelectIntersectionNode(JobHandle inputDeps, Entity node) {
+        private JobHandle SelectIntersectionNode(JobHandle inputDeps, Entity node)
+        {
             CleanupIntersectionHelpers();
-            // if (node == Entity.Null && 
-            //     EntityManager.HasComponent<ModifiedConnections>(_selectedNode) &&
-            //     EntityManager.TryGetBuffer<ModifiedLaneConnections>(_selectedNode, true, out DynamicBuffer<ModifiedLaneConnections> buffer) &&
-            //     buffer.Length == 0)
-            // {
-            //     EntityManager.RemoveComponent(_selectedNode, in _modifiedConnectionsTypeSet);
-            // }
             _selectedNode = node;
-            if (node != Entity.Null)
-            {
-                // _state = State.SelectingSourceConnector;
-                // _controlPoints.Clear();
-
-                //TODO move to job
-                EntityCommandBuffer ecb = _toolOutputBarrier.CreateCommandBuffer();
-                Entity e = ecb.CreateEntity();
-                ecb.AddComponent(e, new EditIntersection() { node = node });
-                ecb.AddComponent<Updated>(e);
-                Logger.DebugTool($"Inline Create EditIntersection entity {e}");
-                _nodeElevation = 0;
-                if (EntityManager.HasComponent<Elevation>(node))
+            if (node != Entity.Null){
+                SelectIntersectionNodeJob selectNodeJob = new SelectIntersectionNodeJob
                 {
-                    _nodeElevation = EntityManager.GetComponentData<Elevation>(node).m_Elevation.y;
-                }
-                if (!EntityManager.HasComponent<ModifiedConnections>(node))
-                {
-                    ecb.AddComponent(node, in _modifiedConnectionsTypeSet);
-                    //TODO add logic to validate and remove when no longer valid
-                }
-
-                if (EntityManager.HasBuffer<ConnectedEdge>(node))
-                {
-                    DynamicBuffer<ConnectedEdge> connectedEdges = EntityManager.GetBuffer<ConnectedEdge>(node);
-                    bool anyUpdated = false;
-                    for (var i = 0; i < connectedEdges.Length; i++)
-                    {
-                        ConnectedEdge connectedEdge = connectedEdges[i];
-                        if (!EntityManager.HasComponent<Upgraded>(connectedEdge.m_Edge))
-                        {
-                            continue;
-                        }
-                        Edge edge = EntityManager.GetComponentData<Edge>(connectedEdge.m_Edge);
-                        Upgraded upgraded = EntityManager.GetComponentData<Upgraded>(connectedEdge.m_Edge);
-                        Entity otherNode = Entity.Null;
-                        if (edge.m_Start == node)
-                        {
-                            upgraded.m_Flags.m_Left &= ~(CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn);
-                            otherNode = edge.m_End;
-                        }
-                        else if (edge.m_End == node)
-                        {
-                            upgraded.m_Flags.m_Right &= ~(CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn);
-                            otherNode = edge.m_Start;
-                        }
-                        
-                        if (upgraded.m_Flags == default(CompositionFlags))
-                        {
-                            EntityManager.RemoveComponent<Upgraded>(connectedEdge.m_Edge);
-                        }
-                        else
-                        {
-                            EntityManager.SetComponentData(connectedEdge.m_Edge, upgraded);
-                        }
-                        EntityManager.AddComponent<Updated>(connectedEdge.m_Edge);
-                        EntityManager.AddComponent<Updated>(otherNode);
-                        anyUpdated = true;
-                    }
-                    if (anyUpdated)
-                    {
-                        EntityManager.AddComponent<Updated>(node);
-                    }
-                }
+                    elevationData = SystemAPI.GetComponentLookup<Elevation>(true),
+                    upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
+                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                    modifiedConnectionsData = SystemAPI.GetComponentLookup<ModifiedConnections>(true),
+                    connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                    modifiedConnectionsTypeSet = _modifiedConnectionsTypeSet,
+                    node = node,
+                    nodeElevation = _nodeElevation,
+                    commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
+                };
+                JobHandle jobHandle = selectNodeJob.Schedule(inputDeps);
+                _toolOutputBarrier.AddJobHandleForProducer(jobHandle);
                 PlaySelectedSound();
-                inputDeps = UpdateDefinitions(inputDeps);
+                return  DestroyDefinitions(_definitionQuery, _toolOutputBarrier, jobHandle);
             }
+            
             return inputDeps;
         }
 
@@ -827,19 +783,5 @@ namespace Traffic.Tools
             applyMode = ApplyMode.Clear;
             return SelectIntersectionNode(handle, _selectedNode);
         }
-
-        // private struct SelectEditIntersectionJob : IJob
-        // {
-        //     [ReadOnly] public Entity selectedIntersection;
-        //     public NativeValue<Entity> selected;
-        //     public EntityCommandBuffer commandBuffer;
-        //
-        //     public void Execute() {
-        //         Entity e = commandBuffer.CreateEntity();
-        //         commandBuffer.AddComponent(e, new EditIntersection() { node = selectedIntersection });
-        //         commandBuffer.AddComponent<Updated>(e);
-        //         selected.value = e;
-        //     }
-        // }
     }
 }

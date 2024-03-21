@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using Colossal.Collections;
 using Colossal.Mathematics;
 using Game.Common;

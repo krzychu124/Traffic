@@ -1,5 +1,6 @@
 import { bindValue } from "cs2/api";
-import { DebugData } from "types/traffic";
 import mod from "../../mod.json";
+import { DebugData, UIBindingConstants } from "types/traffic";
 
-export const debugTexts$ = bindValue<DebugData[]>(mod.id, 'debugTexts', []);
+export const debugTexts$ = bindValue<DebugData[]>(mod.id, UIBindingConstants.DEBUG_TEXTS, []);
+export const isDebugVisible$ = bindValue<boolean>(mod.id, UIBindingConstants.IS_DEBUG, false);

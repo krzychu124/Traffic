@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build">
 	<PropertyGroup>
-		<UIProjectTypescriptFolderPath>$(ProjectDir)\..\UI\src\types\traffic.d.ts</UIProjectTypescriptFolderPath>
+		<UIProjectTypescriptFolderPath>$(ProjectDir)\..\UI\src\types\traffic.ts</UIProjectTypescriptFolderPath>
 	</PropertyGroup>
 	<PropertyGroup>
 		<RtTargetFile>$(UIProjectTypescriptFolderPath)</RtTargetFile>

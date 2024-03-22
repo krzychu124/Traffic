@@ -7,6 +7,7 @@ using Game.Common;
 using Game.Net;
 using Game.Tools;
 using Game.UI;
+using Traffic.Common;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -18,6 +19,7 @@ namespace Traffic.Debug
     {
         public override GameMode gameMode => GameMode.GameOrEditor;
         private ValueBinding<DebugData[]> _debugData;
+        private ValueBinding<bool> _isDebugEnabled;
         private EntityQuery _query;
         private Camera _mainCamera;
         private List<DebugData> _datas;
@@ -26,7 +28,9 @@ namespace Traffic.Debug
         {
             base.OnCreate();
             _datas = new List<DebugData>();
-            AddBinding(_debugData = new ValueBinding<DebugData[]>(Mod.MOD_NAME, "debugTexts", Array.Empty<DebugData>(), new ArrayWriter<DebugData>(new ValueWriter<DebugData>())));
+            AddBinding(_debugData = new ValueBinding<DebugData[]>(Mod.MOD_NAME, UIBindingConstants.DEBUG_TEXTS, Array.Empty<DebugData>(), new ArrayWriter<DebugData>(new ValueWriter<DebugData>())));
+            AddBinding(_isDebugEnabled = new ValueBinding<bool>(Mod.MOD_NAME, UIBindingConstants.IS_DEBUG, false));
+            AddBinding(new TriggerBinding<bool>(Mod.MOD_NAME, UIBindingConstants.SET_VISIBILITY, SetVisibility));
             _query = GetEntityQuery(new EntityQueryDesc()
             {
                 All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<ConnectedEdge>(), ComponentType.ReadOnly<NodeGeometry>(), ComponentType.ReadOnly<Road>() },
@@ -41,6 +45,10 @@ namespace Traffic.Debug
         protected override void OnUpdate()
         {
             base.OnUpdate();
+            if (!_isDebugEnabled.value)
+            {
+                return;
+            }
             
             int oldCount = _datas.Count;
             if (_query.IsEmptyIgnoreFilter)
@@ -170,6 +178,11 @@ namespace Traffic.Debug
                 _datas.RemoveRange(499, _datas.Count - 500);
             }
             _debugData.Update(_datas.ToArray());
+        }
+
+        private void SetVisibility(bool value)
+        {
+            _isDebugEnabled.Update(value);
         }
 
         public struct DebugData : IJsonWritable

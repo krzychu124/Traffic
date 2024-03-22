@@ -3,6 +3,7 @@ using Game.Tools;
 using JetBrains.Annotations;
 using Reinforced.Typings.Ast.TypeNames;
 using Reinforced.Typings.Fluent;
+using Traffic.Common;
 using Traffic.Debug;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,8 +21,9 @@ namespace Traffic.Utils
                 config.ExportPureTypings(false);
                 config.RootNamespace("Traffic");
             });
-            builder.AddImport("Entity", "cs2/utils");
+            builder.AddImport("{ Entity }", "cs2/utils");
             builder.Substitute(typeof(Entity), new RtSimpleTypeName("Entity"));
+            builder.ExportAsClass<UIBindingConstants>().DontIncludeToNamespace().WithPublicFields();
             builder.ExportAsEnum<TempFlags>();
             builder.ExportAsInterface<float3>()
                 .WithPublicFields(exportBuilder => { if (exportBuilder.Member.IsStatic) { exportBuilder.Ignore(); } })

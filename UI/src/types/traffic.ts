@@ -2,15 +2,15 @@
 //     Changes to this file may cause incorrect behavior and will be lost if
 //     the code is regenerated.
 
-import Entity from 'cs2/utils';
+import { Entity } from 'cs2/utils';
 
-declare class UIBindingConstants
+export class UIBindingConstants
 {
-	public static DEBUG_TEXTS: string;
-	public static IS_DEBUG: string;
-	public static SET_VISIBILITY: string;
+	public static DEBUG_TEXTS: string = `debugTexts`;
+	public static IS_DEBUG: string = `isDebugEnabled`;
+	public static SET_VISIBILITY: string = `setVisibility`;
 }
-declare enum TempFlags {
+export enum TempFlags {
 	Create = 1,
 	Delete = 2,
 	IsLast = 4,

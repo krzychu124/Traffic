@@ -10,6 +10,8 @@ using Traffic.Rendering;
 using Traffic.Systems;
 using Traffic.Tools;
 using Traffic.UISystems;
+using Traffic.Utils;
+using Unity.Entities;
 using ApplyLaneConnectionsSystem = Traffic.Systems.ApplyLaneConnectionsSystem;
 using ValidationSystem = Traffic.Tools.ValidationSystem;
 
@@ -29,10 +31,9 @@ namespace Traffic
             updateSystem.UpdateAfter<ToolOverlaySystem, AreaRenderSystem>(SystemUpdatePhase.Rendering);
             
             // TODO update TrafficLaneSystem with the latest code from build before applying changes
-            updateSystem.World.GetOrCreateSystemManaged<LaneSystem>().Enabled = false;
+            VanillaSystemHelpers.ModifyLaneSystemUpdateRequirements(updateSystem.World.GetOrCreateSystemManaged<LaneSystem>());
             updateSystem.UpdateBefore<TrafficLaneSystem, LaneSystem>(SystemUpdatePhase.Modification4);
             updateSystem.UpdateBefore<SyncCustomLaneConnectionsSystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
-            // TODO attach fake prefab-ref to custom components (vanilla Apply will succeed)
             updateSystem.UpdateAt<ModificationDataSyncSystem>(SystemUpdatePhase.Modification4B);
             updateSystem.UpdateAt<GenerateLaneConnectionsSystem>(SystemUpdatePhase.Modification3);
 
@@ -56,10 +57,6 @@ namespace Traffic
 
         public void OnDispose() {
             Logger.Info(nameof(OnDispose));
-        }
-
-        public void OnLoad() {
-            Logger.Info(nameof(OnLoad));
         }
     }
 #if DEBUG_TOOL

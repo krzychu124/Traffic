@@ -113,11 +113,14 @@ namespace Traffic.Systems
                 return m_Data.GetHashCode();
             }
 
+            /*NON VANILLA - START*/
             public string GetString() {
                 return $"ConnectionKey=(e: {m_Data.x}, l: {m_Data.y} -> e: {m_Data.z}, l: {m_Data.w})";
             }
+            /*NON VANILLA - END*/
         }
 
+        /*NON VANILLA - START*/
         private struct LaneEndKey : IEquatable<LaneEndKey>
         {
             private int2 _data;
@@ -139,6 +142,7 @@ namespace Traffic.Systems
                 return _data.GetHashCode();
             }
         }
+        /*NON VANILLA - END*/
 
         private struct ConnectPosition
         {
@@ -238,14 +242,13 @@ namespace Traffic.Systems
         {
             public NativeParallelHashMap<LaneKey, Entity> m_OldLanes;
             public NativeParallelHashMap<LaneKey, Entity> m_OriginalLanes;
-
-			public NativeParallelHashMap<Entity, Unity.Mathematics.Random> m_SelectedSpawnables;
+            public NativeParallelHashMap<Entity, Unity.Mathematics.Random> m_SelectedSpawnables;
 
             public LaneBuffer(Allocator allocator)
             {
                 m_OldLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
                 m_OriginalLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
-				m_SelectedSpawnables = new NativeParallelHashMap<Entity, Unity.Mathematics.Random>(10, allocator);
+                m_SelectedSpawnables = new NativeParallelHashMap<Entity, Unity.Mathematics.Random>(10, allocator);
             }
 
             public void Clear()
@@ -381,6 +384,7 @@ namespace Traffic.Systems
                 m_PrefabSpawnableObjectData = SystemAPI.GetComponentLookup<SpawnableObjectData>(true),
                 m_PrefabObjectGeometryData = SystemAPI.GetComponentLookup<ObjectGeometryData>(true),
                 m_PrefabBuildingData = SystemAPI.GetComponentLookup<BuildingData>(true),
+                m_PrefabData = SystemAPI.GetComponentLookup<PrefabData>(true),
                 m_Edges = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 m_Nodes = SystemAPI.GetBufferLookup<ConnectedNode>(true),
                 m_SubLanes = SystemAPI.GetBufferLookup<SubLane>(true),
@@ -542,8 +546,8 @@ namespace Traffic.Systems
             [ReadOnly]
             public ComponentLookup<Overridden> m_OverriddenData;
             
-			[ReadOnly]
-			public ComponentLookup<PseudoRandomSeed> m_PseudoRandomSeedData;
+            [ReadOnly]
+            public ComponentLookup<PseudoRandomSeed> m_PseudoRandomSeedData;
 
             [ReadOnly]
             public ComponentLookup<Game.Objects.Transform> m_TransformData;
@@ -607,6 +611,9 @@ namespace Traffic.Systems
             
             [ReadOnly]
             public ComponentLookup<BuildingData> m_PrefabBuildingData;
+
+            [ReadOnly]
+            public ComponentLookup<PrefabData> m_PrefabData;
             //
             /*NON VANILLA - START*/
             // // [ReadOnly]
@@ -811,7 +818,7 @@ namespace Traffic.Systems
                             netCompositionLane.m_Flags = netLaneData.m_Flags;
                             netCompositionLane.m_Lane = editorContainer.m_Prefab;
                             NetCompositionLane prefabCompositionLaneData = netCompositionLane;
-                            Unity.Mathematics.Random random2 = m_RandomSeed.GetRandom(owner.Index);
+                            Unity.Mathematics.Random random2 = (randomSeeds.Length == 0) ? m_RandomSeed.GetRandom(owner.Index) : randomSeeds[i].GetRandom(PseudoRandomSeed.kSubLane);
                             CreateEdgeLane(chunkIndex, ref random2, owner, laneBuffer, segment2, default(NetCompositionData), default(CompositionData), default(DynamicBuffer<NetCompositionLane>),
                                 prefabCompositionLaneData, new int2(0, 4), new float2(0f, 1f), default(NativeList<LaneAnchor>), default(NativeList<LaneAnchor>), false, tempComponents.Length != 0, ownerTemp);
                         }
@@ -3235,9 +3242,9 @@ namespace Traffic.Systems
                     }
                 }
                 PrefabRef component2 = new PrefabRef(middleConnection.m_ConnectPosition.m_LaneData.m_Lane);
-				CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
                 NodeLane component3 = default(NodeLane);
-				NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     if (m_NetLaneData.HasComponent(middleConnection.m_TargetLane))
@@ -3346,7 +3353,7 @@ namespace Traffic.Systems
                 if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     component4.m_DefaultSpeedLimit = middleConnection.m_TargetComposition.m_SpeedLimit;
-					component4.m_Curviness = NetUtils.CalculateCurviness(curve, netLaneData.m_Width);
+                    component4.m_Curviness = NetUtils.CalculateCurviness(curve, netLaneData.m_Width);
                     component4.m_CarriagewayGroup = middleConnection.m_TargetCarriageway;
                     component4.m_Flags |= (CarLaneFlags.Unsafe | CarLaneFlags.SideConnection);
                     if (middleConnection.m_IsSource)
@@ -3410,20 +3417,20 @@ namespace Traffic.Systems
                     ReplaceTempOwner(ref laneKey2, middleConnection.m_ConnectPosition.m_Owner);
                     GetOriginalLane(laneBuffer, laneKey2, ref temp);
                 }
-				PseudoRandomSeed componentData4 = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData4))
-				{
-					componentData4 = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData4 = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData4))
+                {
+                    componentData4 = new PseudoRandomSeed(ref outRandom);
+                }
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                    }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, item, component4);
@@ -3481,10 +3488,10 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, e, lane);
                     m_CommandBuffer.SetComponent(jobIndex, e, component3);
                     m_CommandBuffer.SetComponent(jobIndex, e, curve);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.SetComponent(jobIndex, e, componentData4);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, componentData4);
+                    }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, component4);
@@ -3539,7 +3546,7 @@ namespace Traffic.Systems
                     }
                 }
                 PrefabRef component2 = new PrefabRef(connectPosition.m_LaneData.m_Lane);
-				CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
                 bool flag = (prefabGeometryData.m_Flags & (GeometryFlags.StraightEdges | GeometryFlags.SmoothSlopes)) == GeometryFlags.StraightEdges;
                 bool flag2 = false;
                 Bezier4x3 bezier4x = default(Bezier4x3);
@@ -3592,7 +3599,7 @@ namespace Traffic.Systems
                     }
                 }
                 NodeLane component3 = default(NodeLane);
-				NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     if (m_NetLaneData.HasComponent(prefabCompositionLaneData.m_Lane))
@@ -3729,7 +3736,7 @@ namespace Traffic.Systems
                 if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     component4.m_DefaultSpeedLimit = compositionData.m_SpeedLimit;
-					component4.m_Curviness = NetUtils.CalculateCurviness(curve2, netLaneData.m_Width);
+                    component4.m_Curviness = NetUtils.CalculateCurviness(curve2, netLaneData.m_Width);
                     component4.m_CarriagewayGroup = (ushort)((b << 8) | prefabCompositionLaneData.m_Carriageway);
                     component4.m_Flags |= (CarLaneFlags.Unsafe | CarLaneFlags.SideConnection);
                     if (isSource)
@@ -3792,20 +3799,20 @@ namespace Traffic.Systems
                     ReplaceTempOwner(ref laneKey2, connectPosition.m_Owner);
                     GetOriginalLane(laneBuffer, laneKey2, ref temp);
                 }
-				PseudoRandomSeed componentData4 = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData4))
-				{
-					componentData4 = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData4 = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData4))
+                {
+                    componentData4 = new PseudoRandomSeed(ref outRandom);
+                }
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve2);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                    }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, item, component4);
@@ -3863,10 +3870,10 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, e, lane);
                     m_CommandBuffer.SetComponent(jobIndex, e, component3);
                     m_CommandBuffer.SetComponent(jobIndex, e, curve2);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.SetComponent(jobIndex, e, componentData4);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, componentData4);
+                    }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, component4);
@@ -3956,8 +3963,8 @@ namespace Traffic.Systems
                     laneFlags &= ~LaneFlags.Track;
                     component2.m_Prefab = m_CarLaneData[component2.m_Prefab].m_NotTrackLanePrefab;
                 }
-				CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
-				NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 EdgeLane edgeLaneData = default(EdgeLane);
                 edgeLaneData.m_EdgeDelta = edgeDelta;
                 Curve curveData = default(Curve);
@@ -4011,7 +4018,7 @@ namespace Traffic.Systems
                 if ((laneFlags & LaneFlags.Road) != 0)
                 {
                     component5.m_DefaultSpeedLimit = compositionData.m_SpeedLimit;
-					component5.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
+                    component5.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
                     component5.m_CarriagewayGroup = (ushort)((segmentIndex.x << 8) | prefabCompositionLaneData.m_Carriageway);
                     if ((laneFlags & LaneFlags.Invert) != 0)
                     {
@@ -4080,7 +4087,7 @@ namespace Traffic.Systems
                 if ((laneFlags & LaneFlags.Track) != 0)
                 {
                     component6.m_SpeedLimit = compositionData.m_SpeedLimit;
-					component6.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
+                    component6.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
                     component6.m_Flags |= TrackLaneFlags.AllowMiddle;
                     if ((laneFlags & LaneFlags.Invert) != 0)
                     {
@@ -4172,11 +4179,11 @@ namespace Traffic.Systems
                     ReplaceTempOwner(ref laneKey2, owner);
                     GetOriginalLane(laneBuffer, laneKey2, ref temp);
                 }
-				PseudoRandomSeed componentData = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
-				{
-					componentData = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
+                {
+                    componentData = new PseudoRandomSeed(ref outRandom);
+                }
                 Entity item;
                 bool flag2 = laneBuffer.m_OldLanes.TryGetValue(laneKey, out item);
                 if (flag2)
@@ -4194,39 +4201,43 @@ namespace Traffic.Systems
                 //     flag2 = true;
                 // }
                 //NON-STOCK-CODE-END
+                bool flag3 = m_PrefabData.IsComponentEnabled(component2.m_Prefab);
                 if (flag2)
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
                     m_CommandBuffer.SetComponent(jobIndex, item, laneData);
                     m_CommandBuffer.SetComponent(jobIndex, item, edgeLaneData);
                     m_CommandBuffer.SetComponent(jobIndex, item, curveData);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData);
-					}
-                    if ((laneFlags & LaneFlags.Road) != 0)
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.SetComponent(jobIndex, item, component5);
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
                     }
-                    if ((laneFlags & LaneFlags.Track) != 0)
+                    if (flag3)
                     {
-                        m_CommandBuffer.SetComponent(jobIndex, item, component6);
-                    }
-                    if ((laneFlags & LaneFlags.Parking) != 0)
-                    {
-                        m_CommandBuffer.SetComponent(jobIndex, item, component7);
-                    }
-                    if ((laneFlags & LaneFlags.Pedestrian) != 0)
-                    {
-                        m_CommandBuffer.SetComponent(jobIndex, item, component8);
-                    }
-                    if ((laneFlags & LaneFlags.Utility) != 0)
-                    {
-                        m_CommandBuffer.SetComponent(jobIndex, item, component3);
-                    }
-                    if (flag)
-                    {
-                        m_CommandBuffer.AddComponent(jobIndex, item, component4);
+                        if ((laneFlags & LaneFlags.Road) != 0)
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, component5);
+                        }
+                        if ((laneFlags & LaneFlags.Track) != 0)
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, component6);
+                        }
+                        if ((laneFlags & LaneFlags.Parking) != 0)
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, component7);
+                        }
+                        if ((laneFlags & LaneFlags.Pedestrian) != 0)
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, component8);
+                        }
+                        if ((laneFlags & LaneFlags.Utility) != 0)
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, component3);
+                        }
+                        if (flag)
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, component4);
+                        }
                     }
                     if (isTemp)
                     {
@@ -4280,33 +4291,36 @@ namespace Traffic.Systems
                 m_CommandBuffer.SetComponent(jobIndex, e, laneData);
                 m_CommandBuffer.SetComponent(jobIndex, e, edgeLaneData);
                 m_CommandBuffer.SetComponent(jobIndex, e, curveData);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-				{
-					m_CommandBuffer.SetComponent(jobIndex, e, componentData);
-				}
-                if ((laneFlags & LaneFlags.Road) != 0)
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                 {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component5);
+                    m_CommandBuffer.SetComponent(jobIndex, e, componentData);
                 }
-                if ((laneFlags & LaneFlags.Track) != 0)
+                if (flag3)
                 {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component6);
-                }
-                if ((laneFlags & LaneFlags.Parking) != 0)
-                {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component7);
-                }
-                if ((laneFlags & LaneFlags.Pedestrian) != 0)
-                {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component8);
-                }
-                if ((laneFlags & LaneFlags.Utility) != 0)
-                {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component3);
-                }
-                if (flag)
-                {
-                    m_CommandBuffer.SetComponent(jobIndex, e, component4);
+                    if ((laneFlags & LaneFlags.Road) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component5);
+                    }
+                    if ((laneFlags & LaneFlags.Track) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component6);
+                    }
+                    if ((laneFlags & LaneFlags.Parking) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component7);
+                    }
+                    if ((laneFlags & LaneFlags.Pedestrian) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component8);
+                    }
+                    if ((laneFlags & LaneFlags.Utility) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component3);
+                    }
+                    if (flag)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, component4);
+                    }
                 }
                 if ((laneFlags & LaneFlags.Master) != 0)
                 {
@@ -4369,7 +4383,7 @@ namespace Traffic.Systems
                     laneData.m_EndNode = new PathNode(owner, (ushort)prefabSubLane.m_NodeIndex.y);
                 }
                 PrefabRef component2 = new PrefabRef(prefabSubLane.m_Prefab);
-				Unity.Mathematics.Random outRandom = random;
+                Unity.Mathematics.Random outRandom = random;
                 Curve curveData = default(Curve);
                 if (original != Entity.Null)
                 {
@@ -4377,13 +4391,13 @@ namespace Traffic.Systems
                 }
                 else
                 {
-					CheckPrefab(ref component2.m_Prefab, ref random, out outRandom, laneBuffer);
+                    CheckPrefab(ref component2.m_Prefab, ref random, out outRandom, laneBuffer);
                     curveData.m_Bezier.a = ObjectUtils.LocalToWorld(transform, prefabSubLane.m_Curve.a);
                     curveData.m_Bezier.b = ObjectUtils.LocalToWorld(transform, prefabSubLane.m_Curve.b);
                     curveData.m_Bezier.c = ObjectUtils.LocalToWorld(transform, prefabSubLane.m_Curve.c);
                     curveData.m_Bezier.d = ObjectUtils.LocalToWorld(transform, prefabSubLane.m_Curve.d);
                 }
-				NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 UtilityLane component3 = default(UtilityLane);
                 if ((netLaneData.m_Flags & LaneFlags.Utility) != 0)
                 {
@@ -4438,7 +4452,7 @@ namespace Traffic.Systems
                 if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     component4.m_DefaultSpeedLimit = 3f;
-					component4.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
+                    component4.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
                     component4.m_CarriagewayGroup = (ushort)laneIndex;
                     if ((netLaneData.m_Flags & LaneFlags.Invert) != 0)
                     {
@@ -4457,7 +4471,7 @@ namespace Traffic.Systems
                 if ((netLaneData.m_Flags & LaneFlags.Track) != 0)
                 {
                     component5.m_SpeedLimit = 3f;
-					component5.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
+                    component5.m_Curviness = NetUtils.CalculateCurviness(curveData, netLaneData.m_Width);
                     component5.m_Flags |= (TrackLaneFlags.AllowMiddle | TrackLaneFlags.Station);
                     if ((netLaneData.m_Flags & LaneFlags.Invert) != 0)
                     {
@@ -4508,19 +4522,19 @@ namespace Traffic.Systems
                         GetOriginalLane(laneBuffer, laneKey2, ref temp);
                     }
                 }
-				PseudoRandomSeed componentData2 = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData2))
-				{
-					componentData2 = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData2 = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData2))
+                {
+                    componentData2 = new PseudoRandomSeed(ref outRandom);
+                }
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
                     m_CommandBuffer.SetComponent(jobIndex, item, curveData);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData2);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData2);
+                    }
                     if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, item, component4);
@@ -4572,10 +4586,10 @@ namespace Traffic.Systems
                 m_CommandBuffer.SetComponent(jobIndex, e, component2);
                 m_CommandBuffer.SetComponent(jobIndex, e, laneData);
                 m_CommandBuffer.SetComponent(jobIndex, e, curveData);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-				{
-					m_CommandBuffer.SetComponent(jobIndex, e, componentData2);
-				}
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                {
+                    m_CommandBuffer.SetComponent(jobIndex, e, componentData2);
+                }
                 if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
                 {
                     m_CommandBuffer.SetComponent(jobIndex, e, component4);
@@ -6159,16 +6173,16 @@ namespace Traffic.Systems
                 return false;
             }
 
-			private bool CheckPrefab(ref Entity prefab, ref Unity.Mathematics.Random random, out Unity.Mathematics.Random outRandom, LaneBuffer laneBuffer)
-			{
-				if (!m_EditorMode)
-				{
-					if (m_PlaceholderObjects.TryGetBuffer(prefab, out DynamicBuffer<PlaceholderObjectElement> bufferData))
+            private bool CheckPrefab(ref Entity prefab, ref Unity.Mathematics.Random random, out Unity.Mathematics.Random outRandom, LaneBuffer laneBuffer)
+            {
+                if (!m_EditorMode)
+                {
+                    if (m_PlaceholderObjects.TryGetBuffer(prefab, out DynamicBuffer<PlaceholderObjectElement> bufferData))
                     {
                         float num = -1f;
                         Entity entity = Entity.Null;
-				    		Entity key = Entity.Null;
-				    		Unity.Mathematics.Random random2 = default(Unity.Mathematics.Random);
+                        Entity key = Entity.Null;
+                        Unity.Mathematics.Random random2 = default(Unity.Mathematics.Random);
                         int num2 = 0;
                         for (int i = 0; i < bufferData.Length; i++)
                         {
@@ -6199,20 +6213,20 @@ namespace Traffic.Systems
                             }
                             SpawnableObjectData spawnableObjectData = m_PrefabSpawnableObjectData[@object];
                             Entity entity2 = (spawnableObjectData.m_RandomizationGroup != Entity.Null) ? spawnableObjectData.m_RandomizationGroup : @object;
-				    			Unity.Mathematics.Random random3 = random;
-				    			random.NextInt();
-				    			random.NextInt();
-				    			if (laneBuffer.m_SelectedSpawnables.TryGetValue(entity2, out Unity.Mathematics.Random item))
+                            Unity.Mathematics.Random random3 = random;
+                            random.NextInt();
+                            random.NextInt();
+                            if (laneBuffer.m_SelectedSpawnables.TryGetValue(entity2, out Unity.Mathematics.Random item))
                             {
                                 num3 += 0.5f;
-				    				random3 = item;
+                                random3 = item;
                             }
                             if (num3 > num)
                             {
                                 num = num3;
                                 entity = @object;
-				    				key = entity2;
-				    				random2 = random3;
+                                key = entity2;
+                                random2 = random3;
                                 num2 = spawnableObjectData.m_Probability;
                             }
                             else if (num3 == num)
@@ -6221,44 +6235,44 @@ namespace Traffic.Systems
                                 if (random.NextInt(num2) < spawnableObjectData.m_Probability)
                                 {
                                     entity = @object;
-				    					key = entity2;
-				    					random2 = random3;
+                                    key = entity2;
+                                    random2 = random3;
                                 }
                             }
                         }
                         if (random.NextInt(100) < num2)
                         {
-				    			laneBuffer.m_SelectedSpawnables.TryAdd(key, random2);
+                                laneBuffer.m_SelectedSpawnables.TryAdd(key, random2);
                             prefab = entity;
-				    			outRandom = random2;
+                            outRandom = random2;
                             return true;
                         }
-				    	outRandom = random;
-				    	random.NextInt();
-				    	random.NextInt();
+                        outRandom = random;
+                        random.NextInt();
+                        random.NextInt();
                         return false;
                     }
-					Entity key2 = prefab;
-					if (m_PrefabSpawnableObjectData.TryGetComponent(prefab, out SpawnableObjectData componentData) && componentData.m_RandomizationGroup != Entity.Null)
-					{
-						key2 = componentData.m_RandomizationGroup;
-					}
-					outRandom = random;
-					random.NextInt();
-					random.NextInt();
-					if (laneBuffer.m_SelectedSpawnables.TryGetValue(key2, out Unity.Mathematics.Random item2))
-					{
-						outRandom = item2;
-					}
-					else
-					{
-						laneBuffer.m_SelectedSpawnables.TryAdd(key2, outRandom);
-					}
-					return true;
-				}
-				outRandom = random;
-				random.NextInt();
-				random.NextInt();
+                    Entity key2 = prefab;
+                    if (m_PrefabSpawnableObjectData.TryGetComponent(prefab, out SpawnableObjectData componentData) && componentData.m_RandomizationGroup != Entity.Null)
+                    {
+                        key2 = componentData.m_RandomizationGroup;
+                    }
+                    outRandom = random;
+                    random.NextInt();
+                    random.NextInt();
+                    if (laneBuffer.m_SelectedSpawnables.TryGetValue(key2, out Unity.Mathematics.Random item2))
+                    {
+                        outRandom = item2;
+                    }
+                    else
+                    {
+                        laneBuffer.m_SelectedSpawnables.TryAdd(key2, outRandom);
+                    }
+                    return true;
+                }
+                outRandom = random;
+                random.NextInt();
+                random.NextInt();
                 return true;
             }
 
@@ -6373,7 +6387,7 @@ namespace Traffic.Systems
                         prefabRef.m_Prefab = m_CarLaneData[prefabRef.m_Prefab].m_NotTrackLanePrefab;
                     }
                 }
-				CheckPrefab(ref prefabRef.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                CheckPrefab(ref prefabRef.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
                 NetLaneData netLaneData = m_NetLaneData[prefabRef.m_Prefab];
                 DynamicBuffer<AuxiliaryNetLane> dynamicBuffer = default(DynamicBuffer<AuxiliaryNetLane>);
                 int num3 = 0;
@@ -6824,20 +6838,20 @@ namespace Traffic.Systems
                         ReplaceTempOwner(ref laneKey2, targetPosition.m_Owner);
                         GetOriginalLane(laneBuffer, laneKey2, ref temp);
                     }
-					PseudoRandomSeed componentData = default(PseudoRandomSeed);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
-					{
-						componentData = new PseudoRandomSeed(ref outRandom);
-					}
+                    PseudoRandomSeed componentData = default(PseudoRandomSeed);
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
+                    {
+                        componentData = new PseudoRandomSeed(ref outRandom);
+                    }
                     if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                     {
                         laneBuffer.m_OldLanes.Remove(laneKey);
                         m_CommandBuffer.SetComponent(jobIndex, item, component2);
                         m_CommandBuffer.SetComponent(jobIndex, item, curve);
-						if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-						{
-							m_CommandBuffer.AddComponent(jobIndex, item, componentData);
-						}
+                        if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        }
                         if ((laneFlags & LaneFlags.Road) != 0)
                         {
                             m_CommandBuffer.SetComponent(jobIndex, item, component5);
@@ -6916,10 +6930,10 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, e, lane);
                     m_CommandBuffer.SetComponent(jobIndex, e, component2);
                     m_CommandBuffer.SetComponent(jobIndex, e, curve);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.SetComponent(jobIndex, e, componentData);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, componentData);
+                    }
                     if ((laneFlags & LaneFlags.Road) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, component5);
@@ -7181,8 +7195,8 @@ namespace Traffic.Systems
                 }
                 PrefabRef component2 = default(PrefabRef);
                 component2.m_Prefab = connectPosition1.m_LaneData.m_Lane;
-				CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
-				NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 Curve curve = default(Curve);
                 if (connectPosition1.m_Tangent.Equals(default(float3)))
                 {
@@ -7236,19 +7250,19 @@ namespace Traffic.Systems
                     ReplaceTempOwner(ref laneKey2, connectPosition2.m_Owner);
                     GetOriginalLane(laneBuffer, laneKey2, ref temp);
                 }
-				PseudoRandomSeed componentData = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
-				{
-					componentData = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
+                {
+                    componentData = new PseudoRandomSeed(ref outRandom);
+                }
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                    }
                     if (isTemp)
                     {
                         m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
@@ -7273,10 +7287,10 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, e, component2);
                     m_CommandBuffer.SetComponent(jobIndex, e, lane);
                     m_CommandBuffer.SetComponent(jobIndex, e, curve);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.SetComponent(jobIndex, e, componentData);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.SetComponent(jobIndex, e, componentData);
+                    }
                     m_CommandBuffer.AddComponent(jobIndex, e, component);
                     if (isTemp)
                     {
@@ -7717,7 +7731,7 @@ namespace Traffic.Systems
                         component2.m_Prefab = targetPosition.m_LaneData.m_Lane;
                     }
                 }
-				CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
+                CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
                 PedestrianLane component3 = default(PedestrianLane);
                 NodeLane component4 = default(NodeLane);
                 Curve component5 = default(Curve);
@@ -7801,11 +7815,11 @@ namespace Traffic.Systems
                     ReplaceTempOwner(ref laneKey2, targetPosition.m_Owner);
                     GetOriginalLane(laneBuffer, laneKey2, ref temp);
                 }
-				PseudoRandomSeed componentData = default(PseudoRandomSeed);
-				if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
-				{
-					componentData = new PseudoRandomSeed(ref outRandom);
-				}
+                PseudoRandomSeed componentData = default(PseudoRandomSeed);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
+                {
+                    componentData = new PseudoRandomSeed(ref outRandom);
+                }
                 CutRange elem;
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
@@ -7813,10 +7827,10 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, component4);
                     m_CommandBuffer.SetComponent(jobIndex, item, component5);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
-					if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
-					{
-						m_CommandBuffer.AddComponent(jobIndex, item, componentData);
-					}
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                    }
                     if (hasSignals)
                     {
                         if (!m_LaneSignalData.HasComponent(item))
@@ -7877,6 +7891,10 @@ namespace Traffic.Systems
                 m_CommandBuffer.SetComponent(jobIndex, e, component4);
                 m_CommandBuffer.SetComponent(jobIndex, e, component5);
                 m_CommandBuffer.SetComponent(jobIndex, e, component3);
+                if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
+                {
+                    m_CommandBuffer.SetComponent(jobIndex, e, componentData);
+                }
                 m_CommandBuffer.AddComponent(jobIndex, e, component);
                 if (hasSignals)
                 {

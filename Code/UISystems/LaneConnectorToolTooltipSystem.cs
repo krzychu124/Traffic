@@ -66,6 +66,7 @@ namespace Traffic.UISystems
                 path = "laneConnectorToolPosition2",
                 color = TooltipColor.Warning,
             };
+            //TODO Add translations
             _stringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"Tools.INFO[{t:G}]");
             _warnQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
             _errorQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Error>(), ComponentType.Exclude<Deleted>());

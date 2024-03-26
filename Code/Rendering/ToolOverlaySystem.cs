@@ -76,6 +76,8 @@ namespace Traffic.Rendering
 
             _colorSet = new ConnectorColorSet
             {
+                fillActiveColor = Color.clear,
+                outlineActiveColor = Color.white,
                 fillSourceColor = Color.clear,
                 outlineSourceColor = new Color(0f, 0.83f, 1f, 0.85f),
                 fillSourceTrackColor = Color.clear,
@@ -93,7 +95,7 @@ namespace Traffic.Rendering
         }
 
         protected override void OnUpdate() {
-            if (_toolSystem.activeTool == _laneConnectorToolSystem)
+            if (_toolSystem.activeTool == _laneConnectorToolSystem && !_laneConnectorToolSystem.UIDisabled)
             {
                 JobHandle jobHandle = default;
                 /*LaneConnectorOverlayJob laneConnectorOverlayJob = new LaneConnectorOverlayJob
@@ -387,7 +389,7 @@ namespace Traffic.Rendering
                     }
                     floatingPosition = state == LaneConnectorToolSystem.State.SelectingTargetConnector && connector != connector2;//TODO bug
                 }
-                Color dimmMain = state == LaneConnectorToolSystem.State.SelectingTargetConnector ? new Color(1f, 1f, 1f, 0.5f) : Color.white;
+                Color dimmMain = state == LaneConnectorToolSystem.State.SelectingTargetConnector ? new Color(1f, 1f, 1f, 0.9f) : new Color(1f, 1f, 1f, 0.75f);
                 BufferAccessor<Connection> connectionAccessor = chunk.GetBufferAccessor(ref connectionType);
                 NativeList<ConnectionRenderData> hovered = new NativeList<ConnectionRenderData>(Allocator.Temp);
                 Color dimm;
@@ -411,7 +413,7 @@ namespace Traffic.Rendering
                         Bezier4x3 curve = connection.curve;
                         if (IsNotMatchingModifier(currentModifier, connection))
                         {
-                            dimm = new Color(1, 1, 1, 0.1f);
+                            dimm = new Color(1, 1, 1, 0.3f);
                         }
                         else
                         {
@@ -427,9 +429,9 @@ namespace Traffic.Rendering
                             }
                             color = (state == LaneConnectorToolSystem.State.SelectingSourceConnector || AreEqual(connectorNode2, connection.targetNode)) 
                                 ? state == LaneConnectorToolSystem.State.SelectingTargetConnector 
-                                    ? new Color(0.88f, 0.43f, 0f) 
-                                    : connection.isForbidden ? Color.red : new Color(0f, 0.88f, 0f) 
-                                : connection.isForbidden ? Color.red : new Color(0f, 0.88f, 0f) * dimm;
+                                    ? new Color(1f, 0f, 0.15f, 0.9f) 
+                                    : connection.isForbidden ? new Color(1f, 0f, 0.15f, 0.9f) : colorSet.outlineActiveColor 
+                                : connection.isForbidden ? new Color(1f, 0f, 0.15f, 0.9f) : colorSet.outlineActiveColor * dimm;
                             color2 = Color.clear;
                             width = connection.isForbidden ? 0.25f : connection.isUnsafe ? 0.35f : 0.55f;
                             hovered.Add(new ConnectionRenderData() {bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
@@ -437,7 +439,7 @@ namespace Traffic.Rendering
                         }
                         else if (AreEqual(connectorNode, connection.targetNode))
                         {
-                            color = connection.isForbidden ? Color.red : new Color(0.75f, 0f, 0.34f);
+                            color = connection.isForbidden ? new Color(1f, 0f, 0.15f, 0.9f) : new Color(0.75f, 0f, 0.34f);
                             color2 = Color.clear;
                             width = connection.isForbidden ? 0.25f : connection.isUnsafe ? 0.35f : 0.55f;
                             hovered.Add(new ConnectionRenderData() {bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden});
@@ -515,11 +517,11 @@ namespace Traffic.Rendering
                         Bezier4x3 connectionBezier = NetUtils.FitCurve(s.position, s.direction, -t.direction, t.position);
                         if (isUnsafe)
                         {
-                            overlayBuffer.DrawDashedCurve(new Color(0.63f, 1f, 0f), new Color(0.63f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, 1.2f, 0.4f);
+                            overlayBuffer.DrawDashedCurve(new Color(0.38f, 1f, 0f), new Color(0.38f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, 1.2f, 0.4f);
                         }
                         else
                         {
-                            overlayBuffer.DrawCurve(new Color(0.63f, 1f, 0f), new Color(0.63f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, float2.zero);
+                            overlayBuffer.DrawCurve(new Color(0.38f, 1f, 0f), new Color(0.38f, 1f, 0f), 0f, 0, connectionBezier, 0.45f, float2.zero);
                         }
                     }
                 }
@@ -590,6 +592,8 @@ namespace Traffic.Rendering
 
         private struct ConnectorColorSet
         {
+            public Color fillActiveColor;
+            public Color outlineActiveColor;
             public Color fillSourceColor;
             public Color outlineSourceColor;
             public Color fillSourceTrackColor;

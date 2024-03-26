@@ -11,7 +11,6 @@ using Traffic.Systems;
 using Traffic.Tools;
 using Traffic.UISystems;
 using Traffic.Utils;
-using Unity.Entities;
 using ApplyLaneConnectionsSystem = Traffic.Systems.ApplyLaneConnectionsSystem;
 using ValidationSystem = Traffic.Tools.ValidationSystem;
 
@@ -21,6 +20,8 @@ namespace Traffic
     public class Mod : IMod
     {
         public const string MOD_NAME = "Traffic";
+        
+        private ModSettings _modSettings;
 
         public void OnLoad(UpdateSystem updateSystem) {
             Logger.Info(nameof(OnLoad));
@@ -52,10 +53,14 @@ namespace Traffic
             // updateSystem.UpdateAt<ApplyTool>(SystemUpdatePhase.ApplyTool);
             // updateSystem.UpdateAt<ClearTool>(SystemUpdatePhase.ClearTool);
 #endif
+            _modSettings = new ModSettings(this);
+            _modSettings.RegisterInOptionsUI();
         }
 
         public void OnDispose() {
             Logger.Info(nameof(OnDispose));
+            _modSettings.UnregisterInOptionsUI();
+            _modSettings = null;
         }
     }
 #if DEBUG_TOOL

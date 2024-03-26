@@ -684,7 +684,6 @@ namespace Traffic.Tools
             {
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                laneData = SystemAPI.GetComponentLookup<Lane>(true),
                 prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
                 connectionsBuffer = SystemAPI.GetBufferLookup<LaneConnections.LaneConnection>(true),
                 connectionsBufferData = SystemAPI.GetBufferLookup<Connection>(true),
@@ -753,35 +752,71 @@ namespace Traffic.Tools
             }
         }
 
-        private JobHandle ResetConnections(JobHandle handle) {
-            DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnectionsEnumerable = EntityManager.GetBuffer<ModifiedLaneConnections>(_selectedNode, false);
-            for (var i = 0; i < modifiedLaneConnectionsEnumerable.Length; i++)
-            {
-                var modified = modifiedLaneConnectionsEnumerable[i].modifiedConnections;
-                if (modified != Entity.Null)
-                {
-                    EntityManager.AddComponent<Deleted>(modified);
-                }
-            }
-            modifiedLaneConnectionsEnumerable.Clear();
-            // DynamicBuffer<GeneratedConnection> generatedConnections = EntityManager.GetBuffer<GeneratedConnection>(_selectedNode, false);
-            // generatedConnections.Clear();
-            // update node and connected edges + their nodes
-            EntityManager.AddComponent<Updated>(_selectedNode);
-            DynamicBuffer<ConnectedEdge> edges = EntityManager.GetBuffer<ConnectedEdge>(_selectedNode, true);
-            if (edges.Length > 0)
-            {
-                //update connected nodes of every edge
-                for (var j = 0; j < edges.Length; j++)
-                {
-                    EntityManager.AddComponent<Updated>(edges[j].m_Edge);
-                    Edge e = EntityManager.GetComponentData<Edge>(edges[j].m_Edge);
-                    Entity otherNode = e.m_Start == _selectedNode ? e.m_End : e.m_Start;
-                    EntityManager.AddComponent<Updated>(otherNode);
-                }
-            }
+        private JobHandle ResetNodeConnections(JobHandle handle) {
+            Logger.DebugTool($"[Resetting Node Lane Connections {UnityEngine.Time.frameCount}] at {_selectedNode}");
             applyMode = ApplyMode.Clear;
-            return SelectIntersectionNode(handle, _selectedNode);
+            _lastControlPoint = default;
+            _controlPoints.Clear();
+            if (EntityManager.HasBuffer<ModifiedLaneConnections>(_selectedNode))
+            {
+                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
+            }
+
+            NativeArray<Entity> entities = new NativeArray<Entity>(1, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            entities[0] = _selectedNode;
+            JobHandle removeConnectionsHandle = new RemoveLaneConnectionsJob()
+            {
+                entities = entities,
+                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
+                connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                modifiedLaneConnectionsData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                commandBuffer = _toolOutputBarrier.CreateCommandBuffer().AsParallelWriter(),
+            }.Schedule(1, handle);
+            entities.Dispose(removeConnectionsHandle);
+            _toolOutputBarrier.AddJobHandleForProducer(removeConnectionsHandle);
+            return UpdateDefinitions(removeConnectionsHandle, true);
+        }
+
+        internal void ResetAllConnections()
+        {
+            Logger.DebugTool("Resetting All Lane Connections");
+            _lastControlPoint = default;
+            _selectedNode = Entity.Null;
+            _controlPoints.Clear();
+            CleanupIntersectionHelpers();
+            
+            EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<ModifiedLaneConnections, Node>()
+                .WithNone<Deleted>()
+                .Build(EntityManager);
+            if (!query.IsEmptyIgnoreFilter)
+            {
+                NativeArray<Entity> entities = query.ToEntityArray(Allocator.TempJob);
+                Logger.DebugTool($"Resetting All Lane Connections from {entities.Length} nodes");
+                EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+                JobHandle removeConnectionsHandle = new RemoveLaneConnectionsJob()
+                {
+                    entities = entities,
+                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                    deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
+                    connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                    modifiedLaneConnectionsData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                    commandBuffer = commandBuffer.AsParallelWriter(),
+                }.Schedule(entities.Length, Dependency);
+                entities.Dispose(removeConnectionsHandle);
+                removeConnectionsHandle.Complete();
+                commandBuffer.Playback(EntityManager);
+                commandBuffer.Dispose();
+                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
+            }
+            query.Dispose();
+            
+            // exist tool in case it's still active
+            if (m_ToolSystem.activeTool == this)
+            {
+                m_ToolSystem.activeTool = m_DefaultToolSystem;
+            }
         }
     }
 }

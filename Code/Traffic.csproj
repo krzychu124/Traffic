@@ -108,6 +108,9 @@
       <Compile Update="Tools\LaneConnectorToolSystem.SelectIntersectionNodeJob.cs">
         <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
       </Compile>
+      <Compile Update="Tools\LaneConnectorToolSystem.RemoveLaneConnectionsJob.cs">
+        <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

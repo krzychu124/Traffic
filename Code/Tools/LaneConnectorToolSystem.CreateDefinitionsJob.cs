@@ -26,7 +26,6 @@ namespace Traffic.Tools
             [ReadOnly] public Entity intersectionNode;
             [ReadOnly] public NativeList<ControlPoint> controlPoints;
             [ReadOnly] public ComponentLookup<Connector> connectorData;
-            [ReadOnly] public ComponentLookup<Lane> laneData;
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public BufferLookup<Connection> connectionsBufferData;
             [ReadOnly] public BufferLookup<LaneConnections.LaneConnection> connectionsBuffer;
@@ -128,23 +127,25 @@ namespace Traffic.Tools
                     }
                 }
 
-                DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedConnectionBuffer[intersectionNode];
+                bool foundModifiedSource = false;
+                bool connectionExists = false;
                 DynamicBuffer<ConnectorElement> connectorElements = connectorElementsBuffer[editingIntersection];
                 NativeHashMap<ConnectorKey, Entity> connectorsMap = new NativeHashMap<ConnectorKey, Entity>(connectorElements.Length, Allocator.Temp);
                 FillConnectorMap(connectorElements, connectorsMap);
-
-                bool foundModifiedSource = false;
-                bool connectionExists = false;
-                for (var i = 0; i < modifiedConnections.Length; i++)
+                if (modifiedConnectionBuffer.HasBuffer(intersectionNode))
                 {
-                    ModifiedLaneConnections modifiedConnection = modifiedConnections[i];
-                    if (connectorsMap.TryGetValue(new ConnectorKey(modifiedConnection.edgeEntity, modifiedConnection.laneIndex), out Entity sourceConnectorEntity))
+                    DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedConnectionBuffer[intersectionNode];
+                    for (var i = 0; i < modifiedConnections.Length; i++)
                     {
-                        foundModifiedSource |= sourceConnectorEntity == firstConnectorEntity;
-                        CreateDefinitions(firstConnectorEntity, sourceConnectorEntity, connectorData[sourceConnectorEntity], nextConnector, modifiedConnection, connectorsMap, ref connectionExists);
+                        ModifiedLaneConnections modifiedConnection = modifiedConnections[i];
+                        if (connectorsMap.TryGetValue(new ConnectorKey(modifiedConnection.edgeEntity, modifiedConnection.laneIndex), out Entity sourceConnectorEntity))
+                        {
+                            foundModifiedSource |= sourceConnectorEntity == firstConnectorEntity;
+                            CreateDefinitions(firstConnectorEntity, sourceConnectorEntity, connectorData[sourceConnectorEntity], nextConnector, modifiedConnection, connectorsMap, ref connectionExists);
+                        }
                     }
                 }
-                
+
                 if (state == State.SelectingTargetConnector)
                 {
                     if (nextConnectorValid)
@@ -246,7 +247,6 @@ namespace Traffic.Tools
                         connection.method,
                         connection.isUnsafe,
                         connection.curve,
-                        // NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
                         ConnectionFlags.Create | ConnectionFlags.Essential
                     );
                     tempLaneConnections.Add(tempConnection);
@@ -405,24 +405,6 @@ namespace Traffic.Tools
                 return result;
             }
 
-            private Entity FindModifiedConnection(Connector connector, Entity owner) {
-                if (modifiedConnectionBuffer.HasBuffer(owner))
-                {
-                    Logger.Debug($"Searching for modified connection: {connector.edge} -> {connector.laneIndex}");
-                    DynamicBuffer<ModifiedLaneConnections> connections = modifiedConnectionBuffer[owner];
-                    for (var i = 0; i < connections.Length; i++)
-                    {
-                        ModifiedLaneConnections laneConnections = connections[i];
-                        if (laneConnections.edgeEntity == connector.edge && laneConnections.laneIndex == connector.laneIndex)
-                        {
-                            return laneConnections.modifiedConnections;
-                        }
-                    }
-                }
-
-                return Entity.Null;
-            }
-
             private PathMethod StateModifierToPathMethod(StateModifier modifier) {
                 PathMethod method = 0;
                 switch (modifier)
@@ -457,32 +439,6 @@ namespace Traffic.Tools
                         return PathMethod.Road | PathMethod.Track;
                 }
                 return 0;
-            }
-
-            private bool FindConnection(Connector sourceConnector, Connector targetConnector, DynamicBuffer<LaneConnections.LaneConnection> connections, out int2 connectionIndex) {
-                for (int i = 0; i < connections.Length; i++)
-                {
-                    LaneConnections.LaneConnection connection = connections[i];
-                    if (connectionsBufferData.HasBuffer(connection.connection))
-                    {
-                        var data = connectionsBufferData[connection.connection];
-                        for (var j = 0; j < data.Length; j++)
-                        {
-                            Connection laneConnection = data[j];
-                            if (laneConnection.sourceNode.OwnerEquals(new PathNode(sourceConnector.edge, 0)) &&
-                                (laneConnection.sourceNode.GetLaneIndex() & 0xff) == sourceConnector.laneIndex &&
-                                laneConnection.targetNode.OwnerEquals(new PathNode(targetConnector.edge, 0)) &&
-                                (laneConnection.targetNode.GetLaneIndex() & 0xff) == targetConnector.laneIndex)
-                            {
-                                connectionIndex = new int2(i, j);
-                                return true;
-                            }
-                        }
-                    }
-                }
-
-                connectionIndex = -1;
-                return false;
             }
 
             private void FilterBySource(Connector sourceConnector, DynamicBuffer<LaneConnections.LaneConnection> connections, NativeList<Connection> results) {

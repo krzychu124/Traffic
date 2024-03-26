@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define DEBUG_TOOL
+using System;
 using System.Linq;
 using System.Text;
 using Colossal.Collections;
@@ -116,7 +117,7 @@ namespace Traffic.Tools
         }
 
         public Tooltip tooltip => _tooltip.value;
-
+        public bool UIDisabled => (m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) != 0;
 
         public override PrefabBase GetPrefab() {
             return null;
@@ -242,7 +243,7 @@ namespace Traffic.Tools
                 {
                     _majorStateModifiersChange = true;
                 }
-                if (Keyboard.current.altKey.isPressed)
+                if (Keyboard.current.altKey.isPressed && _stateModifiers != StateModifier.TrackOnly)
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
                 }
@@ -252,7 +253,7 @@ namespace Traffic.Tools
                 }
             } else if (_state == State.SelectingTargetConnector) {
                 StateModifier prev = _stateModifiers;
-                if (Keyboard.current.altKey.isPressed)
+                if (Keyboard.current.altKey.isPressed && prev != StateModifier.TrackOnly)
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
                 }
@@ -288,7 +289,8 @@ namespace Traffic.Tools
                 if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
                     EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
                 {
-                    input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
+                    ConnectionType allowed = (_stateModifiers & StateModifier.MakeUnsafe) != 0 ? (ConnectionType.Road | ConnectionType.Strict) : (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
+                    input.connectionType = sourceConnector.connectionType & allowed;
                 }
                 else
                 {
@@ -356,67 +358,67 @@ namespace Traffic.Tools
 
             if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
             {
-                
-                JobHandle result;
                 if (_state == State.SelectingSourceConnector && Keyboard.current.deleteKey.wasPressedThisFrame)
                 {
-                    return ResetConnections(inputDeps);
+                    return ResetNodeConnections(inputDeps);
                 }
-                
                 if (_secondaryApplyAction.WasPressedThisFrame())
                 {
-                    result = Cancel(inputDeps);
+                    return Cancel(inputDeps);
                 }
-                else if (_majorStateModifiersChange || _minorStateModifiersChange)
+                if (_majorStateModifiersChange || _minorStateModifiersChange)
                 {
-                    result = Update(inputDeps);
+                    return Update(inputDeps);
                 }
-                else if ((_state != 0 || !_applyAction.WasPressedThisFrame()) &&
-                    (_state == State.Default || !_applyAction.WasReleasedThisFrame()))
+                if (_applyAction.WasPressedThisFrame())
                 {
-                    result = Update(inputDeps);
+                    return Apply(inputDeps);
                 }
-                else
-                {
-                    result = Apply(inputDeps);
-                }
-                return result;
+                
+                return Update(inputDeps);
             }
 
             return Clear(inputDeps);
         }
 
 
-        private JobHandle Apply(JobHandle inputDeps) {
+        private JobHandle Apply(JobHandle inputDeps)
+        {
+            Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}] State: {_state}");
             switch (_state)
             {
                 case State.Default:
                     if (IsApplyAllowed(useVanilla: false) && GetRaycastResult(out Entity entity, out RaycastHit _) &&
                         EntityManager.HasComponent<Node>(entity))
                     {
+                        Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|Entity: {entity}");
                         applyMode = ApplyMode.None;
                         _state = State.SelectingSourceConnector;
                         _controlPoints.Clear();
                         return SelectIntersectionNode(inputDeps, entity);
                     }
+                    Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default| Not allowed or miss, updating!");
                     return Update(inputDeps);
 
                 case State.SelectingSourceConnector:
-                    if (IsApplyAllowed(useVanilla: false))
+                    if (IsApplyAllowed(useVanilla: false) && 
+                        GetCustomRaycastResult(out ControlPoint controlPointSource) &&
+                        EntityManager.TryGetComponent(controlPointSource.m_OriginalEntity, out Connector sourceConnector) &&
+                        sourceConnector.connectorType == ConnectorType.Source)
                     {
+                        _lastControlPoint = controlPointSource;
+                        _controlPoints.Add(in controlPointSource);
+                        // _controlPoints.Add(in controlPointSource);
+                        PlaySelectedSound();
+                        _state = State.SelectingTargetConnector;
                         applyMode = ApplyMode.Apply;
-                        _controlPoints.Clear();
-                        if (GetCustomRaycastResult(out ControlPoint controlPoint) && EntityManager.TryGetComponent(controlPoint.m_OriginalEntity, out Connector connector) && connector.connectorType == ConnectorType.Source)
-                        {
-                            _lastControlPoint = controlPoint;
-                            _controlPoints.Add(in controlPoint);
-                            _controlPoints.Add(in controlPoint);
-                            PlaySelectedSound();
-                            _state = State.SelectingTargetConnector;
-                            inputDeps = UpdateDefinitions(inputDeps);
-                        }
+                        inputDeps = UpdateDefinitions(inputDeps);
+                        Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectSource| Hit!");
                         return inputDeps;
                     }
+                    Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectSource| Miss!");
+                    applyMode = ApplyMode.Clear;
+                    _controlPoints.Clear();
                     _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_PlaceBuildingFailSound);
                     inputDeps = Update(inputDeps);
                     break;
@@ -435,13 +437,12 @@ namespace Traffic.Tools
                     {
                         if (GetCustomRaycastResult(out ControlPoint controlPoint) && EntityManager.TryGetComponent(controlPoint.m_OriginalEntity, out Connector connector))
                         {
-                            Logger.Debug($"Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
+                            Logger.Debug($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
                             if (connector.connectorType == ConnectorType.Target)
                             {
-                                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
                                 if (_controlPoints.Length > 0)
                                 {
-
+                                    _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_NetStartSound);
                                     ControlPoint point = _controlPoints[0];
                                     _lastControlPoint = point;
                                     _controlPoints.Clear();
@@ -450,17 +451,21 @@ namespace Traffic.Tools
                                 }
                                 else
                                 {
+                                    _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_NetCancelSound);
                                     _lastControlPoint = default;
                                     _controlPoints.Clear();
                                     _state = State.SelectingSourceConnector;
                                 }
                                 applyMode = ApplyMode.Apply;
+                                Logger.Debug($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Upcoming State: {_state}");
                                 return UpdateDefinitions(inputDeps, true);
                             }
                         }
+                        Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Miss!");
                     }
                     else
                     {
+                        Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| NotAllowed or isTempEmpty: {_tempConnectionQuery.IsEmptyIgnoreFilter}");
                         applyMode = ApplyMode.Clear;
                         return Update(inputDeps);
                     }
@@ -470,6 +475,7 @@ namespace Traffic.Tools
                 // case State.RemovingTargetConnections:
                     // break;
             }
+            Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]| Different state: {_state}");
             return inputDeps;
         }
 
@@ -485,13 +491,14 @@ namespace Traffic.Tools
                 {
                     if (_controlPoints.Length == 0)
                     {
+                        Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Default, no control points: {forceUpdate} | last: {_lastControlPoint.m_OriginalEntity}, raycasted: {controlPoint.m_OriginalEntity}");
                         _lastControlPoint = controlPoint;
                         _controlPoints.Add(in controlPoint);
                         applyMode = ApplyMode.Clear;
                         return UpdateDefinitions(inputHandle);
                     }
-                    Logger.DebugTool($"[Update] Default, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
-                    if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint.m_OriginalEntity)/* TODO fix bug originalDeletedSystem && !forceUpdate*/)
+                    Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Default, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
+                    if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint.m_OriginalEntity))
                     {
                         applyMode = ApplyMode.None;
                     }
@@ -532,6 +539,7 @@ namespace Traffic.Tools
                 _lastControlPoint = default;
                 _state = State.SelectingSourceConnector;
                 applyMode = ApplyMode.Clear;
+                Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Major change!");
                 return UpdateDefinitions(inputHandle, updateEditIntersection: true);
             }
 
@@ -541,22 +549,22 @@ namespace Traffic.Tools
                 switch (_state)
                 {
                     case State.SelectingSourceConnector:
-                        Logger.DebugTool($"[Update] SelectSource {controlPoint2.m_OriginalEntity}");
+                        Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectSource {controlPoint2.m_OriginalEntity}");
                         if (_controlPoints.Length > 0 && _controlPoints[0].m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
                         {
-                            Logger.DebugTool($"[Update] SelectSource-nothing");
+                            Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectSource-nothing");
                             applyMode = ApplyMode.None;
                             return inputHandle;
                         }
                         _controlPoints.Clear();
                         _controlPoints.Add(controlPoint2);
                         _lastControlPoint = controlPoint2;
-                        applyMode = ApplyMode.Clear;
-                        Logger.DebugTool($"[Update] SelectSource-clear");
-                        return UpdateDefinitions(inputHandle);
+                        applyMode = ApplyMode.None;
+                        Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectSource-clear");
+                        return inputHandle;
 
                     case State.SelectingTargetConnector:
-                        Logger.DebugTool($"[Update] SelectTarget {controlPoint2.m_OriginalEntity}");
+                        Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectTarget {controlPoint2.m_OriginalEntity}");
                         if (!minorChange && _controlPoints.Length > 1 && _lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
                         {
                             if (!_lastControlPoint.m_Position.Equals(controlPoint2.m_Position))
@@ -568,7 +576,6 @@ namespace Traffic.Tools
                                 _controlPoints.Add(in controlPoint2);
                             }
                             applyMode = ApplyMode.None;
-                            Logger.DebugTool($"[Update] SelectTarget-nothing");
                             return inputHandle;
                         }
                         _lastControlPoint = controlPoint2;
@@ -588,14 +595,14 @@ namespace Traffic.Tools
             //TODO needs more tests (not quite sure if reliable) 
             if (_tempQuery.IsEmptyIgnoreFilter && !_definitionQuery.IsEmptyIgnoreFilter && !_editIntersectionQuery.IsEmptyIgnoreFilter && _selectedNode != Entity.Null)
             {
-                Logger.DebugTool($"[Update] Reset: {_lastControlPoint.m_OriginalEntity} | {_selectedNode}");
+                Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Reset: {_lastControlPoint.m_OriginalEntity} | {_selectedNode}");
                 _lastControlPoint = default;
                 applyMode = ApplyMode.Clear;
                 return UpdateDefinitions(inputHandle);
             }
             if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
             {
-                Logger.DebugTool($"[Update] TheSame: {_lastControlPoint.m_OriginalEntity}, force: {forceUpdate}");
+                Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] TheSame: {_lastControlPoint.m_OriginalEntity}, force: {forceUpdate}");
                  // improve Vanilla OriginalDeleted result for custom objects lifetime (fix bug)
                 //  if (forceUpdate || minorChange)
                 // {
@@ -609,7 +616,7 @@ namespace Traffic.Tools
             }
             else if (!_lastControlPoint.Equals(default))
             {
-                Logger.DebugTool($"[Update] Different, updating: ({_lastControlPoint.m_Position}) {_lastControlPoint.m_OriginalEntity}");
+                Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Different, updating: ({_lastControlPoint.m_Position}) {_lastControlPoint.m_OriginalEntity}");
                 _lastControlPoint = default;
                 if (_controlPoints.Length > 0)
                 {
@@ -617,14 +624,15 @@ namespace Traffic.Tools
                 }
 
                 applyMode = ApplyMode.Clear;
-                inputHandle = UpdateDefinitions(inputHandle);
+                return UpdateDefinitions(inputHandle);
             }
-            Logger.DebugTool($"[Update] SomethingElse {_lastControlPoint.m_HitPosition} | {_lastControlPoint.m_OriginalEntity}");
+            Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SomethingElse {_lastControlPoint.m_HitPosition} | {_lastControlPoint.m_OriginalEntity}");
             return inputHandle;
         }
 
         private JobHandle Cancel(JobHandle inputHandle) {
             applyMode = ApplyMode.None;
+            Logger.DebugTool($"[Cancel {UnityEngine.Time.frameCount}] State: {_state}");
             switch (_state)
             {
                 case State.Default:
@@ -662,6 +670,7 @@ namespace Traffic.Tools
             if (!_editIntersectionQuery.IsEmptyIgnoreFilter)
             {
                 editingIntersection = _editIntersectionQuery.GetSingletonEntity();
+                Logger.DebugTool($"[UpdateDefinitions] Current Editing Intersection {editingIntersection}");
                 if (editingIntersection != Entity.Null && updateEditIntersection)
                 {
                     EntityQuery connectors = new EntityQueryBuilder(Allocator.Temp).WithAllRW<Connector, LaneConnection>().Build(EntityManager);
@@ -679,7 +688,7 @@ namespace Traffic.Tools
                 }
             }
             
-            Logger.DebugTool("Scheduling CreateDefinitionsJob");
+            Logger.DebugTool("[UpdateDefinitions] Scheduling CreateDefinitionsJob");
             CreateDefinitionsJob job = new CreateDefinitionsJob()
             {
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
@@ -709,7 +718,7 @@ namespace Traffic.Tools
         {
             CleanupIntersectionHelpers();
             _selectedNode = node;
-            if (node != Entity.Null){
+            if (node != Entity.Null) {
                 SelectIntersectionNodeJob selectNodeJob = new SelectIntersectionNodeJob
                 {
                     elevationData = SystemAPI.GetComponentLookup<Elevation>(true),
@@ -726,6 +735,10 @@ namespace Traffic.Tools
                 _toolOutputBarrier.AddJobHandleForProducer(jobHandle);
                 PlaySelectedSound();
                 return  DestroyDefinitions(_definitionQuery, _toolOutputBarrier, jobHandle);
+            }
+            else
+            {
+                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_NetCancelSound);
             }
             
             return inputDeps;

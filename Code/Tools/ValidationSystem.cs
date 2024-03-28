@@ -20,7 +20,8 @@ namespace Traffic.Tools
             _modificationBarrier = World.GetOrCreateSystemManaged<ModificationEndBarrier>();
             _tempQuery = GetEntityQuery(new EntityQueryDesc
             {
-                All = new[] { ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<EditIntersection>(), },
+                All = new[] { ComponentType.ReadOnly<Temp>()},
+                Any = new []{ ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<ModifiedLaneConnections>()},
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
             RequireForUpdate(_tempQuery);
@@ -31,6 +32,7 @@ namespace Traffic.Tools
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                 upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
                 deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),

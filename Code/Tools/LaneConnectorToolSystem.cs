@@ -1,4 +1,6 @@
-﻿#define DEBUG_TOOL
+﻿#if DEBUG
+#define DEBUG_TOOL
+#endif
 using System;
 using System.Linq;
 using System.Text;
@@ -47,11 +49,12 @@ namespace Traffic.Tools
         [Flags]
         public enum StateModifier
         {
-            AnyConnector,
-            RoadOnly = 1,
-            TrackOnly = 1 << 1,
-            SharedRoadTrack = RoadOnly | TrackOnly,
-            MakeUnsafe = 1 << 2,
+            None,
+            Road = 1,
+            Track = 1 << 1,
+            AnyConnector = Road | Track,
+            FullMatch = 1 << 2,
+            MakeUnsafe = 1 << 3,
         }
 
         public enum Tooltip
@@ -224,10 +227,10 @@ namespace Traffic.Tools
                 StateModifier prev = _stateModifiers & ~StateModifier.MakeUnsafe;
                 if (Keyboard.current.ctrlKey.isPressed)
                 {
-                    _stateModifiers = StateModifier.TrackOnly;
+                    _stateModifiers = StateModifier.Track | StateModifier.FullMatch;
                     if (Keyboard.current.shiftKey.isPressed)
                     {
-                        _stateModifiers = StateModifier.SharedRoadTrack;
+                        _stateModifiers = StateModifier.AnyConnector | StateModifier.FullMatch;
                     }
                 }
                 else
@@ -235,7 +238,7 @@ namespace Traffic.Tools
                     _stateModifiers = StateModifier.AnyConnector;
                     if (Keyboard.current.shiftKey.isPressed)
                     {
-                        _stateModifiers = StateModifier.RoadOnly;
+                        _stateModifiers = StateModifier.Road | StateModifier.FullMatch;
                     }
                 }
 
@@ -243,7 +246,7 @@ namespace Traffic.Tools
                 {
                     _majorStateModifiersChange = true;
                 }
-                if (Keyboard.current.altKey.isPressed && _stateModifiers != StateModifier.TrackOnly)
+                if (Keyboard.current.altKey.isPressed && (_stateModifiers & StateModifier.Track) == StateModifier.None)
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
                 }
@@ -253,7 +256,10 @@ namespace Traffic.Tools
                 }
             } else if (_state == State.SelectingTargetConnector) {
                 StateModifier prev = _stateModifiers;
-                if (Keyboard.current.altKey.isPressed && prev != StateModifier.TrackOnly)
+                if (Keyboard.current.altKey.isPressed && 
+                    _controlPoints.Length > 0 &&
+                    EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector) &&
+                    sourceConnector.vehicleGroup == VehicleGroup.Car)
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
                 }
@@ -279,29 +285,53 @@ namespace Traffic.Tools
                 input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
                 input.connectorType = _state switch
                 {
-                    State.SelectingSourceConnector => ConnectorType.Source | ConnectorType.TwoWay,
-                    State.SelectingTargetConnector => ConnectorType.Target | ConnectorType.TwoWay,
-                    _ => ConnectorType.All
+                    State.SelectingSourceConnector => ConnectorType.Source,
+                    State.SelectingTargetConnector => ConnectorType.Target,
+                    _ => ConnectorType.Source | ConnectorType.Target
                 };
                 StateModifier mod = _stateModifiers & ~StateModifier.MakeUnsafe;
                 
-                //TODO FIX matching connector type
+                input.vehicleGroup = VehicleGroup.None;
                 if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
                     EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
                 {
-                    ConnectionType allowed = (_stateModifiers & StateModifier.MakeUnsafe) != 0 ? (ConnectionType.Road | ConnectionType.Strict) : (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
-                    input.connectionType = sourceConnector.connectionType & allowed;
+                    if ((_stateModifiers & StateModifier.MakeUnsafe) != 0)
+                    {
+                        input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Strict);
+                        input.vehicleGroup = sourceConnector.vehicleGroup & VehicleGroup.Car;
+                    }
+                    else
+                    {
+                        input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
+                        input.vehicleGroup = sourceConnector.vehicleGroup;
+                    }
                 }
                 else
                 {
+                    input.vehicleGroup = mod switch
+                    {
+                        StateModifier.AnyConnector => VehicleGroup.Car | VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
+                        StateModifier.Road => VehicleGroup.Car,
+                        StateModifier.Track => VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
+                        StateModifier.AnyConnector | StateModifier.FullMatch => VehicleGroup.Car | VehicleGroup.Tram,
+                        StateModifier.Road | StateModifier.FullMatch => VehicleGroup.Car,
+                        StateModifier.Track | StateModifier.FullMatch => VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
+                        _ => VehicleGroup.None,
+                    };
                     input.connectionType = mod switch
                     {
                         0 => ConnectionType.All,
-                        StateModifier.SharedRoadTrack => ConnectionType.SharedCarTrack,
-                        StateModifier.TrackOnly => ConnectionType.Track | ConnectionType.Strict,
-                        StateModifier.RoadOnly => ConnectionType.Road | ConnectionType.Strict,
-                        _ => ConnectionType.Road
+                        StateModifier.AnyConnector | StateModifier.FullMatch => ConnectionType.SharedCarTrack | ConnectionType.Strict,
+                        StateModifier.Track | StateModifier.FullMatch => ConnectionType.Track,
+                        StateModifier.Road | StateModifier.FullMatch => ConnectionType.Road | ConnectionType.Strict,
+                        _ => ConnectionType.All
                     };
+                    if ((_stateModifiers & StateModifier.MakeUnsafe) != StateModifier.None)
+                    {
+                        input.vehicleGroup &= ~(VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram);
+                        input.connectionType &= ~ConnectionType.Track;
+                        input.connectionType |= ConnectionType.Strict;
+                    }
                 }
                 _modRaycastSystem.SetInput(input);
             }
@@ -483,6 +513,7 @@ namespace Traffic.Tools
             bool forceUpdate;
             bool majorChange = _majorStateModifiersChange;
             bool minorChange = _minorStateModifiersChange;
+            // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] State: {_state} minorChange: {minorChange} majorChange: {majorChange}");
             _majorStateModifiersChange = false;
             _minorStateModifiersChange = false;
             if (_state == State.Default)
@@ -511,7 +542,7 @@ namespace Traffic.Tools
                     }
                     return inputHandle;
                 }
-                Logger.DebugTool($"[Update] Default, No Hit, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
+                    // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Default, The Same, force: {forceUpdate} | {_lastControlPoint.m_OriginalEntity} == {controlPoint.m_OriginalEntity}");
                 if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint.m_OriginalEntity))
                 {
                     if (forceUpdate)
@@ -545,7 +576,7 @@ namespace Traffic.Tools
 
             if (GetCustomRaycastResult(out ControlPoint controlPoint2, out forceUpdate))
             {
-                Logger.DebugTool($"[Update] Hit: {controlPoint2.m_OriginalEntity}, f: {forceUpdate}");
+                // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] Hit: {controlPoint2.m_OriginalEntity}, f: {forceUpdate}");
                 switch (_state)
                 {
                     case State.SelectingSourceConnector:
@@ -574,6 +605,7 @@ namespace Traffic.Tools
                                 _controlPoints.Clear();
                                 _controlPoints.Add(in p1);
                                 _controlPoints.Add(in controlPoint2);
+                                // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectTarget diff position");
                             }
                             applyMode = ApplyMode.None;
                             return inputHandle;
@@ -587,7 +619,7 @@ namespace Traffic.Tools
                             _controlPoints.Add(in controlPoint2);
                         }
                         applyMode = ApplyMode.Clear;
-                        Logger.DebugTool($"[Update] SelectTarget-clear");
+                        // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] SelectTarget-clear");
                         return UpdateDefinitions(inputHandle);
                 }
             }

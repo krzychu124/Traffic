@@ -8,6 +8,7 @@ using Game.Net;
 using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
+using Traffic.Common;
 using Traffic.Components;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -38,7 +39,7 @@ namespace Traffic.LaneConnections
         }
 
         protected override void OnUpdate() {
-            Logger.Info($"GenerateConnectorsSystem.OnUpdate (frame: {UnityEngine.Time.renderedFrameCount})");
+            Logger.Debug($"GenerateConnectorsSystem.OnUpdate (frame: {UnityEngine.Time.renderedFrameCount})");
             NativeParallelHashMap<NodeEdgeLaneKey, Entity> connectorsMap = new (128, Allocator.TempJob);
             EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             GenerateConnectorsJob job = new GenerateConnectorsJob
@@ -70,14 +71,14 @@ namespace Traffic.LaneConnections
                 prefabCompositionLanes = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
                 commandBuffer = commandBuffer,
             };
-            Logger.Info($"Generate (def): {_definitionQuery.CalculateEntityCount()} | chunks: {_definitionQuery.CalculateChunkCount()}");
+            Logger.Debug($"Generate (def): {_definitionQuery.CalculateEntityCount()} | chunks: {_definitionQuery.CalculateChunkCount()}");
             JobHandle jobHandle = job.Schedule(_definitionQuery, Dependency);
             // JobHandle.ScheduleBatchedJobs();
             jobHandle.Complete();
             commandBuffer.Playback(EntityManager);
             commandBuffer.Dispose();
             
-            Logger.Info($"Generated (connectors): {_connectorsQuery.CalculateEntityCount()} | chunks: {_connectorsQuery.CalculateChunkCount()}");
+            Logger.Debug($"Generated (connectors): {_connectorsQuery.CalculateEntityCount()} | chunks: {_connectorsQuery.CalculateChunkCount()}");
             CollectConnectorsJob collectConnectorsJob = new CollectConnectorsJob()
             {
                 entityType = SystemAPI.GetEntityTypeHandle(),
@@ -167,12 +168,12 @@ namespace Traffic.LaneConnections
                 {
                     if (chunk.Has(ref connectorElementType))
                     {
-                        Logger.Info("Skip creating connectors");
+                        Logger.Debug("Skip creating connectors");
                         continue;
                     }
                     EditIntersection intersection = editIntersections[i];
                     Entity nodeEntity = intersection.node;
-                    Logger.Info($"Check node entity: {nodeEntity}");
+                    Logger.Debug($"Check node entity: {nodeEntity}");
                     if (nodeData.HasComponent(nodeEntity))
                     {
                         Node node = nodeData[nodeEntity];
@@ -181,14 +182,14 @@ namespace Traffic.LaneConnections
                         bool hasEdges = false;
                         while (edgeIterator.GetNext(out value))
                         {
-                            Logger.Info($"\tCheck edge: {value.m_Edge}");
+                            Logger.Debug($"\tCheck edge: {value.m_Edge}");
                             GetNodeConnectors(nodeEntity, value.m_Edge, value.m_End, sourceConnectPositions, targetConnectPositions);
                             hasEdges = true;
                         }
 
                         if (hasEdges)
                         {
-                            Logger.Info($"Check node entity: {nodeEntity}. Has edges! Sources: {sourceConnectPositions.Length} Targets: {targetConnectPositions.Length}");
+                            Logger.Debug($"Check node entity: {nodeEntity}. Has edges! Sources: {sourceConnectPositions.Length} Targets: {targetConnectPositions.Length}");
                             CreateConnectors(entities[i], nodeEntity, sourceConnectPositions, targetConnectPositions);
                         }
                         sourceConnectPositions.Clear();
@@ -280,7 +281,6 @@ namespace Traffic.LaneConnections
                             trackLaneData = prefabTrackLaneData[prefabRef2.m_Prefab];
                         }
                         
-                        //todo consider skipping utility lanes if possible
                         if ((netLaneData.m_Flags & (LaneFlags.Utility | LaneFlags.Pedestrian | LaneFlags.Parking | LaneFlags.ParkingLeft | LaneFlags.ParkingRight)) != 0)
                         {
                             sb.AppendLine($"Incompatible: {netLaneData.m_Flags}");
@@ -342,6 +342,9 @@ namespace Traffic.LaneConnections
                             tangent = -MathUtils.Normalize(tangent, tangent.xz);
                             tangent.y = math.clamp(tangent.y, -1f, 1f);
 
+                            var roadTypeGroup = (netLaneData.m_Flags & (LaneFlags.Master | LaneFlags.Road)) == LaneFlags.Road ? 1 : 0;
+                            var trackTypeGroup = (int)trackLaneData.m_TrackTypes << 1;
+                            
                             ConnectPosition value = new ConnectPosition
                             {
                                 edge = edge,
@@ -349,29 +352,31 @@ namespace Traffic.LaneConnections
                                 order = order,
                                 position =  curve.m_Bezier.a,
                                 direction = tangent,
+                                isTwoWay = (netLaneData.m_Flags & LaneFlags.Twoway) != 0,
+                                vehicleGroup = (VehicleGroup)(trackTypeGroup | roadTypeGroup), //  |isSubway|isTrain|isTram|isCar|
                                 supportedType = GetConnectionType(netCompositionLaneData.m_Flags),
                             };
 
                             if ((netLaneData.m_Flags & LaneFlags.Twoway) != 0)
                             {
-                                sb.AppendLine($"Connect Position (TwoWay): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position}");
+                                sb.AppendLine($"Connect Position (TwoWay): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position} || vehGroup: {value.vehicleGroup}");
                                 targetConnectPositions.Add(in value);
                                 sourceConnectPositions.Add(in value);
                             }
                             else if (!y)
                             {
-                                sb.AppendLine($"Connect Position (Target): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position}");
+                                sb.AppendLine($"Connect Position (Target): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position} || vehGroup: {value.vehicleGroup}");
                                 targetConnectPositions.Add(in value);
                             }
                             else
                             {
-                                sb.AppendLine($"Connect Position (Source): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position}");
+                                sb.AppendLine($"Connect Position (Source): {value.order} | {value.position} | {value.compositionLane.m_Flags} | {value.compositionLane.m_Index} | {value.compositionLane.m_Position} || vehGroup: {value.vehicleGroup}");
                                 sourceConnectPositions.Add(in value);
                             }
                         }
                     }
                 }
-                // Logger.Info(sb.ToString());
+                Logger.Debug(sb.ToString());
             }
 
             private void CreateConnectors(Entity selectedIntersection, Entity node, NativeList<ConnectPosition> sourceConnectPositions, NativeList<ConnectPosition> targetConnectPositions) {
@@ -388,7 +393,8 @@ namespace Traffic.LaneConnections
                         laneIndex = connectPosition.compositionLane.m_Index,
                         position = connectPosition.position,
                         direction = connectPosition.direction,
-                        connectorType = ConnectorType.Source,
+                        vehicleGroup = connectPosition.vehicleGroup,
+                        connectorType = connectPosition.isTwoWay ? ConnectorType.TwoWay : ConnectorType.Source,
                         connectionType = connectPosition.supportedType,
                     };
                     commandBuffer.AddComponent<Connector>(entity, connector);
@@ -408,7 +414,8 @@ namespace Traffic.LaneConnections
                         laneIndex = connectPosition.compositionLane.m_Index,
                         position = connectPosition.position,
                         direction = connectPosition.direction,
-                        connectorType = ConnectorType.Target,
+                        vehicleGroup = connectPosition.vehicleGroup,
+                        connectorType = connectPosition.isTwoWay ? ConnectorType.TwoWay : ConnectorType.Target,
                         connectionType = connectPosition.supportedType,
                     };
                     commandBuffer.AddComponent<Connector>(entity, connector);
@@ -465,7 +472,7 @@ namespace Traffic.LaneConnections
  
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
-                Logger.Info($"Connectors: {connectorsList.Count()}");
+                Logger.Debug($"Connectors: {connectorsList.Count()}");
                 NativeParallelMultiHashMap<Entity, Connection> connections = new (8, Allocator.Temp);
                 
                 for (int i = 0; i < editIntersections.Length; i++)
@@ -524,7 +531,7 @@ namespace Traffic.LaneConnections
                                     int connectorIndex = connection.sourceNode.GetLaneIndex() & 0xff;
                                     if (connectorsList.TryGetValue(new NodeEdgeLaneKey(node.Index, edge.Index, connectorIndex), out Entity connector))
                                     {
-                                        Logger.Info($"Detected connection n: {node} e: {edge} idx: {connectorIndex} | connector: {connector}");
+                                        Logger.Debug($"Detected connection n: {node} e: {edge} idx: {connectorIndex} | connector: {connector}");
                                         commandBuffer.AppendToBuffer(connector, new LaneConnection() { connection = e });
                                     }
 
@@ -561,6 +568,8 @@ namespace Traffic.LaneConnections
             public float order;
             public float3 position;
             public float3 direction;
+            public bool isTwoWay;
+            public VehicleGroup vehicleGroup;
             public ConnectionType supportedType;
         }
 

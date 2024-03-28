@@ -8,8 +8,8 @@ namespace Traffic.LaneConnections
         Strict = 1,
         Road = 1 << 1,
         Track = 1 << 2,
-        Utility = 1 << 3,
+        Utility = 1 << 3, //not implemented yet
         SharedCarTrack = Road | Track,
-        All = Road | Track | Utility,
+        All = Road | Track/* | Utility*/,
     }
 }

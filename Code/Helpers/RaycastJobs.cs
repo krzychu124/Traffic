@@ -1,4 +1,7 @@
-﻿using Colossal.Collections;
+﻿#if DEBUG
+#define DEBUG_TOOL
+#endif
+using Colossal.Collections;
 using Colossal.Mathematics;
 using Game.Common;
 using Traffic.Common;
@@ -62,7 +65,6 @@ namespace Traffic.Helpers
 
         public struct RaycastLaneConnectionSubObjects : IJobParallelForDefer
         {
-            [ReadOnly] public NativeReference<RaycastResult>.ReadOnly terrainResult;
             [ReadOnly] public ComponentLookup<Connector> connectorData;
             [ReadOnly] public NativeArray<Entity>.ReadOnly entities;
             [ReadOnly] public CustomRaycastInput input;
@@ -74,6 +76,7 @@ namespace Traffic.Helpers
                 ConnectionType nonStrict = input.connectionType & ~ConnectionType.Strict;
                 if (connectorData.TryGetComponent(entity, out Connector connector) &&
                     (connector.connectorType & input.connectorType) != 0 &&
+                    (isStrict ? (connector.vehicleGroup & input.vehicleGroup) == input.vehicleGroup : (connector.vehicleGroup & input.vehicleGroup) != 0) &&
                     (isStrict ? (connector.connectionType & nonStrict) == nonStrict : (connector.connectionType & nonStrict) != 0))
                 {
                     result.Value = new CustomRaycastResult()
@@ -81,11 +84,11 @@ namespace Traffic.Helpers
                         hit = new RaycastHit() { },
                         owner = entity
                     };
-                    Logger.DebugTool($"OK: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) nonStr: {nonStrict}");
+                    Logger.DebugTool($"OK: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}] | nonStr: {nonStrict}");
                 }
                 else
                 {
-                    Logger.DebugTool($"Fail: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) nonStr: {nonStrict}");
+                    Logger.DebugTool($"Fail: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}] | nonStr: {nonStrict}");
                 }
             }
         }

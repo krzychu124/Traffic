@@ -55,13 +55,13 @@ namespace Traffic.Systems
                     BufferAccessor<ModifiedLaneConnections> modifiedConnectionsBuffer = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
                     if (chunk.Has(ref tempType))
                     {
-                        Logger.Info($"Removing Temp node connections (node count: {entities.Length})");
+                        Logger.Debug($"Removing Temp node connections (node count: {entities.Length})");
                     }
                     
                     for (var i = 0; i < entities.Length; i++)
                     {
                         var modifiedConnections = modifiedConnectionsBuffer[i];
-                        Logger.Info($"Removing node connections {entities[i]} count: ({modifiedConnections.Length})");
+                        Logger.Debug($"Removing node connections {entities[i]} count: ({modifiedConnections.Length})");
                         for (var j = 0; j < modifiedConnections.Length; j++)
                         {
                             ModifiedLaneConnections connections = modifiedConnections[j];

@@ -7,14 +7,13 @@ using Unity.Entities;
 
 namespace Traffic
 {
-    //TODO Add translations
+    [SettingsUISection(MaintenanceSection)]
     public class ModSettings : ModSetting
     {
-        private const string MainSection = "General";  
-        private const string MaintenanceSection = "Maintenance";
+        internal const string MainSection = "General";  
+        internal const string MaintenanceSection = "Maintenance";
 
         [SettingsUIButton()]
-        [SettingsUISection(MaintenanceSection)]
         [SettingsUIConfirmation()]
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(IsResetConnectionsDisabled))]
         public bool ResetLaneConnections

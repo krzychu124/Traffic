@@ -2,6 +2,7 @@
 using Game.Modding;
 using Game.Net;
 using Game.Rendering;
+using Game.SceneFlow;
 using Game.Tools;
 using JetBrains.Annotations;
 using Traffic.Debug;
@@ -55,6 +56,10 @@ namespace Traffic
 #endif
             _modSettings = new ModSettings(this);
             _modSettings.RegisterInOptionsUI();
+            if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(_modSettings.GetSettingsLocaleID()))
+            {
+                GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(_modSettings));
+            }
         }
 
         public void OnDispose() {

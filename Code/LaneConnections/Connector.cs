@@ -1,4 +1,6 @@
-﻿using Unity.Entities;
+﻿using Game.Net;
+using Traffic.Common;
+using Unity.Entities;
 using Unity.Mathematics;
 
 namespace Traffic.LaneConnections
@@ -10,6 +12,7 @@ namespace Traffic.LaneConnections
         public int laneIndex;
         public float3 position;
         public float3 direction;
+        public VehicleGroup vehicleGroup;
         public ConnectorType connectorType;
         public ConnectionType connectionType;
     }

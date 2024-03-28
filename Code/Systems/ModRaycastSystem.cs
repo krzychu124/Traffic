@@ -75,7 +75,6 @@ namespace Traffic.Systems
             RaycastJobs.RaycastLaneConnectionSubObjects raycastLaneConnectionSubObjects = new RaycastJobs.RaycastLaneConnectionSubObjects()
             {
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
-                terrainResult = _terrainResult.AsReadOnly(),
                 entities = entities.AsReadOnly(),
                 input = input,
                 result = customRes

@@ -148,7 +148,7 @@ namespace Traffic.Tools
 
                 if (state == State.SelectingTargetConnector)
                 {
-                    if (nextConnectorValid)
+                    if (nextConnectorValid && firstConnectorValid)
                     {
                         if (!foundModifiedSource)
                         {
@@ -261,7 +261,7 @@ namespace Traffic.Tools
                         new int2(sourceConnector.laneIndex, targetConnector.laneIndex),
                         stateModifier == StateModifier.AnyConnector
                             ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                            : StateModifierToPathMethod(stateModifier),
+                            : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
                         (stateModifier & StateModifier.MakeUnsafe) != 0,
                         NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
                         ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
@@ -373,7 +373,7 @@ namespace Traffic.Tools
                                 laneIndexMap,
                                 stateModifier == StateModifier.AnyConnector
                                     ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                                    : StateModifierToPathMethod(stateModifier),
+                                    : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
                                 (stateModifier & StateModifier.MakeUnsafe) != 0,
                                 NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
                                 ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
@@ -409,13 +409,16 @@ namespace Traffic.Tools
                 PathMethod method = 0;
                 switch (modifier)
                 {
-                    case StateModifier.SharedRoadTrack:
+                    case StateModifier.AnyConnector:
+                    case StateModifier.AnyConnector | StateModifier.FullMatch:
                         method = PathMethod.Road | PathMethod.Track;
                         break;
-                    case StateModifier.RoadOnly:
+                    case StateModifier.Road:
+                    case StateModifier.Road | StateModifier.FullMatch:
                         method = PathMethod.Road;
                         break;
-                    case StateModifier.TrackOnly:
+                    case StateModifier.Track:
+                    case StateModifier.Track | StateModifier.FullMatch:
                         method = PathMethod.Track;
                         break;
                 }
@@ -435,8 +438,8 @@ namespace Traffic.Tools
                         return 0;
                     case ConnectionType.SharedCarTrack:
                         return PathMethod.Road | PathMethod.Track;
-                    case ConnectionType.All:
-                        return PathMethod.Road | PathMethod.Track;
+                    // case ConnectionType.All:
+                        // return PathMethod.Road | PathMethod.Track;
                 }
                 return 0;
             }

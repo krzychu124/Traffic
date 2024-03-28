@@ -1,4 +1,6 @@
-﻿#define DEBUG_TOOL
+﻿#if DEBUG
+#define DEBUG_TOOL
+#endif
 // #define DEBUG_CONNECTIONS
 using System.Text;
 using Colossal.Collections;

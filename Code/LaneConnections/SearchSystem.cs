@@ -94,7 +94,7 @@ namespace Traffic.LaneConnections
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityType);
                 if (chunk.Has(ref deletedType))
                 {
-                    Logger.Debug($"Deleted Connectors: {entities.Length}");
+                    Logger.DebugTool($"Deleted Connectors: {entities.Length}");
                     foreach (Entity entity in entities)
                     {
                         searchTree.TryRemove(entity);
@@ -103,21 +103,16 @@ namespace Traffic.LaneConnections
                 } 
                 if (chunk.Has(ref updatedType))
                 {
-                    // NativeArray<Entity> newEntities = chunk.GetNativeArray(entityType);
                     NativeArray<Connector> connectors = chunk.GetNativeArray(ref connectorType);
-                    Logger.Debug($"Created/updated Connectors: {entities.Length}");
+                    Logger.DebugTool($"Created/updated Connectors: {entities.Length}");
                     for (int index = 0; index < entities.Length; index++)
                     {
                         Entity entity = entities[index];
                         Connector connector = connectors[index];
-                        int lod = RenderingUtils.CalculateLodLimit(RenderingUtils.GetRenderingSize(new float2(0.75f)));
-                        searchTree.Add(entity, new QuadTreeBoundsXZ(new Bounds3(connector.position - .075f, connector.position + .075f), BoundsMask.NormalLayers, lod));
+                        int lod = RenderingUtils.CalculateLodLimit(RenderingUtils.GetRenderingSize(new float2(1f)));
+                        searchTree.Add(entity, new QuadTreeBoundsXZ(new Bounds3(connector.position - .25f, connector.position + .25f), BoundsMask.NormalLayers, lod));
                     }
                 }
-                // else
-                // {
-                //     Logger.Info($"Other: {entities.Length} {string.Join(",", chunk.Archetype.GetComponentTypes().Select(t => t.GetManagedType().Name))}");
-                // }
             }
         }
     }

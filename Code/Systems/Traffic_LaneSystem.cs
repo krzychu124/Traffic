@@ -4099,7 +4099,7 @@ namespace Traffic.Systems
                     }
                     if ((laneFlags & LaneFlags.Road) == 0)
                     {
-                        component6.m_Flags |= TrackLaneFlags.Exclusive;
+                        component6.m_Flags |= TrackLaneFlags.FullMatch;
                     }
                     if (((prefabCompositionData.m_Flags.m_Left | prefabCompositionData.m_Flags.m_Right) & CompositionFlags.Side.PrimaryStop) != 0)
                     {
@@ -4483,7 +4483,7 @@ namespace Traffic.Systems
                     }
                     if ((netLaneData.m_Flags & LaneFlags.Road) == 0)
                     {
-                        component5.m_Flags |= TrackLaneFlags.Exclusive;
+                        component5.m_Flags |= TrackLaneFlags.FullMatch;
                     }
                 }
                 ParkingLane component6 = default(ParkingLane);

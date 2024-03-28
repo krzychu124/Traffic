@@ -1,4 +1,5 @@
 ﻿using System;
+using Colossal.Entities;
 using Game.Common;
 using Game.Tools;
 using Game.UI.Localization;
@@ -14,60 +15,38 @@ namespace Traffic.UISystems
 {
     public partial class LaneConnectorToolTooltipSystem : TooltipSystemBase
     {
-        private CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip> _stringBuilder;
+        private CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip> _tooltipStringBuilder;
+        private CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier> _modifierStringBuilder;
         private ToolSystem _toolSystem;
         private LaneConnectorToolSystem _laneConnectorTool;
         // private NetToolSystem _netTool;
         private StringTooltip _tooltip;
         private StringTooltip _tooltipWarnings;
         private StringTooltip _tooltipErrors;
+        private StringTooltip _tooltipInfo;
         private StringTooltip _tooltipDebug;
+#if DEBUG_TOOL
         private StringTooltip _posTooltip;
         private StringTooltip _posTooltip2;
+#endif
         private EntityQuery _warnQuery;
         private EntityQuery _errorQuery;
-        // private NetPieceRequirements[] _warnRequirements = new[]
-        // {
-        //     NetPieceRequirements.ForbidStraight, NetPieceRequirements.ForbidLeftTurn, NetPieceRequirements.ForbidRightTurn, 
-        //     NetPieceRequirements.OppositeForbidStraight, NetPieceRequirements.OppositeForbidLeftTurn, NetPieceRequirements.OppositeForbidRightTurn
-        // };
 
         protected override void OnCreate() {
             base.OnCreate();
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _laneConnectorTool = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
-            // _netTool = World.GetExistingSystemManaged<NetToolSystem>();
-            _tooltip = new StringTooltip
-            {
-                path = "laneConnectorTool"
-            };
-            _tooltipDebug = new StringTooltip()
-            {
-                path = "laneConnectorToolDebug",
-                color = TooltipColor.Success
-            };
-            _tooltipWarnings = new StringTooltip()
-            {
-                path = "laneConnectorToolWarnings",
-                color = TooltipColor.Warning,
-            };
-            _tooltipErrors = new StringTooltip()
-            {
-                path = "laneConnectorToolErrors",
-                color = TooltipColor.Error,
-            };
-            _posTooltip = new StringTooltip()
-            {
-                path = "laneConnectorToolPosition",
-                color = TooltipColor.Warning,
-            };
-            _posTooltip2 = new StringTooltip()
-            {
-                path = "laneConnectorToolPosition2",
-                color = TooltipColor.Warning,
-            };
-            //TODO Add translations
-            _stringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"Tools.INFO[{t:G}]");
+            _tooltip = new StringTooltip { path = "laneConnectorTool" };
+            _tooltipInfo = new StringTooltip { path = "laneConnectorToolInfo" };
+            _tooltipDebug = new StringTooltip() { path = "laneConnectorToolDebug", color = TooltipColor.Success };
+            _tooltipWarnings = new StringTooltip() { path = "laneConnectorToolWarnings", color = TooltipColor.Warning, };
+            _tooltipErrors = new StringTooltip() { path = "laneConnectorToolErrors", color = TooltipColor.Error, };
+#if DEBUG_TOOL
+            _posTooltip = new StringTooltip() { path = "laneConnectorToolPosition", color = TooltipColor.Warning, };
+            _posTooltip2 = new StringTooltip() { path = "laneConnectorToolPosition2", color = TooltipColor.Warning, };
+#endif
+            _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
+            _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
             _warnQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
             _errorQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Error>(), ComponentType.Exclude<Deleted>());
         }
@@ -77,22 +56,31 @@ namespace Traffic.UISystems
             {
                 return;
             }
-            // TODO create feedback system
-            // if (_toolSystem.activeTool == _netTool && _netTool.prefab && _netTool.prefab.Has<NetUpgrade>() && MatchingRequirement(_netTool.prefab.GetComponent<NetUpgrade>().m_SetState))
-            // {
-            //     _tooltip.value = "Applying upgrade may reset Traffic mod modifications";
-            //     _tooltip.color = TooltipColor.Warning;
-            //     AddMouseTooltip(_tooltip);
-            // }
             
-            //TEMP move to feedback system
-            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default && !_errorQuery.IsEmptyIgnoreFilter)
+            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default)
             {
-                _tooltipErrors.value = "Modifying lane connections on selected intersection is not supported";
-                AddMouseTooltip(_tooltipErrors);
-                return;
+                if (!_errorQuery.IsEmptyIgnoreFilter)
+                {
+                    _tooltipErrors.value = "Modifying lane connections on selected intersection is not supported";
+                    AddMouseTooltip(_tooltipErrors);
+                    return;
+                } 
+                else if(!_warnQuery.IsEmptyIgnoreFilter)
+                {
+                    _tooltipWarnings.value = "Entering modification mode will remove all Forbidden maneuvers";
+                    AddMouseTooltip(_tooltipWarnings);
+                }
+            }
+            if (_laneConnectorTool.ToolState == LaneConnectorToolSystem.State.SelectingSourceConnector &&
+                _laneConnectorTool.SelectedNode != Entity.Null && 
+                EntityManager.TryGetBuffer(_laneConnectorTool.SelectedNode, true, out DynamicBuffer<ModifiedLaneConnections> connections) &&
+                !connections.IsEmpty)
+            {
+                _tooltipInfo.value = "Press Delete to reset Lane Connections";
+                AddMouseTooltip(_tooltipInfo);
             }
             
+#if DEBUG_TOOL
             if (_laneConnectorTool.ToolState > LaneConnectorToolSystem.State.Default)
             {
                 NativeList<ControlPoint> controlPoints = _laneConnectorTool.GetControlPoints(out JobHandle _);
@@ -108,26 +96,17 @@ namespace Traffic.UISystems
                     }
                 }
             }
-
-            if ((_laneConnectorTool.tooltip == LaneConnectorToolSystem.Tooltip.None && _laneConnectorTool.ToolModifiers == LaneConnectorToolSystem.StateModifier.AnyConnector))
-            {
-                return;
-            }
+#endif
             if (_laneConnectorTool.tooltip != LaneConnectorToolSystem.Tooltip.None)
             {
-                _tooltip.value = _stringBuilder[_laneConnectorTool.tooltip];
+                _tooltip.value = _tooltipStringBuilder[_laneConnectorTool.tooltip];
                 _tooltip.color = GetColor(_laneConnectorTool.tooltip);
                 AddMouseTooltip(_tooltip);
             }
-            if (_laneConnectorTool.ToolModifiers != LaneConnectorToolSystem.StateModifier.AnyConnector)
+            if (_laneConnectorTool.ToolModifiers != LaneConnectorToolSystem.StateModifier.AnyConnector && _laneConnectorTool.tooltip != LaneConnectorToolSystem.Tooltip.RemoveConnection)
             {
-                _tooltipDebug.value = $"Current mode: {_laneConnectorTool.ToolModifiers.ToString()}"; //todo replace with CachedLocalizedStringBuilder
+                _tooltipDebug.value = _modifierStringBuilder[_laneConnectorTool.ToolModifiers];
                 AddMouseTooltip(_tooltipDebug);
-            }
-            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default && !_warnQuery.IsEmptyIgnoreFilter)
-            {
-                _tooltipWarnings.value = "Entering modification mode will remove all Forbidden maneuvers";
-                AddMouseTooltip(_tooltipWarnings);
             }
         }
 
@@ -141,7 +120,7 @@ namespace Traffic.UISystems
                 case LaneConnectorToolSystem.Tooltip.RemoveSourceConnections:
                 case LaneConnectorToolSystem.Tooltip.RemoveTargetConnections:
                 case LaneConnectorToolSystem.Tooltip.RemoveConnection:
-                    return TooltipColor.Warning;
+                    return TooltipColor.Error;
                 case LaneConnectorToolSystem.Tooltip.CreateConnection:
                 case LaneConnectorToolSystem.Tooltip.CompleteConnection:
                     return TooltipColor.Success;

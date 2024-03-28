@@ -17,6 +17,7 @@ namespace Traffic.Tools
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;
+            [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
             [ReadOnly] public ComponentLookup<Upgraded> upgradedData;
             [ReadOnly] public ComponentLookup<Deleted> deletedData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
@@ -31,13 +32,23 @@ namespace Traffic.Tools
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
                 NativeList<Entity> warnEntities = new NativeList<Entity>(Allocator.Temp);
                 
-                for (int i = 0; i < editIntersections.Length; i++)
+                for (int i = 0; i < entities.Length; i++)
                 {
-                    EditIntersection e = editIntersections[i];
                     Entity entity = entities[i];
-                    if (connectedEdgesBuffer.HasBuffer(e.node))
+                    Entity nodeEntity = Entity.Null;
+                    if (chunk.Has(ref editIntersectionType))
                     {
-                        DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[e.node];
+                        EditIntersection e = editIntersections[i];
+                        nodeEntity = e.node;
+                    }
+                    else if (chunk.Has(ref modifiedLaneConnectionsType))
+                    {
+                        nodeEntity = entity;
+                    }
+                    
+                    if (nodeEntity != Entity.Null && connectedEdgesBuffer.HasBuffer(nodeEntity))
+                    {
+                        DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[nodeEntity];
                         for (int j = 0; j < connectedEdges.Length; j++)
                         {
                             ConnectedEdge connectedEdge = connectedEdges[j];
@@ -47,16 +58,16 @@ namespace Traffic.Tools
                                 // "Edge" entity holds info about network Composition (edge, startNode, endNode)
                                 Edge edge = edgeData[connectedEdge.m_Edge];
                                 //todo check if possible that node might not be assigned to start/end node of Edge
-                                bool? isStartNode = math.any(new bool2(edge.m_Start.Equals(e.node), edge.m_End.Equals(e.node))) ? edge.m_Start.Equals(e.node) : null;
+                                bool? isStartNode = math.any(new bool2(edge.m_Start.Equals(nodeEntity), edge.m_End.Equals(nodeEntity))) ? edge.m_Start.Equals(nodeEntity) : null;
                                 if (isStartNode.HasValue && compositionData.HasComponent(connectedEdge.m_Edge))
                                 {
                                     Composition composition = compositionData[connectedEdge.m_Edge];
                                     CompositionFlags compositionFlags = netCompositionData[isStartNode.Value ? composition.m_StartNode : composition.m_EndNode].m_Flags;
                                     if ((compositionFlags.m_General &  CompositionFlags.General.Roundabout) != 0)
                                     {
-                                        commandBuffer.AddComponent<BatchesUpdated>(e.node);
+                                        commandBuffer.AddComponent<BatchesUpdated>(nodeEntity);
                                         commandBuffer.AddComponent<Error>(entity);
-                                        commandBuffer.AddComponent<Error>(e.node);
+                                        commandBuffer.AddComponent<Error>(nodeEntity);
                                     }
                                 }
                             }
@@ -65,7 +76,7 @@ namespace Traffic.Tools
                             {
                                 Upgraded upgraded = upgradedData[connectedEdge.m_Edge];
                                 Edge edge = edgeData[connectedEdge.m_Edge];
-                                CompositionFlags.Side side = edge.m_Start == e.node ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
+                                CompositionFlags.Side side = edge.m_Start == nodeEntity ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
                                 if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
                                 {
                                     warnEntities.Add(connectedEdge.m_Edge);

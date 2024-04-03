@@ -5,6 +5,7 @@ using Reinforced.Typings.Ast.TypeNames;
 using Reinforced.Typings.Fluent;
 using Traffic.Common;
 using Traffic.Debug;
+using Traffic.UISystems;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -25,19 +26,20 @@ namespace Traffic.Utils
             builder.Substitute(typeof(Entity), new RtSimpleTypeName("Entity"));
             builder.ExportAsClass<UIBindingConstants>().DontIncludeToNamespace().WithPublicFields();
             builder.ExportAsEnum<TempFlags>();
+            builder.ExportAsEnum<ModUISystem.ActionOverlayPreview>();
             builder.ExportAsInterface<float3>()
                 .WithPublicFields(exportBuilder => { if (exportBuilder.Member.IsStatic) { exportBuilder.Ignore(); } })
                 .AutoI(false)
                 .OverrideNamespace("Traffic");
             
             builder.ExportAsInterfaces(
-                new[]
-                {
-                    typeof(NetworkDebugUISystem.DebugData),
-                },
+                new[] { typeof(NetworkDebugUISystem.DebugData), },
                 exportBuilder => { exportBuilder.WithPublicFields().AutoI(false).OverrideNamespace("Traffic"); }
             );
-
+            builder.ExportAsInterfaces(
+                new[] { typeof(ModUISystem.SelectedIntersectionData), },
+                exportBuilder => { exportBuilder.WithPublicFields().AutoI(false).OverrideNamespace("Traffic"); }
+            );
         }
     }
 }

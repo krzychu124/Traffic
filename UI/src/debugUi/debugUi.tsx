@@ -1,5 +1,5 @@
-import React, { useCallback } from "react";
-import { Portal, Button } from "cs2/ui";
+import React, { useCallback, useState } from "react";
+import { Portal, Button, Number2 } from "cs2/ui";
 import classNames from "classnames";
 import mod from "../../mod.json";
 import trafficIcon from 'images/traffic_icon.svg';
@@ -8,21 +8,41 @@ import styles from 'debugUi/debugUi.module.scss';
 import { useValue, trigger } from "cs2/api";
 import { isDebugVisible$ } from "bindings";
 import {UIBindingConstants} from "types/traffic";
+import { tool } from "cs2/bindings";
+import { LaneConnectorTool } from "debugUi/laneConnectorTool/laneConnectorTool";
+
+const LC_TOOL = "Lane Connection Tool";
 
 export const DebugUi = () => {
   const isVisible = useValue(isDebugVisible$);
+  const selectedTool = useValue(tool.activeTool$);
+  const [position, setPosition] = useState<Number2>({x: 0.025, y: 0.8})
 
   const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, !isVisible), [isVisible]);
 
   return (
     <div>
-      <Button src={trafficIcon} variant="floating" className={classNames({[styles.selected]: isVisible}, styles.toggle)}
-                      onSelect={changeIsVisible} />
       {isVisible && (
-        <Portal>
-          <NetworkDebugInfo />
-        </Portal>
+        // <Portal>
+        <NetworkDebugInfo />
+        // </Portal>
       )}
+      {selectedTool.id === LC_TOOL && (
+        <LaneConnectorTool position={position} />
+      )}
+      <Button src={trafficIcon}
+              variant="floating"
+              className={classNames({[styles.selected]: isVisible}, styles.toggle)}
+              onSelect={changeIsVisible} />
+      <div className={styles.toolInfo}>
+        <span>SelectedTool: {selectedTool.id}</span>
+        <span>ModeIndex: {selectedTool.modeIndex}</span>
+        <div>Modes: {selectedTool.modes.map(m => (
+          <div style={{display: "block"}}>
+            <span>{`[${m.index}] ${m.id}`}</span>
+          </div>)
+        )}</div>
+      </div>
     </div>
   )
 }

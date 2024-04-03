@@ -1,0 +1,16 @@
+
+.panel {
+  pointer-events: auto;
+}
+
+.title {
+  padding: 5rem;
+}
+
+.actionButton {
+  pointer-events: auto;
+  margin-bottom: 5rem;
+  &:last-child {
+    margin-bottom: 0;
+  }
+}

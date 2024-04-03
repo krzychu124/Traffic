@@ -9,6 +9,10 @@ export class UIBindingConstants
 	public static DEBUG_TEXTS: string = `debugTexts`;
 	public static IS_DEBUG: string = `isDebugEnabled`;
 	public static SET_VISIBILITY: string = `setVisibility`;
+	public static SET_ACTION_OVERLAY_PREVIEW: string = `setActionOverlayPreview`;
+	public static SELECTED_INTERSECTION: string = `selectedIntersection`;
+	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
+	public static LANE_CONNECTOR_TOOL: string = `LaneConnectorTool`;
 }
 export enum TempFlags {
 	Create = 1,
@@ -29,6 +33,13 @@ export enum TempFlags {
 	Cancel = 32768,
 	SubDetail = 65536
 }
+export enum ActionOverlayPreview {
+	None = 0,
+	RemoveAllConnections = 1,
+	RemoveUTurns = 2,
+	RemoveUnsafe = 3,
+	ResetToVanilla = 4
+}
 export interface float3
 {
 	x: number;
@@ -46,4 +57,8 @@ export interface DebugData
 	flags: TempFlags;
 	original: Entity;
 	originalIsEdge: boolean;
+}
+export interface SelectedIntersectionData
+{
+	entity: Entity;
 }

@@ -61,7 +61,7 @@ namespace Traffic.LaneConnections
             if (!_definitionQuery.IsEmptyIgnoreFilter)
             {
                 // UGLY CODE START (improve/redesign)
-                NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections = new NativeParallelMultiHashMap<Entity, TempModifiedConnections>(16, Allocator.TempJob);
+                NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections = new NativeParallelMultiHashMap<Entity, TempModifiedConnections>(4, Allocator.TempJob);
                 EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
                 GenerateTempConnectionsJob tempConnectionsJob = new GenerateTempConnectionsJob
                 {
@@ -69,8 +69,8 @@ namespace Traffic.LaneConnections
                     connectionDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
                     tempConnectionBufferTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
                     tempEntityMap = tempEntityMap.AsReadOnly(),
-                    createdModifiedLaneConnections = createdModifiedLaneConnections.AsParallelWriter(),
-                    createdModifiedConnections = createdModifiedConnections.AsParallelWriter(),
+                    createdModifiedLaneConnections = createdModifiedLaneConnections,
+                    createdModifiedConnections = createdModifiedConnections,
                     commandBuffer = entityCommandBuffer.AsParallelWriter(),
                 };
                 JobHandle tempConnectionsHandle = tempConnectionsJob.Schedule(_definitionQuery, jobHandle);
@@ -174,8 +174,8 @@ namespace Traffic.LaneConnections
             [ReadOnly] public BufferTypeHandle<TempLaneConnection> tempConnectionBufferTypeHandle;
             [ReadOnly] public NativeParallelHashMap<Entity, Entity>.ReadOnly tempEntityMap;
 
-            public NativeParallelHashSet<Entity>.ParallelWriter createdModifiedLaneConnections;
-            public NativeParallelMultiHashMap<Entity, TempModifiedConnections>.ParallelWriter createdModifiedConnections;
+            public NativeParallelHashSet<Entity> createdModifiedLaneConnections;
+            public NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {

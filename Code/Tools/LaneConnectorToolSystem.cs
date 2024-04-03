@@ -17,6 +17,7 @@ using Traffic.Common;
 using Traffic.Components;
 using Traffic.LaneConnections;
 using Traffic.Systems;
+using Traffic.UISystems;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -33,6 +34,7 @@ namespace Traffic.Tools
         public enum Mode
         {
             Default,
+            ApplyPreviewModifications,
             ModifyRegularConnections,
             ModifyUnsafeConnections,
         }
@@ -74,6 +76,7 @@ namespace Traffic.Tools
         public override string toolID => "Lane Connection Tool";
 
         private ModRaycastSystem _modRaycastSystem;
+        private ModUISystem _modUISystem;
 
         private ProxyAction _applyAction;
         private ProxyAction _secondaryApplyAction;
@@ -142,6 +145,7 @@ namespace Traffic.Tools
             _modifiedConnectionsTypeSet = new ComponentTypeSet(ComponentType.ReadWrite<ModifiedConnections>(), ComponentType.ReadWrite<ModifiedLaneConnections>());
             _nodeElevation = new NativeValue<float2>(Allocator.Persistent);
             // Systems
+            _modUISystem = World.GetOrCreateSystemManaged<ModUISystem>();
             _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
             _modRaycastSystem = World.GetOrCreateSystemManaged<ModRaycastSystem>();
             _audioManager = World.GetOrCreateSystemManaged<AudioManager>();
@@ -213,6 +217,7 @@ namespace Traffic.Tools
             _selectedNode = Entity.Null;
             _nodeElevation.value = 0f;
             CleanupIntersectionHelpers();
+            _modUISystem.SelectedIntersection = default;
             _applyAction.shouldBeEnabled = false;
             _secondaryApplyAction.shouldBeEnabled = false;
             _modRaycastSystem.Enabled = false;
@@ -384,6 +389,11 @@ namespace Traffic.Tools
             if (m_FocusChanged)
             {
                 return inputDeps;
+            }
+            if (ToolMode == Mode.ApplyPreviewModifications)
+            {
+                ToolMode = Mode.Default;
+                return ApplyPreviewedAction(inputDeps);
             }
 
             if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
@@ -715,6 +725,7 @@ namespace Traffic.Tools
                     }
                     EntityManager.DestroyEntity(connections);
                     EntityManager.AddComponent<Updated>(editingIntersection);
+                    entities.Dispose();
                     connectors.Dispose();
                     connections.Dispose();
                 }
@@ -750,6 +761,7 @@ namespace Traffic.Tools
         {
             CleanupIntersectionHelpers();
             _selectedNode = node;
+            _modUISystem.SelectedIntersection = new ModUISystem.SelectedIntersectionData() { entity = node };
             if (node != Entity.Null) {
                 SelectIntersectionNodeJob selectNodeJob = new SelectIntersectionNodeJob
                 {
@@ -818,8 +830,8 @@ namespace Traffic.Tools
                 modifiedLaneConnectionsData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 commandBuffer = _toolOutputBarrier.CreateCommandBuffer().AsParallelWriter(),
             }.Schedule(1, handle);
-            entities.Dispose(removeConnectionsHandle);
             _toolOutputBarrier.AddJobHandleForProducer(removeConnectionsHandle);
+            entities.Dispose(removeConnectionsHandle);
             return UpdateDefinitions(removeConnectionsHandle, true);
         }
 
@@ -862,6 +874,56 @@ namespace Traffic.Tools
             {
                 m_ToolSystem.activeTool = m_DefaultToolSystem;
             }
+        }
+
+        internal JobHandle ApplyPreviewedAction(JobHandle inputDeps)
+        {
+            ActionOverlayData data = SystemAPI.GetSingleton<ActionOverlayData>();
+            Logger.Debug($"ApplyPreviewedAction: {data.entity}, {data.mode}");
+            if (data.mode != ModUISystem.ActionOverlayPreview.None &&
+                data.entity != Entity.Null &&
+                data.entity.Equals(_selectedNode) &&
+                EntityManager.HasComponent<NodeGeometry>(data.entity))
+            {
+                if (data.mode == ModUISystem.ActionOverlayPreview.ResetToVanilla)
+                {
+                    if (!EntityManager.HasBuffer<ModifiedLaneConnections>(data.entity))
+                    {
+                        Logger.Debug($"ApplyPreviewedAction: ResetToVanilla - no modified connections! Aborting.");
+                        return inputDeps;
+                    }
+
+                    return ResetNodeConnections(inputDeps);
+                }
+
+                if (!_editIntersectionQuery.IsEmptyIgnoreFilter)
+                {
+                    _lastControlPoint = default;
+                    _controlPoints.Clear();
+                    
+                    Logger.Debug($"ApplyPreviewedAction: Scheduling apply connections for {data.mode} on {data.entity}");
+                    JobHandle job = new ApplyLaneConnectionsActionJob()
+                    {
+                        edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                        deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
+                        connectorData = SystemAPI.GetComponentLookup<Connector>(true),
+                        connectionsBuffer = SystemAPI.GetBufferLookup<Connection>(true),
+                        connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                        connectorElementBuffer = SystemAPI.GetBufferLookup<ConnectorElement>(true),
+                        modifiedConnectionBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                        generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                        laneConnectionsBuffer = SystemAPI.GetBufferLookup<LaneConnections.LaneConnection>(false),
+                        editIntersectionEntity = _editIntersectionQuery.GetSingletonEntity(),
+                        actionData = data,
+                        commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
+                    }.Schedule(inputDeps);
+                    _toolOutputBarrier.AddJobHandleForProducer(job);
+                    _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
+                    applyMode = ApplyMode.Clear;
+                    return UpdateDefinitions(inputDeps);
+                }
+            }
+            return inputDeps;
         }
     }
 }

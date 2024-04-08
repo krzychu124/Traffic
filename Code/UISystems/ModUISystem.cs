@@ -33,6 +33,7 @@ namespace Traffic.UISystems
             AddUpdateBinding(new GetterValueBinding<SelectedIntersectionData>(Mod.MOD_NAME, UIBindingConstants.SELECTED_INTERSECTION, () => SelectedIntersection));
             AddBinding(new TriggerBinding<ActionOverlayPreview>(Mod.MOD_NAME, UIBindingConstants.SET_ACTION_OVERLAY_PREVIEW, SetActionOverlayPreviewState, new EnumReader<ActionOverlayPreview>()));
             AddBinding(new TriggerBinding(Mod.MOD_NAME, UIBindingConstants.APPLY_TOOL_ACTION_PREVIEW, ApplyActionOverlayPreview));
+            AddBinding(new TriggerBinding<bool>(Mod.MOD_NAME, UIBindingConstants.TOGGLE_TOOL, ToggleTool));
             EntityManager.CreateSingleton<ActionOverlayData>();
         }
 
@@ -64,6 +65,12 @@ namespace Traffic.UISystems
             actionOverlayData.entity = state != ActionOverlayPreview.None && isValid ? _selectedIntersectionData.entity : Entity.Null;
             actionOverlayData.mode = isValid ? state : ActionOverlayPreview.None;
             SystemAPI.SetSingleton(actionOverlayData);
+        }
+
+        private void ToggleTool(bool enable)
+        {
+            LaneConnectorToolSystem laneConnectorToolSystem = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
+            laneConnectorToolSystem.ToggleTool(enable);
         }
 
         protected override void OnGamePreload(Purpose purpose, GameMode mode)

@@ -9,40 +9,25 @@ import { useValue, trigger } from "cs2/api";
 import { isDebugVisible$ } from "bindings";
 import {UIBindingConstants} from "types/traffic";
 import { tool } from "cs2/bindings";
-import { LaneConnectorTool } from "debugUi/laneConnectorTool/laneConnectorTool";
+import { LaneConnectorTool } from "modUI/laneConnectorTool/laneConnectorTool";
 
 const LC_TOOL = "Lane Connection Tool";
 
 export const DebugUi = () => {
   const isVisible = useValue(isDebugVisible$);
   const selectedTool = useValue(tool.activeTool$);
-  const [position, setPosition] = useState<Number2>({x: 0.025, y: 0.8})
 
-  const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, !isVisible), [isVisible]);
+  const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === LC_TOOL), [selectedTool.id]);
 
   return (
     <div>
       {isVisible && (
-        // <Portal>
         <NetworkDebugInfo />
-        // </Portal>
-      )}
-      {selectedTool.id === LC_TOOL && (
-        <LaneConnectorTool position={position} />
       )}
       <Button src={trafficIcon}
               variant="floating"
-              className={classNames({[styles.selected]: isVisible}, styles.toggle)}
+              className={classNames({[styles.selected]: selectedTool.id === LC_TOOL}, styles.toggle)}
               onSelect={changeIsVisible} />
-      <div className={styles.toolInfo}>
-        <span>SelectedTool: {selectedTool.id}</span>
-        <span>ModeIndex: {selectedTool.modeIndex}</span>
-        <div>Modes: {selectedTool.modes.map(m => (
-          <div style={{display: "block"}}>
-            <span>{`[${m.index}] ${m.id}`}</span>
-          </div>)
-        )}</div>
-      </div>
     </div>
   )
 }

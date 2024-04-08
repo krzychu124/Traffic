@@ -77,7 +77,7 @@ namespace Traffic.Tools
             // RemoveLaneConnection, // raycast connection line required
         }
 
-        public override string toolID => "Lane Connection Tool";
+        public override string toolID => UIBindingConstants.LANE_CONNECTOR_TOOL;
 
         private ModRaycastSystem _modRaycastSystem;
         private ModUISystem _modUISystem;
@@ -187,11 +187,21 @@ namespace Traffic.Tools
         public void OnKeyPressed(EventModifiers modifiers, KeyCode code) {
             if (modifiers == EventModifiers.Control && code == KeyCode.R)
             {
-                if (m_ToolSystem.activeTool != this && m_ToolSystem.activeTool == m_DefaultToolSystem)
-                {
-                    m_ToolSystem.selected = Entity.Null;
-                    m_ToolSystem.activeTool = this;
-                }
+                ToggleTool(true);
+            }
+        }
+
+        public void ToggleTool(bool enable)
+        {
+            if (enable && m_ToolSystem.activeTool != this)
+            {
+                m_ToolSystem.selected = Entity.Null;
+                m_ToolSystem.activeTool = this;
+            } 
+            else if (!enable && m_ToolSystem.activeTool == this)
+            {
+                m_ToolSystem.selected = Entity.Null;
+                m_ToolSystem.activeTool = m_DefaultToolSystem;
             }
         }
 

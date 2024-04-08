@@ -9,10 +9,11 @@ export class UIBindingConstants
 	public static DEBUG_TEXTS: string = `debugTexts`;
 	public static IS_DEBUG: string = `isDebugEnabled`;
 	public static SET_VISIBILITY: string = `setVisibility`;
+	public static TOGGLE_TOOL: string = `toggleTool`;
 	public static SET_ACTION_OVERLAY_PREVIEW: string = `setActionOverlayPreview`;
 	public static SELECTED_INTERSECTION: string = `selectedIntersection`;
 	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
-	public static LANE_CONNECTOR_TOOL: string = `LaneConnectorTool`;
+	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
 }
 export enum TempFlags {
 	Create = 1,

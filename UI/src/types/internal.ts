@@ -1,4 +1,5 @@
 import {TempFlags} from "types/traffic";
+import { Number2 } from "cs2/ui";
 
 export const TempFlagsStr: Record<number, string> = {
   0: "0",
@@ -32,3 +33,12 @@ export const tempFlagsToString = (value: TempFlags) => {
   }
   return flags.length == 0 ? TempFlagsStr[0] : flags.join(", ");
 }
+
+export const fitScreen = (position: Number2): Number2 => {
+  return {
+    x: position.x < 0 ? 0 : position.x > 1 ? 0.95 : position.x,
+    y: position.y < 0 ? 0 : position.y > 1 ? 0.95 : position.y,
+  };
+}
+
+export const simpleBoundingRectComparer = (a?: DOMRect, b?: DOMRect) => a?.x === b?.x && a?.y === b?.y;

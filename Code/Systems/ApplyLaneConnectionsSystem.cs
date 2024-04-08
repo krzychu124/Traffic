@@ -11,6 +11,7 @@ using Game.Tools;
 using Traffic.Components;
 using Traffic.Helpers;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -23,6 +24,9 @@ namespace Traffic.Systems
     /// <summary>
     /// Apply changes in temporary entities containing ModifiedLaneConnections buffer
     /// </summary>
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ApplyLaneConnectionsSystem : GameSystemBase
     {
         private EntityQuery _tempQuery;
@@ -93,6 +97,9 @@ namespace Traffic.Systems
             Dependency = jobHandle;
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct MapReplacedEdges : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -194,6 +201,9 @@ namespace Traffic.Systems
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct HandleTempEntities : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;

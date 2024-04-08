@@ -9,6 +9,7 @@ using Game.Tools;
 using Traffic.Components;
 using Traffic.Helpers;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -18,6 +19,9 @@ namespace Traffic.Tools
 {
     public partial class LaneConnectorToolSystem
     {
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct CreateDefinitionsJob : IJob
         {
             [ReadOnly] public State state;
@@ -95,7 +99,7 @@ namespace Traffic.Tools
 
                     Entity nodeEntity = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent(nodeEntity, nodeDef);
-                    commandBuffer.AddComponent(nodeEntity, typeof(Updated));
+                    commandBuffer.AddComponent<Updated>(nodeEntity);
                     commandBuffer.AddComponent(nodeEntity, netCourse);
                     /*----------------------------------------------*/
                 }

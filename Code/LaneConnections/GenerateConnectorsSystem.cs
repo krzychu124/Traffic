@@ -10,6 +10,7 @@ using Game.Prefabs;
 using Game.Tools;
 using Traffic.Common;
 using Traffic.Components;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -22,6 +23,9 @@ using SubLane = Game.Net.SubLane;
 
 namespace Traffic.LaneConnections
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class GenerateConnectorsSystem : GameSystemBase
     {
         private EntityQuery _definitionQuery;
@@ -105,6 +109,9 @@ namespace Traffic.LaneConnections
             Dependency = jobHandle2;
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct CollectConnectorsJob : IJobChunk
         {
             
@@ -125,6 +132,9 @@ namespace Traffic.LaneConnections
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct GenerateConnectorsJob : IJobChunk
         {            
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -447,7 +457,9 @@ namespace Traffic.LaneConnections
             }
         }
 
-
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct GenerateConnectionLanesJob : IJobChunk
         {            
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;

@@ -16,6 +16,7 @@ using Game.Prefabs;
 using Game.Simulation;
 using Game.Tools;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -44,7 +45,9 @@ using Transform = Game.Objects.Transform;
 
 namespace Traffic.Systems
 {
-    // [BurstCompile]
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class TrafficLaneSystem : GameSystemBase
     {
         private struct LaneKey : IEquatable<LaneKey>
@@ -431,7 +434,9 @@ namespace Traffic.Systems
             // Logger.Debug("TrafficLaneSystem Update Finished!");
         }
 
-        // [BurstCompile]
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct CustomUpdateLanesJob : IJobChunk
         {
 #region Fields

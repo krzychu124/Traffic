@@ -18,6 +18,7 @@ using Traffic.Components;
 using Traffic.LaneConnections;
 using Traffic.Systems;
 using Traffic.UISystems;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -29,6 +30,9 @@ using SubLane = Game.Net.SubLane;
 
 namespace Traffic.Tools
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class LaneConnectorToolSystem : ToolBaseSystem
     {
         public enum Mode

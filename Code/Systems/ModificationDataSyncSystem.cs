@@ -3,6 +3,7 @@ using Game.Common;
 using Game.Net;
 using Game.Tools;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,6 +11,9 @@ using Unity.Jobs;
 
 namespace Traffic.Systems
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ModificationDataSyncSystem : GameSystemBase
     {
         private ModificationBarrier4B _modificationBarrier;
@@ -40,6 +44,9 @@ namespace Traffic.Systems
             Dependency = jobHandle;
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct SyncModificationDataJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityType;

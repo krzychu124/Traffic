@@ -7,13 +7,18 @@ using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
 using Traffic.Tools;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 
 namespace Traffic.LaneConnections
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class GenerateLaneConnectionsSystem : GameSystemBase
     {
         private EntityQuery _query;
@@ -87,6 +92,7 @@ namespace Traffic.LaneConnections
                 {
                     modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                     createdModifiedConnections = createdModifiedConnections,
+                    fakePrefabRef = LaneConnectorToolSystem.FakePrefabRef,
                     keys = entities,
                     processedEntities = processedEntities,
                     commandBuffer = entityCommandBuffer.AsParallelWriter(),
@@ -109,6 +115,9 @@ namespace Traffic.LaneConnections
             Dependency = jobHandle;
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct FillTempNodeMap : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -130,8 +139,9 @@ namespace Traffic.LaneConnections
                 for (int i = 0; i < entities.Length; i++)
                 {
                     Entity entity = entities[i];
-                    Temp temp = temps[i];
                     tempNodes.AddNoResize(entity);
+#if DEBUG_CONNECTIONS
+                    Temp temp = temps[i];
                     if (temp.m_Original != Entity.Null && nodeData.HasComponent(temp.m_Original))
                     {
                         //temp on node entity can split an edge -> edge entity will be set in m_Original + temp.m_CurvePosition will be larger than 0.0f
@@ -144,21 +154,33 @@ namespace Traffic.LaneConnections
                     {
                         Logger.DebugConnections($"Not a node: {temp.m_Original} -> {entity} flags: {temp.m_Flags}");
                     }
+#else
+                    Temp temp = temps[i];
+                    if (temp.m_Original != Entity.Null && nodeData.HasComponent(temp.m_Original))
+                    {
+                        //temp on node entity can split an edge -> edge entity will be set in m_Original + temp.m_CurvePosition will be larger than 0.0f
+                        tempEntityMap.TryAdd(temp.m_Original, entity);
+                    }
+#endif
                     if (connectedEdgeAccessor.Length > 0)
                     {
                         DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeAccessor[i];
                         for (int j = 0; j < connectedEdges.Length; j++)
                         {
                             Entity edge = connectedEdges[j].m_Edge;
-                            if (edge != Entity.Null && tempData.HasComponent(edge))
+                            if (tempData.HasComponent(edge))
                             {
                                 Temp tempEdge = tempData[edge];
                                 if (tempEdge.m_Original != Entity.Null)
                                 {
+#if DEBUG_CONNECTIONS
                                     if (tempEntityMap.TryAdd(tempEdge.m_Original, edge))
                                     {
                                         Logger.DebugConnections($"Cache edge of ({temp.m_Original}): {tempEdge.m_Original} -> {edge} flags: {tempEdge.m_Flags}");
                                     }
+#else
+                                    tempEntityMap.TryAdd(tempEdge.m_Original, edge);
+#endif
                                 }
                             }
                         }
@@ -167,6 +189,9 @@ namespace Traffic.LaneConnections
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct GenerateTempConnectionsJob : IJobChunk
         {
             [ReadOnly] public ComponentTypeHandle<CreationDefinition> creationDefinitionTypeHandle;
@@ -235,12 +260,16 @@ namespace Traffic.LaneConnections
                 tempConnections.Dispose();
             }
         }
-        
+
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct MapTempConnectionsJob : IJobParallelForDefer
         {
             [ReadOnly] public NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections;
             [ReadOnly] public BufferLookup<ModifiedLaneConnections> modifiedConnectionsBuffer;
             [ReadOnly] public NativeList<Entity> keys;
+            [ReadOnly] public Entity fakePrefabRef;
             public NativeParallelHashSet<Entity> processedEntities;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
 
@@ -277,7 +306,7 @@ namespace Traffic.LaneConnections
                         commandBuffer.AddComponent<Temp>(index, modifiedConnectionEntity, new Temp(item.owner, item.flags));
                         commandBuffer.AddComponent<DataOwner>(index, modifiedConnectionEntity, new DataOwner(item.dataOwner));
                         commandBuffer.AddComponent<CustomLaneConnection>(index, modifiedConnectionEntity);
-                        commandBuffer.AddComponent<PrefabRef>(index, modifiedConnectionEntity, new PrefabRef(LaneConnectorToolSystem.FakePrefabRef));
+                        commandBuffer.AddComponent<PrefabRef>(index, modifiedConnectionEntity, new PrefabRef(fakePrefabRef));
                         DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, modifiedConnectionEntity);
 #if DEBUG_CONNECTIONS
                         int length = item.generatedConnections.Length;

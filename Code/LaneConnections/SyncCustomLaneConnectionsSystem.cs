@@ -11,6 +11,7 @@ using Game.Tools;
 using Traffic.Components;
 using Traffic.Helpers;
 using Traffic.Tools;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -26,6 +27,9 @@ namespace Traffic.LaneConnections
     /// - Edge split (edge has been split into one or more edges)
     /// - Edge combine (node reduction) after removing 3rd edge, remaining two may trigger node reduction - generate updated edge joining two remaining nodes (when matching composition/asset))
     /// </summary>
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class SyncCustomLaneConnectionsSystem : GameSystemBase
     {
         private EntityQuery _nodeEdgeQuery;
@@ -99,6 +103,7 @@ namespace Traffic.LaneConnections
                 modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                fakePrefabRef = LaneConnectorToolSystem.FakePrefabRef,
                 nodeEdgeMap = tempMap,
                 tempNodes = updatedNodes.AsReadOnly(),
                 commandBuffer = commandBuffer.AsParallelWriter(),
@@ -118,7 +123,9 @@ namespace Traffic.LaneConnections
 #endif
         }
 
-
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct MapOriginalEntities : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -254,6 +261,9 @@ namespace Traffic.LaneConnections
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct SyncConnectionsJob : IJobFor
         {
             [ReadOnly] public ComponentLookup<Node> nodeData;
@@ -266,6 +276,7 @@ namespace Traffic.LaneConnections
             [ReadOnly] public BufferLookup<ModifiedLaneConnections> modifiedConnectionsBuffer;
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionBuffer;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
+            [ReadOnly] public Entity fakePrefabRef;
             public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;
             public NativeArray<Entity>.ReadOnly tempNodes;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
@@ -357,7 +368,7 @@ namespace Traffic.LaneConnections
                             Entity genEntity = commandBuffer.CreateEntity(index);
                             Temp newModifiedConnectionTemp = new Temp(connection.modifiedConnections, 0);
                             commandBuffer.AddComponent<DataOwner>(index, genEntity, new DataOwner(entity));
-                            commandBuffer.AddComponent<PrefabRef>(index, genEntity, new PrefabRef(LaneConnectorToolSystem.FakePrefabRef));
+                            commandBuffer.AddComponent<PrefabRef>(index, genEntity, new PrefabRef(fakePrefabRef));
                             if (edgeMap.TryGetValue(connection.edgeEntity, out EdgeInfo newEdgeInfo))
                             {
                                 if (!(newEdgeInfo.isStart ? newEdgeInfo.compositionChanged.x : newEdgeInfo.compositionChanged.y))

@@ -15,6 +15,9 @@ using Unity.Mathematics;
 namespace Traffic.LaneConnections
 {
 
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class SearchSystem : GameSystemBase
     {
         private NativeQuadTree<Entity, QuadTreeBoundsXZ> _searchTree;
@@ -81,7 +84,9 @@ namespace Traffic.LaneConnections
             base.OnDestroy();
         }
 
-        // [BurstCompile]
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct UpdateSearchTree : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityType;

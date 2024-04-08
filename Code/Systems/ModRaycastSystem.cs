@@ -6,6 +6,7 @@ using Game.Tools;
 using Traffic.Common;
 using Traffic.Helpers;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -15,6 +16,9 @@ using SearchSystem = Traffic.LaneConnections.SearchSystem;
 namespace Traffic.Systems
 {
 
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ModRaycastSystem : GameSystemBase
     {
         private SearchSystem _searchSystem;
@@ -106,6 +110,9 @@ namespace Traffic.Systems
             return result.owner != Entity.Null;
         }
         
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct RaycastTerrainJob : IJob
         {
             [ReadOnly] public CustomRaycastInput input;

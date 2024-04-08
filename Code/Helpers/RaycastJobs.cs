@@ -6,6 +6,7 @@ using Colossal.Mathematics;
 using Game.Common;
 using Traffic.Common;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -13,9 +14,15 @@ using Unity.Mathematics;
 
 namespace Traffic.Helpers
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public static class RaycastJobs
     {
         /*TODO try measure performance with ParallelFor */
+#if WITH_BURST
+        [BurstCompile]
+#endif
         public struct FindConnectionNodeFromTreeJob : IJob 
         {
             private struct FindConnectionNodeIterator : INativeQuadTreeIterator<Entity, QuadTreeBoundsXZ>, IUnsafeQuadTreeIterator<Entity, QuadTreeBoundsXZ>
@@ -63,6 +70,9 @@ namespace Traffic.Helpers
         }
     
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         public struct RaycastLaneConnectionSubObjects : IJobParallelForDefer
         {
             [ReadOnly] public ComponentLookup<Connector> connectorData;

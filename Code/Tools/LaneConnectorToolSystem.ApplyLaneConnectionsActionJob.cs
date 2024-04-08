@@ -4,6 +4,7 @@ using Traffic.Common;
 using Traffic.Components;
 using Traffic.LaneConnections;
 using Traffic.UISystems;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -14,6 +15,9 @@ namespace Traffic.Tools
 {
     public partial class LaneConnectorToolSystem
     {
+#if WITH_BURST
+        [BurstCompile]
+#endif
         public struct ApplyLaneConnectionsActionJob : IJob
         {
             [ReadOnly] public ComponentLookup<Edge> edgeData;

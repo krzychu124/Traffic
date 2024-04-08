@@ -12,6 +12,7 @@ using Traffic.Debug;
 using Traffic.LaneConnections;
 using Traffic.Tools;
 using Traffic.UISystems;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,6 +22,9 @@ using UnityEngine;
 
 namespace Traffic.Rendering
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ToolOverlaySystem : GameSystemBase
     {
         private ToolSystem _toolSystem;
@@ -177,6 +181,9 @@ namespace Traffic.Rendering
             }
         }
         
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct LaneConnectorOverlayJob : IJob
         {
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;
@@ -244,6 +251,9 @@ namespace Traffic.Rendering
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct ConnectorsOverlayJob : IJob
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -371,6 +381,9 @@ namespace Traffic.Rendering
             }
         }
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct ConnectionsOverlayJob : IJob
         {
             [ReadOnly] public NativeArray<ArchetypeChunk> chunks;
@@ -596,6 +609,9 @@ namespace Traffic.Rendering
         }
 
 
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct ModifiedConnectionsOverlayJob : IJobChunk
         {
             [ReadOnly] public ComponentTypeHandle<ConnectionDefinition> connectionDefinitionDataTypeHandle;

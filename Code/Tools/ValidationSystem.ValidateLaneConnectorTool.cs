@@ -4,6 +4,7 @@ using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
 using Traffic.LaneConnections;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -11,8 +12,14 @@ using Unity.Mathematics;
 
 namespace Traffic.Tools
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ValidationSystem
     {
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct ValidateLaneConnectorTool : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;

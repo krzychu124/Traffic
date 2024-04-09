@@ -2,6 +2,8 @@
 #define DEBUG_TOOL
 #endif
 // #define DEBUG_CONNECTIONS
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using Colossal.Collections;
 using Game;
@@ -353,6 +355,10 @@ namespace Traffic.Systems
 
                     if (updated)
                     {
+                        if (modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
+                        {
+                            modifiedLaneConnectionData[tempNode.m_Original].AsNativeArray().Sort(default(ModifiedLaneConnectionsComparer));
+                        }
                         commandBuffer.AddComponent<Updated>(tempNode.m_Original);
                     }
                 }
@@ -422,7 +428,8 @@ namespace Traffic.Systems
                             generatedConnections[k] = connection;
                             Logger.DebugTool($"Updated {k} {connection.ToString()}");
                         }
-
+                        
+                        generatedConnections.AsNativeArray().Sort(default(GeneratedConnectionComparer));
                         
                         for (var k = 0; k < originalLaneConnections.Length; k++)
                         {
@@ -473,6 +480,8 @@ namespace Traffic.Systems
                             generatedConnections[k] = connection;
                             Logger.DebugTool($"Updated {k} {connection.ToString()}");
                         }
+                        
+                        generatedConnections.AsNativeArray().Sort(default(GeneratedConnectionComparer));
                         
                         if (tempEdgeMap.TryGetValue(new NodeEdgeKey(tempNodeEntity, tempModifiedLaneConnection.edgeEntity), out Entity oldEntity))
                         {
@@ -528,6 +537,8 @@ namespace Traffic.Systems
                         connection.targetEntity = tempData[connection.targetEntity].m_Original;
                         generatedConnections[k] = connection;
                     }
+                    
+                    generatedConnections.AsNativeArray().Sort(default(GeneratedConnectionComparer));
 
                     commandBuffer.SetComponent<DataOwner>(modifiedLaneConnection.modifiedConnections, dataOwner);
                     commandBuffer.RemoveComponent<Temp>(modifiedLaneConnection.modifiedConnections);
@@ -536,6 +547,26 @@ namespace Traffic.Systems
                     originalLaneConnections.Add(modifiedLaneConnection);
                     updated = true;
                 }
+            }
+        }
+        
+        [StructLayout(LayoutKind.Sequential, Size = 1)]
+        private struct GeneratedConnectionComparer : IComparer<GeneratedConnection>
+        {
+            public int Compare(GeneratedConnection x, GeneratedConnection y)
+            {
+                int targetEntityComparison = x.targetEntity.CompareTo(y.targetEntity);
+                return math.select(x.laneIndexMap.y.CompareTo(y.laneIndexMap.y), targetEntityComparison, targetEntityComparison != 0);
+            }
+        }
+        
+        [StructLayout(LayoutKind.Sequential, Size = 1)]
+        private struct ModifiedLaneConnectionsComparer : IComparer<ModifiedLaneConnections>
+        {
+            public int Compare(ModifiedLaneConnections x, ModifiedLaneConnections y)
+            {
+                int targetEntityComparison = x.edgeEntity.CompareTo(y.edgeEntity);
+                return math.select(x.laneIndex.CompareTo(y.laneIndex), targetEntityComparison, targetEntityComparison != 0);
             }
         }
     }

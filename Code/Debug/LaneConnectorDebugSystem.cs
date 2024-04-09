@@ -197,6 +197,7 @@ namespace Traffic.Debug
                     {
                         float3 position = connector[i].position;
                         gizmoBatcher.DrawWireNode(position, 1f, Color.green);
+                        gizmoBatcher.DrawRay(position, connector[i].direction, Color.magenta);
                     }
                 }
                 else if (chunk.Has(ref connectionType) && connectionsOption)

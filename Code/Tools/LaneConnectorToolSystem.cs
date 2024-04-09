@@ -1,5 +1,5 @@
 ﻿#if DEBUG
-#define DEBUG_TOOL
+// #define DEBUG_TOOL
 #endif
 using System;
 using System.Linq;
@@ -486,12 +486,12 @@ namespace Traffic.Tools
                     //     sb.Append($"{entityArray[i]} [").Append(string.Join(", ", t.Select(tt => tt.GetManagedType().Name))).AppendLine("]");
                     // }
                     // entityArray.Dispose();
-                    // Logger.Debug($"Allow?: {GetAllowApply()} [{m_ToolSystem.ignoreErrors}|{m_ErrorQuery.IsEmptyIgnoreFilter}||{m_OriginalDeletedSystem.GetOriginalDeletedResult(0)}], hasTemp?: {!_tempConnectionQuery.IsEmptyIgnoreFilter} \n{sb}");
+                    // Logger.DebugTool($"Allow?: {GetAllowApply()} [{m_ToolSystem.ignoreErrors}|{m_ErrorQuery.IsEmptyIgnoreFilter}||{m_OriginalDeletedSystem.GetOriginalDeletedResult(0)}], hasTemp?: {!_tempConnectionQuery.IsEmptyIgnoreFilter} \n{sb}");
                     if (IsApplyAllowed(useVanilla: false) && !_tempConnectionQuery.IsEmptyIgnoreFilter)
                     {
                         if (GetCustomRaycastResult(out ControlPoint controlPoint) && EntityManager.TryGetComponent(controlPoint.m_OriginalEntity, out Connector connector))
                         {
-                            Logger.Debug($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
+                            Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
                             if (connector.connectorType == ConnectorType.Target)
                             {
                                 if (_controlPoints.Length > 0)
@@ -511,7 +511,7 @@ namespace Traffic.Tools
                                     _state = State.SelectingSourceConnector;
                                 }
                                 applyMode = ApplyMode.Apply;
-                                Logger.Debug($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Upcoming State: {_state}");
+                                Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Upcoming State: {_state}");
                                 return UpdateDefinitions(inputDeps, true);
                             }
                         }
@@ -893,7 +893,7 @@ namespace Traffic.Tools
         internal JobHandle ApplyPreviewedAction(JobHandle inputDeps)
         {
             ActionOverlayData data = SystemAPI.GetSingleton<ActionOverlayData>();
-            Logger.Debug($"ApplyPreviewedAction: {data.entity}, {data.mode}");
+            Logger.DebugTool($"ApplyPreviewedAction: {data.entity}, {data.mode}");
             if (data.mode != ModUISystem.ActionOverlayPreview.None &&
                 data.entity != Entity.Null &&
                 data.entity.Equals(_selectedNode) &&
@@ -903,7 +903,7 @@ namespace Traffic.Tools
                 {
                     if (!EntityManager.HasBuffer<ModifiedLaneConnections>(data.entity))
                     {
-                        Logger.Debug($"ApplyPreviewedAction: ResetToVanilla - no modified connections! Aborting.");
+                        Logger.DebugTool($"ApplyPreviewedAction: ResetToVanilla - no modified connections! Aborting.");
                         return inputDeps;
                     }
 
@@ -915,7 +915,7 @@ namespace Traffic.Tools
                     _lastControlPoint = default;
                     _controlPoints.Clear();
                     
-                    Logger.Debug($"ApplyPreviewedAction: Scheduling apply connections for {data.mode} on {data.entity}");
+                    Logger.DebugTool($"ApplyPreviewedAction: Scheduling apply connections for {data.mode} on {data.entity}");
                     JobHandle job = new ApplyLaneConnectionsActionJob()
                     {
                         edgeData = SystemAPI.GetComponentLookup<Edge>(true),

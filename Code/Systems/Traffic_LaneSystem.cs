@@ -1165,11 +1165,10 @@ namespace Traffic.Systems
                                     
                                     ProcessCarConnectPositions(chunkIndex, ref nodeLaneIndex, ref random4, entity3, laneBuffer, middleConnections, createdConnections, tempSourceConnectPositions, tempTargetConnectPositions, sourceNodeConnectPositions,
                                             tempComponents.Length != 0, ownerTemp3, yield, /*NON-STOCK*/ tempModifiedLaneEnds, tempMainConnectionKeys);
-                                    // Logger.DebugLaneSystem("ProcessCarConnectPositions Done!");
                                     /*
                                      *
                                      */
-                                    if (modifiedLaneConnections.Length > 0 /*&& tempComponents.Length == 0*/)
+                                    if (modifiedLaneConnections.Length > 0)
                                     {
                                         DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedLaneConnections[entityIndex];
                                         for (var i = 0; i < modifiedConnections.Length; i++)
@@ -1182,7 +1181,7 @@ namespace Traffic.Systems
                                             }
                                         
                                             DynamicBuffer<GeneratedConnection> connections = generatedConnections[connectionsEntity.modifiedConnections];
-                                            ConnectPosition cs = FindNodeConnectPosition(tempSourceConnectPositions, connectionsEntity.edgeEntity, connectionsEntity.laneIndex, TrackTypes.None,  out _);
+                                            ConnectPosition cs = FindNodeConnectPosition(tempSourceConnectPositions, connectionsEntity.edgeEntity, connectionsEntity.laneIndex, TrackTypes.None,  out int sourcePosIndex);
                                             if (cs.m_Owner == Entity.Null || cs.m_Owner != sourceMainCarConnectPos.m_Owner || cs.m_LaneData.m_Group != sourceMainCarConnectPos.m_LaneData.m_Group)
                                             {
                                                 Logger.DebugLaneSystem($"Skip 2 o: {cs.m_Owner} | sO: {sourceMainCarConnectPos.m_Owner} ||g: {cs.m_LaneData.m_Group} sG: {sourceMainCarConnectPos.m_LaneData.m_Group}");
@@ -1199,17 +1198,13 @@ namespace Traffic.Systems
                                                 ConnectionKey key = new ConnectionKey(cs, ct);
                                                 if (ct.m_Owner != Entity.Null && !createdConnections.Contains(key))
                                                 {
-                                                    if (connection.isUnsafe && targetPosIndex < tempTargetConnectPositions.Length)
-                                                    {
-                                                        // update target connect pos to set more accurate flag of the main connection later (standalone/master)
-                                                        ct.m_UnsafeCount++;
-                                                        tempTargetConnectPositions[targetPosIndex] = ct;
-                                                    }
                                                     int yield2 = CalculateYieldOffset(cs, sourceMainCarConnectPositions, targetMainCarConnectPositions);
                                                     uint group = (uint)(cs.m_GroupIndex | (ct.m_GroupIndex << 16));
                                                     bool isTurn = IsTurn(cs, ct, out bool right, out bool gentle, out bool uturn);
                                                     float curviness = -1;
-                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, false, false, false, false, false))
+                                                    bool isLeftLimit = sourcePosIndex == 0 && targetPosIndex == 0;
+                                                    bool isRightLimit = (sourcePosIndex == tempSourceConnectPositions.Length - 1) & (targetPosIndex == tempTargetConnectPositions.Length - 1);
+                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, isLeftLimit, isRightLimit, false,false, false))
                                                     {
                                                         createdConnections.Add(key);
                                                         tempMainConnectionKeys.Add(new ConnectionKey(cs.m_Owner.Index, cs.m_LaneData.m_Group, ct.m_Owner.Index, ct.m_LaneData.m_Group));
@@ -5472,12 +5467,14 @@ namespace Traffic.Systems
                     sourceBuffer.Sort(default(SourcePositionComparer));
                     ConnectPosition sourcePosition = sourceBuffer[0];
                     SortTargets(sourcePosition, targetBuffer);
+#if DEBUG_LANE_SYS
                     StringBuilder sb = new StringBuilder();
                     for (var i = 0; i < targetBuffer.Length; i++)
                     {
                         sb.Append("\ti[").Append(targetBuffer[i].m_LaneData.m_Index).Append("] g[").Append(targetBuffer[i].m_LaneData.m_Group).Append("] gi[").Append(targetBuffer[i].m_GroupIndex).Append("] ").Append(targetBuffer[i].m_Owner).Append(" f[").Append(targetBuffer[i].m_LaneData.m_Flags.ToString()).AppendLine("]");
                     }
                     Logger.DebugLaneSystem($"Sorted targets\n  S({sourcePosition.m_Owner} | {sourcePosition.m_LaneData.m_Index}[{sourcePosition.m_GroupIndex}] ({sourcePosition.m_LaneData.m_Group}) -> [{sourcePosition.m_LaneData.m_Flags}]), nLaneIdx: {nodeLaneIndex}, owner: {owner}:\n{sb}");
+#endif
                     CreateNodeCarLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, middleConnections, createdConnections, sourceBuffer, targetBuffer, allSources, isTemp, ownerTemp, yield, modifiedLaneEndConnections, createdGroups);
                 }
             }

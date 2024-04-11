@@ -36,6 +36,7 @@ namespace Traffic
                     {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.Tooltip.ModifyConnections)}]", "Modify Connections"},
                     {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.Tooltip.RemoveConnection)}]", "Remove Connection"},
                     {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.Tooltip.CompleteConnection)}]", "Complete Connection"},
+                    {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.Tooltip.UTurnTrackNotAllowed)}]", "U-Turn track connections are not allowed!"},
                     
                     {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.StateModifier.Road)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}]", "Road-only Lane Connectors"},
                     {$"{Mod.MOD_NAME}.Tools.Tooltip[{nameof(LaneConnectorToolSystem.StateModifier.Track)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}]", "Track-only Lane Connectors"},

@@ -7,17 +7,18 @@ import { NetworkDebugInfo } from "debugUi/networkDebugInfo/networkDebugInfo";
 import styles from 'debugUi/debugUi.module.scss';
 import { useValue, trigger } from "cs2/api";
 import { isDebugVisible$ } from "bindings";
-import {UIBindingConstants} from "types/traffic";
+import { UIBindingConstants } from "types/traffic";
 import { tool } from "cs2/bindings";
 import { LaneConnectorTool } from "modUI/laneConnectorTool/laneConnectorTool";
 
-const LC_TOOL = "Lane Connection Tool";
 
 export const DebugUi = () => {
   const isVisible = useValue(isDebugVisible$);
   const selectedTool = useValue(tool.activeTool$);
 
-  const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === LC_TOOL), [selectedTool.id]);
+  const changeIsVisible = useCallback(() => {
+    trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL);
+  }, [selectedTool.id]);
 
   return (
     <div>
@@ -26,25 +27,38 @@ export const DebugUi = () => {
       )}
       <Button src={trafficIcon}
               variant="floating"
-              className={classNames({[styles.selected]: selectedTool.id === LC_TOOL}, styles.toggle)}
+              className={classNames({ [styles.selected]: selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL }, styles.toggle)}
               onSelect={changeIsVisible} />
     </div>
   )
 }
 
 export const DebugUiEditorButton = () => {
-  const isVisible = useValue(isDebugVisible$);
+  const selectedTool = useValue(tool.activeTool$);
+  const [position, setPosition] = useState<Number2>({ x: 0.025, y: 0.8 })
 
-  const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, !isVisible), [isVisible]);
+  // const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, !isVisible), [isVisible]);
+  const changeIsVisible = useCallback(() => {
+    trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL);
+    trigger(mod.id, UIBindingConstants.TOGGLE_TOOL, selectedTool.id !== UIBindingConstants.LANE_CONNECTOR_TOOL);
+  }, [selectedTool.id]);
 
   return (
-    <div style={{ position: "absolute", top: '55rem', left: '220rem', pointerEvents: 'auto' }}>
-      <Button src={trafficIcon} variant="floating" className={classNames({[styles.selected]: isVisible}, styles.toggle)}
-              onClick={changeIsVisible} />
-      {isVisible && (
-        <Portal>
-          <NetworkDebugInfo inEditor />
-        </Portal>
+    <div>
+      <div style={{ position: "absolute", top: '55rem', left: '220rem', pointerEvents: 'auto' }}>
+        <Button src={trafficIcon} variant="floating"
+                className={classNames({ [styles.selected]: selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL }, styles.toggle)}
+                onClick={changeIsVisible}
+        />
+
+        {/*{selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL && (*/}
+        {/*  <Portal>*/}
+        {/*    <NetworkDebugInfo inEditor />*/}
+        {/*  </Portal>*/}
+        {/*)}*/}
+      </div>
+      {selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL && (
+        <LaneConnectorTool position={position} onPositionChanged={setPosition} />
       )}
     </div>
   )

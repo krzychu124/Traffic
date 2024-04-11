@@ -11,6 +11,7 @@ namespace Traffic.Common
     {
         public Line3.Segment line;
         public float3 offset;
+        public float heightOverride;
         public TypeMask typeMask;
         public VehicleGroup vehicleGroup;
         public ConnectionType connectionType;

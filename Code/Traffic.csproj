@@ -27,7 +27,8 @@
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-      <DefineConstants>TRACE;DEBUG_GIZMO;DEBUG_CONNECTIONS;</DefineConstants>
+      <DefineConstants>TRACE;DEBUG_GIZMO;DEBUG_LANE_SYS;</DefineConstants>
+      <DebugType>portable</DebugType>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

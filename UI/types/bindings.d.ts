@@ -1230,6 +1230,7 @@ declare module "cs2/bindings" {
   	PageLayout = "Game.UI.Widgets.PageLayout",
   	Divider = "Game.UI.Widgets.Divider",
   	Label = "Game.UI.Widgets.Label",
+  	MultilineText = "Game.UI.Widgets.MultilineText",
   	Breadcrumbs = "Game.UI.Widgets.Breadcrumbs",
   	Button = "Game.UI.Widgets.Button",
   	ButtonRow = "Game.UI.Widgets.ButtonRow",
@@ -1297,7 +1298,7 @@ declare module "cs2/bindings" {
   }
   export enum TooltipPos {
   	Title = 0,
-  	Cotnainer = 1
+  	Container = 1
   }
   export interface Group extends Named, TooltipTarget {
   	tooltipPos?: TooltipPos;

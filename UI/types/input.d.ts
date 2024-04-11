@@ -202,11 +202,13 @@ declare module "cs2/input" {
   	direction?: NavigationDirection;
   	activation?: FocusActivation;
   	onRefocus?: (controller: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
+  	onChange?: (key: UniqueFocusKey | null) => void;
+  	allowFocusExit?: boolean;
   }
   /**
    * Automatic navigation in lists, grids and forms.
    */
-  export export const AutoNavigationScope: ({ focusKey, initialFocused, direction, activation, children, onRefocus }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
+  export export const AutoNavigationScope: ({ focusKey, initialFocused, direction, activation, children, onChange, onRefocus, allowFocusExit }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
   export interface FocusBoundaryProps {
   	disabled?: boolean;
   	onFocusChange?: FocusCallback;
@@ -350,6 +352,7 @@ declare module "cs2/input" {
   	activation?: FocusActivation;
   	onChange: (key: UniqueFocusKey | null) => void;
   	onRefocus?: (controller: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
+  	allowFocusExit?: boolean;
   }
   /**
    * A stateless component that allows the user to navigate between multiple focusable children with a gamepad.
@@ -360,7 +363,7 @@ declare module "cs2/input" {
    *
    * Optionally, a `focusKey` for the component itself can be set.
    */
-  export export const NavigationScope: ({ focusKey, debugName, focused, direction, activation, children, onChange, onRefocus }: React$1.PropsWithChildren<NavigationScopeProps>) => JSX.Element;
+  export export const NavigationScope: ({ focusKey, debugName, focused, direction, activation, children, onChange, onRefocus, allowFocusExit, }: React$1.PropsWithChildren<NavigationScopeProps>) => JSX.Element;
   export export function refocusClosestKeyIfNoFocus(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
   export export function refocusClosestKey(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
   export export const SelectableFocusBoundary: ({ children }: React$1.PropsWithChildren) => JSX.Element;
@@ -397,6 +400,7 @@ declare module "cs2/input" {
   	"Move Horizontal": Action1D;
   	"Change Slider Value": Action1D;
   	"Change Tool Option": Action1D;
+  	"Change Value": Action1D;
   	"Move Vertical": Action1D;
   	"Switch Radio Station": Action1D;
   	"Scroll Vertical": Action1D;
@@ -430,6 +434,8 @@ declare module "cs2/input" {
   	"Tool Options": Action;
   	"Switch Toolmode": Action;
   	"Toggle Snapping": Action;
+  	"Capture Keyframe": Action;
+  	"Reset Property": Action;
   	"Previous Tutorial Phase": Action;
   	"Continue Tutorial": Action;
   	"Focus Tutorial List": Action;

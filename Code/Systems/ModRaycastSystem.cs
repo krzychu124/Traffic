@@ -11,6 +11,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 using SearchSystem = Traffic.LaneConnections.SearchSystem;
 
 namespace Traffic.Systems
@@ -110,6 +111,19 @@ namespace Traffic.Systems
             return result.owner != Entity.Null;
         }
         
+        private static bool TryIntersectLineWithPlane(Line3 line, Triangle3 plane, float minDot, out float d)
+        {
+            float3 x = math.normalize(MathUtils.NormalCW(plane));
+            if (math.abs(math.dot(x, math.normalize(line.ab))) > minDot)
+            {
+                float3 y = line.a - plane.a;
+                d = (0f - math.dot(x, y)) / math.dot(x, line.ab);
+                return true;
+            }
+            d = 0f;
+            return false;
+        }
+        
 #if WITH_BURST
         [BurstCompile]
 #endif
@@ -126,6 +140,15 @@ namespace Traffic.Systems
                 if ((input.typeMask & TypeMask.Terrain) != 0 && TerrainUtils.Raycast(ref terrainData, segment, false, out float t2, out float3 normal))
                 {
                     float3 pos = MathUtils.Position(segment, t2);
+                    if (input.heightOverride > 0f)
+                    {
+                        float3 pos2 = pos;
+                        pos2.y = input.heightOverride;
+                        if (TryIntersectLineWithPlane(segment, new Triangle3(pos2, pos2 + new float3(1, 0, 1), pos2 + math.right()), minDot: 0.05f, out float d) && d >= 0f && (double)d <= 1.0)
+                        {
+                            pos = MathUtils.Position(segment, d);
+                        }
+                    }
                     RaycastResult value = new()
                     {
                         m_Owner = terrainEntity,

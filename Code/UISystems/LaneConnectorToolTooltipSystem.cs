@@ -47,7 +47,7 @@ namespace Traffic.UISystems
 #endif
             _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
             _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
-            _warnQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
+            _warnQuery = GetEntityQuery(ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
             _errorQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Error>(), ComponentType.Exclude<Deleted>());
         }
 
@@ -57,7 +57,8 @@ namespace Traffic.UISystems
                 return;
             }
             
-            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default)
+            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default &&
+                _laneConnectorTool.ToolState == LaneConnectorToolSystem.State.Default)
             {
                 if (!_errorQuery.IsEmptyIgnoreFilter)
                 {
@@ -78,6 +79,12 @@ namespace Traffic.UISystems
             {
                 _tooltipInfo.value = "Press Delete to reset Lane Connections";
                 AddMouseTooltip(_tooltipInfo);
+            }
+            
+            if (_laneConnectorTool.ToolState == LaneConnectorToolSystem.State.SelectingTargetConnector &&
+                !_warnQuery.IsEmptyIgnoreFilter) {
+                _tooltipWarnings.value = "U-Turn not allowed!";
+                AddMouseTooltip(_tooltipWarnings);
             }
             
 #if DEBUG_TOOL
@@ -120,6 +127,7 @@ namespace Traffic.UISystems
                 case LaneConnectorToolSystem.Tooltip.RemoveSourceConnections:
                 case LaneConnectorToolSystem.Tooltip.RemoveTargetConnections:
                 case LaneConnectorToolSystem.Tooltip.RemoveConnection:
+                case LaneConnectorToolSystem.Tooltip.UTurnTrackNotAllowed:
                     return TooltipColor.Error;
                 case LaneConnectorToolSystem.Tooltip.CreateConnection:
                 case LaneConnectorToolSystem.Tooltip.CompleteConnection:

@@ -1,5 +1,8 @@
-﻿using Game.Common;
+﻿using Colossal.Mathematics;
+using Game.Common;
 using Game.Net;
+using Game.Notifications;
+using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
@@ -9,6 +12,9 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Edge = Game.Net.Edge;
+using SubLane = Game.Net.SubLane;
+using TrackLane = Game.Net.TrackLane;
 
 namespace Traffic.Tools
 {
@@ -24,20 +30,33 @@ namespace Traffic.Tools
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;
+            [ReadOnly] public BufferTypeHandle<SubLane> subLaneTypeHandle;
             [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
             [ReadOnly] public ComponentLookup<Upgraded> upgradedData;
             [ReadOnly] public ComponentLookup<Deleted> deletedData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
             [ReadOnly] public ComponentLookup<Composition> compositionData;
             [ReadOnly] public ComponentLookup<NetCompositionData> netCompositionData;
+            [ReadOnly] public ComponentLookup<TrackLane> trackLaneData;
+            [ReadOnly] public ComponentLookup<TrackLaneData> trackLanePrefabData;
+            [ReadOnly] public ComponentLookup<Lane> laneData;
+            [ReadOnly] public ComponentLookup<Curve> curveData;
+            [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public BufferLookup<WarnResetUpgrade> warnResetUpgradeBuffer;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgesBuffer;
+            [ReadOnly] public BufferLookup<SubLane> subLaneBuffer;
+            [ReadOnly] public Entity tightCurvePrefabEntity;
             public EntityCommandBuffer commandBuffer;
+            public IconCommandBuffer iconCommandBuffer;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
                 NativeList<Entity> warnEntities = new NativeList<Entity>(Allocator.Temp);
+                BufferAccessor<SubLane> subLanesBuffer = chunk.GetBufferAccessor(ref subLaneTypeHandle);
+
+                bool hasModifiedConnections = chunk.Has(ref modifiedLaneConnectionsType);
+                bool hasWarningIconEntity = tightCurvePrefabEntity != Entity.Null;
                 
                 for (int i = 0; i < entities.Length; i++)
                 {
@@ -48,9 +67,41 @@ namespace Traffic.Tools
                         EditIntersection e = editIntersections[i];
                         nodeEntity = e.node;
                     }
-                    else if (chunk.Has(ref modifiedLaneConnectionsType))
+                    else if (hasModifiedConnections)
                     {
                         nodeEntity = entity;
+                        
+                        if (hasWarningIconEntity && subLaneBuffer.HasBuffer(nodeEntity))
+                        {
+                            DynamicBuffer<SubLane> subLanes = subLaneBuffer[nodeEntity];
+                            for (var j = 0; j < subLanes.Length; j++)
+                            {
+                                SubLane subLane = subLanes[j];
+                                if ((subLane.m_PathMethods & PathMethod.Track) != 0 &&
+                                    trackLaneData.HasComponent(subLane.m_SubLane))
+                                {
+                                    Lane lane = laneData[subLane.m_SubLane];
+                                    if (lane.m_StartNode.OwnerEquals(lane.m_EndNode))
+                                    {
+                                        commandBuffer.AddComponent<Error>(nodeEntity);
+                                        commandBuffer.AddComponent<BatchesUpdated>(nodeEntity);
+                                        break;
+                                    }
+                                    
+                                    PrefabRef prefabRef = prefabRefData[subLane.m_SubLane];
+                                    TrackLane trackLane = this.trackLaneData[subLane.m_SubLane];
+                                    TrackLaneData trackLaneData = trackLanePrefabData[prefabRef.m_Prefab];
+                                    if (trackLane.m_Curviness > trackLaneData.m_MaxCurviness)
+                                    {
+                                        Curve curve = this.curveData[subLane.m_SubLane];
+                                        float3 position = MathUtils.Position(curve.m_Bezier, 0.5f);
+                                        iconCommandBuffer.Add(subLane.m_SubLane, tightCurvePrefabEntity, position, IconPriority.Warning, IconClusterLayer.Default, (IconFlags)0, Entity.Null, isTemp: true);
+                                        commandBuffer.AddComponent(nodeEntity, default(Warning));
+                                        commandBuffer.AddComponent(nodeEntity, default(BatchesUpdated));
+                                    }
+                                }
+                            }
+                        }
                     }
                     
                     if (nodeEntity != Entity.Null && connectedEdgesBuffer.HasBuffer(nodeEntity))

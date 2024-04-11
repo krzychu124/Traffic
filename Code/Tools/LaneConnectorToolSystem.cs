@@ -74,6 +74,7 @@ namespace Traffic.Tools
             ModifyConnections,            // source connector connections > 0
             RemoveConnection,             // pointing target - source+target is existing connection
             CompleteConnection,           // pointing target - source+target is new connection
+            UTurnTrackNotAllowed,
             // RemoveLaneConnection, // raycast connection line required
         }
 
@@ -301,6 +302,7 @@ namespace Traffic.Tools
                 CustomRaycastInput input;
                 input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
                 input.offset = new float3(0, 0, 0);
+                input.heightOverride = 0;
                 input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
                 input.connectorType = _state switch
                 {
@@ -314,6 +316,8 @@ namespace Traffic.Tools
                 if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
                     EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
                 {
+                    input.heightOverride = sourceConnector.position.y;
+                    
                     if ((_stateModifiers & StateModifier.MakeUnsafe) != 0)
                     {
                         input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Strict);
@@ -521,6 +525,7 @@ namespace Traffic.Tools
                     {
                         Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| NotAllowed or isTempEmpty: {_tempConnectionQuery.IsEmptyIgnoreFilter}");
                         applyMode = ApplyMode.Clear;
+                        _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_PlaceBuildingFailSound);
                         return Update(inputDeps);
                     }
                     break;

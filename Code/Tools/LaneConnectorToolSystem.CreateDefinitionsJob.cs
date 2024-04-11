@@ -6,6 +6,7 @@ using Game.Net;
 using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
+using Traffic.Common;
 using Traffic.Components;
 using Traffic.Helpers;
 using Traffic.LaneConnections;
@@ -163,8 +164,15 @@ namespace Traffic.Tools
                             CreateDefinitions(firstConnectorEntity, sourceConnector, nextConnector, connectorsMap, filterConnections, ref connectionExists);
                             filterConnections.Dispose();
                         }
-
-                        tooltip.value = connectionExists ? Tooltip.RemoveConnection : Tooltip.CompleteConnection;
+                        if (nextConnector.edge == firstConnector.edge &&
+                            firstConnector.vehicleGroup > VehicleGroup.Car)
+                        {
+                            tooltip.value = Tooltip.UTurnTrackNotAllowed;
+                        }
+                        else
+                        {
+                            tooltip.value = connectionExists ? Tooltip.RemoveConnection : Tooltip.CompleteConnection;
+                        }
                     }
                     else
                     {
@@ -244,6 +252,7 @@ namespace Traffic.Tools
                         continue; //remove mode: skip connection
                     }
 
+                    bool notAllowed = sourceConnector.edge == targetConnector.edge && (connection.method & PathMethod.Track) != 0;
                     TempLaneConnection tempConnection = new TempLaneConnection(
                         connection.sourceEdge,
                         connection.targetEdge,
@@ -259,16 +268,18 @@ namespace Traffic.Tools
                 if (!found)
                 {
                     Logger.DebugTool($"NOT_FOUND: s: {sourceConnector.edge} t: {targetConnector.edge} index: {sourceConnector.laneIndex}; {targetConnector.laneIndex}");
+                    PathMethod method = stateModifier == StateModifier.AnyConnector
+                        ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
+                        : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
+                    bool notAllowed = sourceConnector.edge == targetConnector.edge && (method & PathMethod.Track) != 0;
                     TempLaneConnection connection = new TempLaneConnection(
                         sourceConnector.edge,
                         targetConnector.edge,
                         new int2(sourceConnector.laneIndex, targetConnector.laneIndex),
-                        stateModifier == StateModifier.AnyConnector
-                            ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                            : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
+                        method,
                         (stateModifier & StateModifier.MakeUnsafe) != 0,
                         NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
-                        ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
+                        notAllowed ? ConnectionFlags.Highlight : ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
                     );
                     tempLaneConnections.Add(connection);
                 }
@@ -371,6 +382,11 @@ namespace Traffic.Tools
                             sourceConnector.edge == modifiedConnections.edgeEntity &&
                             sourceConnector.laneIndex == modifiedConnections.laneIndex)
                         {
+                            PathMethod method = stateModifier == StateModifier.AnyConnector
+                                ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
+                                : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
+
+                            bool notAllowed = sourceConnector.edge == targetConnector.edge && (method & PathMethod.Track) != 0;
                             TempLaneConnection connection = new TempLaneConnection(
                                 sourceConnector.edge,
                                 targetConnector.edge,
@@ -380,7 +396,7 @@ namespace Traffic.Tools
                                     : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
                                 (stateModifier & StateModifier.MakeUnsafe) != 0,
                                 NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
-                                ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
+                                notAllowed ? ConnectionFlags.Highlight : ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
                             );
                             tempLaneConnections.Add(connection);
                         }

@@ -114,6 +114,7 @@ declare module "cs2/ui" {
   	"Move Horizontal": Action1D;
   	"Change Slider Value": Action1D;
   	"Change Tool Option": Action1D;
+  	"Change Value": Action1D;
   	"Move Vertical": Action1D;
   	"Switch Radio Station": Action1D;
   	"Scroll Vertical": Action1D;
@@ -147,6 +148,8 @@ declare module "cs2/ui" {
   	"Tool Options": Action;
   	"Switch Toolmode": Action;
   	"Toggle Snapping": Action;
+  	"Capture Keyframe": Action;
+  	"Reset Property": Action;
   	"Previous Tutorial Phase": Action;
   	"Continue Tutorial": Action;
   	"Focus Tutorial List": Action;

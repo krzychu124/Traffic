@@ -16,11 +16,8 @@ interface Props {
 }
 
 export const LaneConnectorTool = ({ position, onPositionChanged }: Props) => {
-  const panel = useRef<any>();
   const selected = useValue(selectedIntersection$);
   const isSelected = useMemo(() => (selected?.entity.index || 0) > 0, [selected])
-  const currentRect = useMemoizedValue<DOMRect | undefined>(panel.current?.getBoundingClientRect(), simpleBoundingRectComparer);
-  const rem = useRem();
 
   const confirmActivePreview = useCallback((action: ActionOverlayPreview) => {
     trigger(mod.id, UIBindingConstants.APPLY_TOOL_ACTION_PREVIEW)
@@ -34,6 +31,11 @@ export const LaneConnectorTool = ({ position, onPositionChanged }: Props) => {
   const handleLeaveButton = useCallback((type: string) => {
     updateActivePreview(ActionOverlayPreview.None)
   }, [updateActivePreview]);
+
+
+  const panel = useRef<any>();
+  const currentRect = useMemoizedValue<DOMRect | undefined>(panel.current?.getBoundingClientRect(), simpleBoundingRectComparer);
+  const rem = useRem();
 
   useEffect(() => {
     if (currentRect && currentRect?.x > 0 && currentRect?.y > 0) {
@@ -56,7 +58,7 @@ export const LaneConnectorTool = ({ position, onPositionChanged }: Props) => {
         <PanelSection>
           {!isSelected && (
             <>
-              <span>Select intersection to begin editing</span>
+              <span className={styles.selectIntersectionMessage}>Select intersection to begin editing</span>
             </>
           )}
           {isSelected && (

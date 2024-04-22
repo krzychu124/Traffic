@@ -41,8 +41,6 @@ namespace Traffic.Systems.LaneConnections
         }
 
         protected override void OnUpdate() {
-            // Logger.Info($"Updating SearchSystem (frame: {UnityEngine.Time.renderedFrameCount}). Chunks: {_query.CalculateChunkCount()}, entities: {_query.CalculateEntityCount()}");
-
             if (!_query.IsEmptyIgnoreFilter)
             {
                 JobHandle jobHandle = new UpdateSearchTree

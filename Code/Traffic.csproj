@@ -133,6 +133,36 @@
       <Compile Update="Systems\LaneConnections\SearchSystem.UpdateSearchTree.cs">
         <DependentUpon>SearchSystem.cs</DependentUpon>
       </Compile>
+      <Compile Update="Systems\ModRaycastSystem.RaycastTerrainJob.cs">
+        <DependentUpon>ModRaycastSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\ModificationDataSyncSystem.SyncModificationDataJob.cs">
+        <DependentUpon>ModificationDataSyncSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\ApplyLaneConnectionsSystem.HandleTempEntitiesJob.cs">
+        <DependentUpon>ApplyLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\ApplyLaneConnectionsSystem.MapReplacedEdgesJob.cs">
+        <DependentUpon>ApplyLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateConnectorsSystem.CollectConnectorsJob.cs">
+        <DependentUpon>GenerateConnectorsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateConnectorsSystem.GenerateConnectionLanesJob.cs">
+        <DependentUpon>GenerateConnectorsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateConnectorsSystem.GenerateConnectorsJob.cs">
+        <DependentUpon>GenerateConnectorsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateLaneConnectionsSystem.FillTempNodeMapJob.cs">
+        <DependentUpon>GenerateLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateLaneConnectionsSystem.GenerateTempConnectionsJob.cs">
+        <DependentUpon>GenerateLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\GenerateLaneConnectionsSystem.MapTempConnectionsJob.cs">
+        <DependentUpon>GenerateLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

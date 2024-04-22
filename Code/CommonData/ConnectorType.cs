@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Traffic.LaneConnections
+namespace Traffic.CommonData
 {
     [Flags]
     public enum ConnectorType

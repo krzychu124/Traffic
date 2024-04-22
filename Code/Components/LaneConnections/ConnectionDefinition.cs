@@ -1,7 +1,7 @@
 ﻿using System;
 using Unity.Entities;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Components.LaneConnections
 {
     public struct ConnectionDefinition : IComponentData
     {

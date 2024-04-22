@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Traffic.Common
+namespace Traffic.CommonData
 {
     
     [Flags]

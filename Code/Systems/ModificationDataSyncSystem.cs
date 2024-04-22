@@ -2,7 +2,7 @@
 using Game.Common;
 using Game.Net;
 using Game.Tools;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;

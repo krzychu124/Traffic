@@ -1,4 +1,4 @@
-﻿namespace Traffic.Common
+﻿namespace Traffic.CommonData
 {
     public class UIBindingConstants
     {

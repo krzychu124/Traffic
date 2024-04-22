@@ -4,8 +4,8 @@
 using Colossal.Collections;
 using Colossal.Mathematics;
 using Game.Common;
-using Traffic.Common;
-using Traffic.LaneConnections;
+using Traffic.CommonData;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

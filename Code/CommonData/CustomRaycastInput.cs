@@ -1,11 +1,8 @@
 using Colossal.Mathematics;
 using Game.Common;
-using Game.Net;
-using Game.Prefabs;
-using Traffic.LaneConnections;
 using Unity.Mathematics;
 
-namespace Traffic.Common
+namespace Traffic.CommonData
 {
     public struct CustomRaycastInput
     {

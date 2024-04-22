@@ -1,9 +1,8 @@
-﻿using Colossal.Mathematics;
-using Game.Pathfind;
+﻿using Game.Pathfind;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Components.LaneConnections
 {
     [InternalBufferCapacity(0)]
     public struct GeneratedConnection : IBufferElementData

@@ -4,15 +4,13 @@
 // #define DEBUG_CONNECTIONS
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
-using Colossal.Collections;
 using Game;
 using Game.Common;
 using Game.Net;
 using Game.Tools;
+using Traffic.CommonData;
 using Traffic.Components;
-using Traffic.Helpers;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -20,7 +18,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace Traffic.Systems
+namespace Traffic.Systems.LaneConnections
 {
     
     /// <summary>
@@ -58,7 +56,7 @@ namespace Traffic.Systems
 
             int entityCount = _tempEdgeQuery.CalculateEntityCount();
             NativeParallelHashMap<NodeEdgeKey, Entity> tempEdgeMap = new NativeParallelHashMap<NodeEdgeKey, Entity>(entityCount * 2, Allocator.TempJob);
-            JobHandle mapEdgesJobHandle = new MapReplacedEdges
+            JobHandle mapEdgesJobHandle = new MapReplacedEdgesJob
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
@@ -80,7 +78,7 @@ namespace Traffic.Systems
             Logger.Debug(s);
 #endif
             
-            HandleTempEntities handleTempEntities = new HandleTempEntities()
+            HandleTempEntitiesJob handleTempEntities = new HandleTempEntitiesJob()
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
@@ -102,7 +100,7 @@ namespace Traffic.Systems
 #if WITH_BURST
         [BurstCompile]
 #endif
-        private struct MapReplacedEdges : IJobChunk
+        private struct MapReplacedEdgesJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
@@ -206,7 +204,7 @@ namespace Traffic.Systems
 #if WITH_BURST
         [BurstCompile]
 #endif
-        private struct HandleTempEntities : IJobChunk
+        private struct HandleTempEntitiesJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
@@ -426,7 +424,9 @@ namespace Traffic.Systems
                                 }
                             }
                             generatedConnections[k] = connection;
+#if DEBUG_TOOL
                             Logger.DebugTool($"Updated {k} {connection.ToString()}");
+#endif
                         }
                         
                         generatedConnections.AsNativeArray().Sort(default(GeneratedConnectionComparer));

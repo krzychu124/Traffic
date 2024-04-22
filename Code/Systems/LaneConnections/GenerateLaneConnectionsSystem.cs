@@ -1,20 +1,20 @@
 ﻿// #define DEBUG_CONNECTIONS
-using System;
+
 using Game;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
+using Traffic.Components.LaneConnections;
 using Traffic.Tools;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Systems.LaneConnections
 {
 #if WITH_BURST
     [BurstCompile]
@@ -50,7 +50,7 @@ namespace Traffic.LaneConnections
             NativeParallelHashMap<Entity, Entity> tempEntityMap = new NativeParallelHashMap<Entity, Entity>(count*4, Allocator.TempJob);
             
             // TODO investigate if EdgeIterator can be used instead
-            FillTempNodeMap fillTempNodeMapJob = new FillTempNodeMap
+            FillTempNodeMapJob fillTempNodeMapJob = new FillTempNodeMapJob
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
@@ -118,7 +118,7 @@ namespace Traffic.LaneConnections
 #if WITH_BURST
         [BurstCompile]
 #endif
-        private struct FillTempNodeMap : IJobChunk
+        private struct FillTempNodeMapJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
@@ -287,16 +287,22 @@ namespace Traffic.LaneConnections
                 }
                 if (createdModifiedConnections.TryGetFirstValue(nodeEntity, out TempModifiedConnections item, out NativeParallelMultiHashMapIterator<Entity> iterator))
                 {
+#if DEBUG_CONNECTIONS
                     int valueCount = createdModifiedConnections.CountValuesForKey(nodeEntity);
+#endif
                     DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections;
                     if (!modifiedConnectionsBuffer.HasBuffer(nodeEntity))
                     {
+#if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"No buffer in: {nodeEntity} ({valueCount})");
+#endif
                         modifiedLaneConnections = commandBuffer.AddBuffer<ModifiedLaneConnections>(index, nodeEntity);
                     }
                     else
                     {
+#if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"Has buffer in: {nodeEntity} ({valueCount})");
+#endif
                         modifiedLaneConnections = commandBuffer.SetBuffer<ModifiedLaneConnections>(index, nodeEntity);
                     }
                     

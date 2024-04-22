@@ -1,15 +1,12 @@
-﻿using System;
-using Colossal.Entities;
+﻿using Colossal.Entities;
 using Game.Common;
 using Game.Tools;
 using Game.UI.Localization;
 using Game.UI.Tooltip;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Traffic.Tools;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 
 namespace Traffic.UISystems
 {

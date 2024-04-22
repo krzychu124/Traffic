@@ -1,9 +1,8 @@
-﻿using Game.Net;
-using Traffic.Common;
+﻿using Traffic.CommonData;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Components.LaneConnections
 {
     public struct Connector : IComponentData
     {

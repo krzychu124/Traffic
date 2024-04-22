@@ -1,7 +1,7 @@
 ﻿using Game.Common;
 using Game.Net;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

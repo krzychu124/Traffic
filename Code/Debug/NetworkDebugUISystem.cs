@@ -7,7 +7,7 @@ using Game.Common;
 using Game.Net;
 using Game.Tools;
 using Game.UI;
-using Traffic.Common;
+using Traffic.CommonData;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;

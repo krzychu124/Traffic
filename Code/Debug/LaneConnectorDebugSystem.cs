@@ -5,7 +5,7 @@ using Game.Debug;
 using Game.Net;
 using Game.Tools;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;

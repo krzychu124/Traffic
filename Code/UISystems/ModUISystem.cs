@@ -3,7 +3,7 @@ using Colossal.UI.Binding;
 using Game;
 using Game.Common;
 using Game.UI;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Debug;
 using Traffic.Helpers;
 using Traffic.Tools;

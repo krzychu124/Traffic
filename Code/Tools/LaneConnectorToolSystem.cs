@@ -13,9 +13,9 @@ using Game.Net;
 using Game.Notifications;
 using Game.Prefabs;
 using Game.Tools;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Traffic.Systems;
 using Traffic.UISystems;
 using Unity.Burst;
@@ -25,7 +25,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using LaneConnection = Traffic.LaneConnections.LaneConnection;
+using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
 using SubLane = Game.Net.SubLane;
 
 namespace Traffic.Tools
@@ -756,7 +756,7 @@ namespace Traffic.Tools
                 connectorData = SystemAPI.GetComponentLookup<Connector>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-                connectionsBuffer = SystemAPI.GetBufferLookup<LaneConnections.LaneConnection>(true),
+                connectionsBuffer = SystemAPI.GetBufferLookup<LaneConnection>(true),
                 connectionsBufferData = SystemAPI.GetBufferLookup<Connection>(true),
                 modifiedConnectionBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
@@ -931,7 +931,7 @@ namespace Traffic.Tools
                         connectorElementBuffer = SystemAPI.GetBufferLookup<ConnectorElement>(true),
                         modifiedConnectionBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                         generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
-                        laneConnectionsBuffer = SystemAPI.GetBufferLookup<LaneConnections.LaneConnection>(false),
+                        laneConnectionsBuffer = SystemAPI.GetBufferLookup<LaneConnection>(false),
                         editIntersectionEntity = _editIntersectionQuery.GetSingletonEntity(),
                         actionData = data,
                         commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),

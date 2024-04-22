@@ -1,7 +1,7 @@
 using Game.Common;
 using Unity.Entities;
 
-namespace Traffic.Common
+namespace Traffic.CommonData
 {
     public struct CustomRaycastResult
     {

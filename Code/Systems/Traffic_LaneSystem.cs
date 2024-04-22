@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 using Colossal.Collections;
 using Colossal.Mathematics;
 using Game;
@@ -15,8 +14,8 @@ using Game.Pathfind;
 using Game.Prefabs;
 using Game.Simulation;
 using Game.Tools;
-using Traffic.Helpers;
-using Traffic.LaneConnections;
+using Traffic.CommonData;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;

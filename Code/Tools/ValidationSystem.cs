@@ -5,7 +5,7 @@ using Game.Notifications;
 using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;

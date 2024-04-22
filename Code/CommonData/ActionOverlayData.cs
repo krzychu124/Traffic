@@ -1,7 +1,7 @@
 ﻿using Traffic.UISystems;
 using Unity.Entities;
 
-namespace Traffic.Common
+namespace Traffic.CommonData
 {
     public struct ActionOverlayData : IComponentData
     {

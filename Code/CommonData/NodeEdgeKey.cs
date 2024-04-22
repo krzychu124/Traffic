@@ -1,7 +1,7 @@
 using System;
 using Unity.Entities;
 
-namespace Traffic.Helpers
+namespace Traffic.CommonData
 {
     internal struct NodeEdgeKey : IEquatable<NodeEdgeKey>
     {

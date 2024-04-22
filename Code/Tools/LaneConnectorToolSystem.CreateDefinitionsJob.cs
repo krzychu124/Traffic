@@ -6,15 +6,15 @@ using Game.Net;
 using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Components;
-using Traffic.Helpers;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
 
 namespace Traffic.Tools
 {
@@ -33,7 +33,7 @@ namespace Traffic.Tools
             [ReadOnly] public ComponentLookup<Connector> connectorData;
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public BufferLookup<Connection> connectionsBufferData;
-            [ReadOnly] public BufferLookup<LaneConnections.LaneConnection> connectionsBuffer;
+            [ReadOnly] public BufferLookup<LaneConnection> connectionsBuffer;
             [ReadOnly] public BufferLookup<ModifiedLaneConnections> modifiedConnectionBuffer;
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionBuffer;
             [ReadOnly] public BufferLookup<ConnectorElement> connectorElementsBuffer;
@@ -159,7 +159,7 @@ namespace Traffic.Tools
                         {
                             Connector sourceConnector = connectorData[firstConnectorEntity];
                             NativeList<Connection> filterConnections = new NativeList<Connection>(4, Allocator.Temp);
-                            DynamicBuffer<LaneConnections.LaneConnection> laneConnections = connectionsBuffer[firstConnectorEntity];
+                            DynamicBuffer<LaneConnection> laneConnections = connectionsBuffer[firstConnectorEntity];
                             FilterBySource(sourceConnector, laneConnections, filterConnections);
                             CreateDefinitions(firstConnectorEntity, sourceConnector, nextConnector, connectorsMap, filterConnections, ref connectionExists);
                             filterConnections.Dispose();
@@ -183,7 +183,7 @@ namespace Traffic.Tools
                 {
                     if (firstConnector.connectorType == ConnectorType.Source)
                     {
-                        DynamicBuffer<LaneConnections.LaneConnection> connections = connectionsBuffer[firstConnectorEntity];
+                        DynamicBuffer<LaneConnection> connections = connectionsBuffer[firstConnectorEntity];
                         bool alreadyExists = !connections.IsEmpty;
                         tooltip.value = alreadyExists ? Tooltip.ModifyConnections : Tooltip.CreateConnection;
                     }
@@ -464,11 +464,11 @@ namespace Traffic.Tools
                 return 0;
             }
 
-            private void FilterBySource(Connector sourceConnector, DynamicBuffer<LaneConnections.LaneConnection> connections, NativeList<Connection> results) {
+            private void FilterBySource(Connector sourceConnector, DynamicBuffer<LaneConnection> connections, NativeList<Connection> results) {
                 NativeHashSet<Lane> connectionSet = new NativeHashSet<Lane>(8, Allocator.Temp);
                 for (int i = 0; i < connections.Length; i++)
                 {
-                    LaneConnections.LaneConnection connection = connections[i];
+                    LaneConnection connection = connections[i];
                     if (connectionsBufferData.HasBuffer(connection.connection))
                     {
                         DynamicBuffer<Connection> data = connectionsBufferData[connection.connection];

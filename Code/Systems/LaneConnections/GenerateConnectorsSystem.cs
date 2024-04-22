@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Text;
-using Colossal.Collections;
 using Colossal.Mathematics;
 using Game;
 using Game.Common;
@@ -8,8 +6,9 @@ using Game.Net;
 using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Components;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -18,10 +17,11 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using CarLane = Game.Net.CarLane;
 using Edge = Game.Net.Edge;
+using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
 using SecondaryLane = Game.Net.SecondaryLane;
 using SubLane = Game.Net.SubLane;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Systems.LaneConnections
 {
 #if WITH_BURST
     [BurstCompile]

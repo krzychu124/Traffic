@@ -5,13 +5,16 @@ using Game.Rendering;
 using Game.SceneFlow;
 using JetBrains.Annotations;
 using Traffic.Debug;
-using Traffic.LaneConnections;
 using Traffic.Rendering;
 using Traffic.Systems;
 using Traffic.Tools;
 using Traffic.UISystems;
 using Traffic.Utils;
-using ApplyLaneConnectionsSystem = Traffic.Systems.ApplyLaneConnectionsSystem;
+using ApplyLaneConnectionsSystem = Traffic.Systems.LaneConnections.ApplyLaneConnectionsSystem;
+using GenerateConnectorsSystem = Traffic.Systems.LaneConnections.GenerateConnectorsSystem;
+using GenerateLaneConnectionsSystem = Traffic.Systems.LaneConnections.GenerateLaneConnectionsSystem;
+using SearchSystem = Traffic.Systems.LaneConnections.SearchSystem;
+using SyncCustomLaneConnectionsSystem = Traffic.Systems.LaneConnections.SyncCustomLaneConnectionsSystem;
 using ValidationSystem = Traffic.Tools.ValidationSystem;
 
 namespace Traffic
@@ -44,7 +47,7 @@ namespace Traffic
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<ApplyLaneConnectionsSystem>(SystemUpdatePhase.ApplyTool);
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
-            updateSystem.UpdateAt<LaneConnections.SearchSystem>(SystemUpdatePhase.Modification5);
+            updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
             
             updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);

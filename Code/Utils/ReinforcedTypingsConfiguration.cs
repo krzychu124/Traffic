@@ -3,7 +3,7 @@ using Game.Tools;
 using JetBrains.Annotations;
 using Reinforced.Typings.Ast.TypeNames;
 using Reinforced.Typings.Fluent;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Debug;
 using Traffic.UISystems;
 using Unity.Entities;

@@ -3,16 +3,16 @@ using Game;
 using Game.Common;
 using Game.Simulation;
 using Game.Tools;
-using Traffic.Common;
+using Traffic.CommonData;
+using Traffic.Components.LaneConnections;
 using Traffic.Helpers;
-using Traffic.LaneConnections;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using SearchSystem = Traffic.LaneConnections.SearchSystem;
+using SearchSystem = Traffic.Systems.LaneConnections.SearchSystem;
 
 namespace Traffic.Systems
 {

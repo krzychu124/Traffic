@@ -1,15 +1,15 @@
 ﻿using Game.Common;
 using Game.Net;
-using Traffic.Common;
+using Traffic.CommonData;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Traffic.UISystems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using LaneConnection = Traffic.LaneConnections.LaneConnection;
+using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
 
 namespace Traffic.Tools
 {
@@ -30,7 +30,7 @@ namespace Traffic.Tools
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
             [ReadOnly] public Entity editIntersectionEntity;
             [ReadOnly] public ActionOverlayData actionData;
-            public BufferLookup<LaneConnections.LaneConnection> laneConnectionsBuffer;
+            public BufferLookup<LaneConnection> laneConnectionsBuffer;
             public EntityCommandBuffer commandBuffer;
 
             public void Execute()

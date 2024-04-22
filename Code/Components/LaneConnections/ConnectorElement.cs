@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Components.LaneConnections
 {
     [InternalBufferCapacity(0)]
     public struct ConnectorElement : IBufferElementData

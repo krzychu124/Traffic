@@ -2,7 +2,7 @@ using System;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace Traffic.Common
+namespace Traffic.CommonData
 {
     public struct CustomRaycastHit : IEquatable<CustomRaycastHit>
     {

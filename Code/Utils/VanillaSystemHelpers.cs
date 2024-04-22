@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using Game.Net;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Entities;
 
 namespace Traffic.Utils

@@ -1,7 +1,7 @@
 ﻿using System;
 using Unity.Entities;
 
-namespace Traffic.Helpers
+namespace Traffic.CommonData
 {
     public struct ConnectorKey: IEquatable<ConnectorKey>
     {

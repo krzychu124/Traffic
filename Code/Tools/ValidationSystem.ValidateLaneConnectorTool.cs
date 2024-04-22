@@ -6,7 +6,7 @@ using Game.Pathfind;
 using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
-using Traffic.LaneConnections;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;

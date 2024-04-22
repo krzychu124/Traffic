@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace Traffic.LaneConnections
+namespace Traffic.Components
 {
     [InternalBufferCapacity(0)]
     public struct WarnResetUpgrade : IBufferElementData

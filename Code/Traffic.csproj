@@ -124,6 +124,15 @@
       <Compile Update="Tools\LaneConnectorToolSystem.ApplyLaneConnectionsActionJob.cs">
         <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
       </Compile>
+      <Compile Update="Systems\LaneConnections\SyncCustomLaneConnectionsSystem.MapOriginalEntitiesJob.cs">
+        <DependentUpon>SyncCustomLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\SyncCustomLaneConnectionsSystem.SyncConnectionsJob.cs">
+        <DependentUpon>SyncCustomLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\LaneConnections\SearchSystem.UpdateSearchTree.cs">
+        <DependentUpon>SearchSystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

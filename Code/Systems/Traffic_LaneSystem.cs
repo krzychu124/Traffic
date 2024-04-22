@@ -425,8 +425,12 @@ namespace Traffic.Systems
                 // m_TrafficUpgradeData = SystemAPI.GetComponentLookup<TrafficUpgrade>(true),
                 /*NON VANILLA - END*/
             };
+#if DEBUG_LANE_SYS
             /*TODO switch to parallel*/
             JobHandle jobHandle = jobData.Schedule(m_OwnerQuery, Dependency);
+#else
+            JobHandle jobHandle = jobData.ScheduleParallel(m_OwnerQuery, Dependency);
+#endif
             
             m_TerrainSystem.AddCPUHeightReader(jobHandle);
             m_ModificationBarrier.AddJobHandleForProducer(jobHandle);

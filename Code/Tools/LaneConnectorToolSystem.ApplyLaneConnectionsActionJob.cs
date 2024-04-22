@@ -51,7 +51,7 @@ namespace Traffic.Tools
                         if (connectorData.HasComponent(element.entity))
                         {
                             Connector connector = connectorData[element.entity];
-                            if ((connector.connectorType & ConnectorType.TwoWay) != 0)
+                            if ((connector.connectorType & (ConnectorType.Target | ConnectorType.TwoWay)) != 0)
                             {
                                 continue;
                             }

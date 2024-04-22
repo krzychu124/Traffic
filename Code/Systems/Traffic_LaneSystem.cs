@@ -1178,6 +1178,7 @@ namespace Traffic.Systems
                                     if (modifiedLaneConnections.Length > 0)
                                     {
                                         DynamicBuffer<ModifiedLaneConnections> modifiedConnections = modifiedLaneConnections[entityIndex];
+                                        int idx = nodeLaneIndex;
                                         for (var i = 0; i < modifiedConnections.Length; i++)
                                         {
                                             ModifiedLaneConnections connectionsEntity = modifiedConnections[i];
@@ -1195,8 +1196,6 @@ namespace Traffic.Systems
                                                 continue;
                                             }
                                             
-                                            int idx = prevLaneIndex;
-                                            int index = 9999;
                                             for (var j = 0; j < connections.Length; j++)
                                             {
                                                 GeneratedConnection connection = connections[j];
@@ -1205,7 +1204,7 @@ namespace Traffic.Systems
                                                 if (ct.m_Owner != Entity.Null && !createdConnections.Contains(key))
                                                 {
                                                     EdgeToEdgeKey edgeKey = new EdgeToEdgeKey(cs.m_Owner, ct.m_Owner);
-                                                    //TODO support more lane groups per edge
+                                                    //TODO improve edgekey support more lane groups per edge
                                                     if (!edgeLaneOffsetsMap.TryGetValue(edgeKey, out int2 edgeConnectionOffset))
                                                     {
                                                         edgeConnectionOffset = CalculateLaneConnectionOffsets(tempSourceConnectPositions, tempTargetConnectPositions, sourcePosIndex, targetPosIndex, sourcePosGroupIndex, targetPosGroupIndex, sourceLaneCount, targetLaneCount);

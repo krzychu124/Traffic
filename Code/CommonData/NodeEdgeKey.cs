@@ -20,11 +20,6 @@ namespace Traffic.CommonData
             return node.Equals(other.node) && edge.Equals(other.edge);
         }
 
-        public override bool Equals(object obj)
-        {
-            return obj is NodeEdgeKey other && Equals(other);
-        }
-
         public override int GetHashCode()
         {
             unchecked

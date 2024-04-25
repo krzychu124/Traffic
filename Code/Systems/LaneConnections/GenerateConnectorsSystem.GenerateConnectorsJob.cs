@@ -176,7 +176,7 @@ namespace Traffic.Systems.LaneConnections
                         {
                             // sb.AppendLine($"Incompatible: {netLaneData.m_Flags}");
                             continue;
-                            utilityLaneData = prefabUtilityLaneData[prefabRef2.m_Prefab];
+                            // utilityLaneData = prefabUtilityLaneData[prefabRef2.m_Prefab];
                         } 
                         if ((netLaneData.m_Flags & LaneFlags.Utility) != 0)
                         {

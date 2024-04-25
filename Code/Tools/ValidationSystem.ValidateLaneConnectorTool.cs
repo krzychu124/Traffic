@@ -181,7 +181,7 @@ namespace Traffic.Tools
                     if (feedbackInfos.Length > 0)
                     {
                         DynamicBuffer<ToolFeedbackInfo> feedbackBuffer = commandBuffer.AddBuffer<ToolFeedbackInfo>(entity);
-                        feedbackBuffer.CopyFrom(feedbackInfos);
+                        feedbackBuffer.CopyFrom(feedbackInfos.AsArray());
                         feedbackInfos.Clear();
                     }
                 }

@@ -83,7 +83,7 @@ namespace Traffic.Systems.LaneConnections
                 (NativeArray<Entity> keys, int uniqueKeyCount) = createdModifiedConnections.GetUniqueKeyArray(Allocator.Temp);
                 NativeList<Entity> entities = new NativeList<Entity>(uniqueKeyCount, Allocator.TempJob);
                 entities.ResizeUninitialized(uniqueKeyCount);
-                new NativeSlice<Entity>(keys, 0, uniqueKeyCount).CopyTo(entities);
+                new NativeSlice<Entity>(keys, 0, uniqueKeyCount).CopyTo(entities.AsArray());
                 NativeParallelHashSet<Entity> processedEntities = new NativeParallelHashSet<Entity>(entities.Length, Allocator.TempJob);
                 MapTempConnectionsJob mapTempConnectionsJob = new MapTempConnectionsJob
                 {

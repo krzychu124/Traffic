@@ -108,7 +108,6 @@ namespace Traffic.Tools
         private Camera _mainCamera;
         private ComponentTypeSet _modifiedConnectionsTypeSet;
 
-        internal static Entity FakePrefabRef;
 
         public Mode ToolMode { get; set; }
 
@@ -173,7 +172,6 @@ namespace Traffic.Tools
             _delAction = new InputAction("LaneConnectorTool_Delete", InputActionType.Button, "<keyboard>/delete");
             _applyAction = InputManager.instance.FindAction("Tool", "Apply");
             _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
-            FakePrefabRef = EntityManager.CreateEntity(ComponentType.ReadWrite<PrefabRef>());
             Enabled = false;
         }
 
@@ -933,6 +931,7 @@ namespace Traffic.Tools
                         generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
                         laneConnectionsBuffer = SystemAPI.GetBufferLookup<LaneConnection>(false),
                         editIntersectionEntity = _editIntersectionQuery.GetSingletonEntity(),
+                        fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                         actionData = data,
                         commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
                     }.Schedule(inputDeps);

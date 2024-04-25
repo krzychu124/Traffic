@@ -5,6 +5,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Traffic.Systems.LaneConnections
 {

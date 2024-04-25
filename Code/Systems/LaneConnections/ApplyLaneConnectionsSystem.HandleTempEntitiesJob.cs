@@ -1,4 +1,6 @@
-﻿using Game.Common;
+﻿using System.Text;
+using Game.Common;
+using Game.Prefabs;
 using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
@@ -23,6 +25,7 @@ namespace Traffic.Systems.LaneConnections
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionTypeHandle;
             [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionTypeHandle;
             [ReadOnly] public ComponentLookup<Temp> tempData;
+            [ReadOnly] public Entity fakePrefabRef;
             public ComponentLookup<DataOwner> dataOwnerData;
             public BufferLookup<GeneratedConnection> generatedConnectionData;
             public BufferLookup<ModifiedLaneConnections> modifiedLaneConnectionData;
@@ -353,6 +356,7 @@ namespace Traffic.Systems.LaneConnections
                     generatedConnections.AsNativeArray().Sort(default(GeneratedConnectionComparer));
 
                     commandBuffer.SetComponent<DataOwner>(modifiedLaneConnection.modifiedConnections, dataOwner);
+                    commandBuffer.AddComponent<PrefabRef>(modifiedLaneConnection.modifiedConnections, new PrefabRef(fakePrefabRef));
                     commandBuffer.RemoveComponent<Temp>(modifiedLaneConnection.modifiedConnections);
                     commandBuffer.RemoveComponent<CustomLaneConnection>(modifiedLaneConnection.modifiedConnections);
 

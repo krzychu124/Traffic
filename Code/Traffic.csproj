@@ -27,12 +27,12 @@
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-      <DefineConstants>TRACE;DEBUG_GIZMO;DEBUG_LANE_SYS;</DefineConstants>
+      <DefineConstants>TRACE;SERIALIZATION;DEBUG_CONNECTIONS;DEBUG_CONNECTIONS_SYNC;DEBUG_TOOL</DefineConstants>
       <DebugType>portable</DebugType>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DefineConstants>WITH_BURST</DefineConstants>
+      <DefineConstants>WITH_BURST;SERIALIZATION</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
@@ -162,6 +162,15 @@
       </Compile>
       <Compile Update="Systems\LaneConnections\GenerateLaneConnectionsSystem.MapTempConnectionsJob.cs">
         <DependentUpon>GenerateLaneConnectionsSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Rendering\ToolOverlaySystem.FeedbackOverlayJob.cs">
+        <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Rendering\ToolOverlaySystem.ConnectionsOverlayJob.cs">
+        <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Rendering\ToolOverlaySystem.ConnectorsOverlayJob.cs">
+        <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
       </Compile>
     </ItemGroup>
 

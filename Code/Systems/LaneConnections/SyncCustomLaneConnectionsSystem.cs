@@ -101,7 +101,7 @@ namespace Traffic.Systems.LaneConnections
                 modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
-                fakePrefabRef = LaneConnectorToolSystem.FakePrefabRef,
+                fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                 nodeEdgeMap = tempMap,
                 tempNodes = updatedNodes.AsReadOnly(),
                 commandBuffer = commandBuffer.AsParallelWriter(),

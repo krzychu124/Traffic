@@ -89,7 +89,7 @@ namespace Traffic.Systems.LaneConnections
                 {
                     modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                     createdModifiedConnections = createdModifiedConnections,
-                    fakePrefabRef = LaneConnectorToolSystem.FakePrefabRef,
+                    fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                     keys = entities,
                     processedEntities = processedEntities,
                     commandBuffer = entityCommandBuffer.AsParallelWriter(),

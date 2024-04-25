@@ -84,6 +84,7 @@ namespace Traffic.Systems.LaneConnections
                 dataOwnerData = SystemAPI.GetComponentLookup<DataOwner>(false),
                 generatedConnectionData = SystemAPI.GetBufferLookup<GeneratedConnection>(false),
                 modifiedLaneConnectionData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(false),
+                fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                 tempEdgeMap = tempEdgeMap,
                 commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
             };

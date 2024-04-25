@@ -1,5 +1,6 @@
 ﻿using Game.Common;
 using Game.Net;
+using Game.Prefabs;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
@@ -29,6 +30,7 @@ namespace Traffic.Tools
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionBuffer;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
             [ReadOnly] public Entity editIntersectionEntity;
+            [ReadOnly] public Entity fakePrefabRef;
             [ReadOnly] public ActionOverlayData actionData;
             public BufferLookup<LaneConnection> laneConnectionsBuffer;
             public EntityCommandBuffer commandBuffer;
@@ -57,6 +59,7 @@ namespace Traffic.Tools
                             }
                             Entity modified = commandBuffer.CreateEntity();
                             commandBuffer.AddComponent<DataOwner>(modified, new DataOwner(connector.node));
+                            commandBuffer.AddComponent<PrefabRef>(modified, new PrefabRef(fakePrefabRef));
                             commandBuffer.AddBuffer<GeneratedConnection>(modified);
 
                             ModifiedLaneConnections modifiedLaneConnections = new ModifiedLaneConnections()
@@ -98,6 +101,7 @@ namespace Traffic.Tools
                                     // create copy of container, ignore U-turn connections
                                     Entity modified = commandBuffer.CreateEntity();
                                     commandBuffer.AddComponent<DataOwner>(modified, new DataOwner(sourceConnector.node));
+                                    commandBuffer.AddComponent<PrefabRef>(modified, new PrefabRef(fakePrefabRef));
                                     DynamicBuffer<GeneratedConnection> newConnections = commandBuffer.AddBuffer<GeneratedConnection>(modified);
                                     DynamicBuffer<GeneratedConnection> connections = generatedConnectionBuffer[modifiedConnection.modifiedConnections];
                                     for (var k = 0; k < connections.Length; k++)
@@ -118,6 +122,7 @@ namespace Traffic.Tools
                         {
                             Entity modified = commandBuffer.CreateEntity();
                             commandBuffer.AddComponent<DataOwner>(modified, new DataOwner(sourceConnector.node));
+                            commandBuffer.AddComponent<PrefabRef>(modified, new PrefabRef(fakePrefabRef));
                             DynamicBuffer<GeneratedConnection> connections = commandBuffer.AddBuffer<GeneratedConnection>(modified);
                             ModifiedLaneConnections modifiedLaneConnections = new ModifiedLaneConnections()
                             {
@@ -159,6 +164,7 @@ namespace Traffic.Tools
                                     // create copy of container, ignore unsafe connections
                                     Entity modified = commandBuffer.CreateEntity();
                                     commandBuffer.AddComponent<DataOwner>(modified, new DataOwner(sourceConnector.node));
+                                    commandBuffer.AddComponent<PrefabRef>(modified, new PrefabRef(fakePrefabRef));
                                     DynamicBuffer<GeneratedConnection> newConnections = commandBuffer.AddBuffer<GeneratedConnection>(modified);
                                     DynamicBuffer<GeneratedConnection> oldConnections = generatedConnectionBuffer[modifiedConnection.modifiedConnections];
                                     for (int k = 0; k < oldConnections.Length; k++)
@@ -203,6 +209,7 @@ namespace Traffic.Tools
 
                             Entity modified = commandBuffer.CreateEntity();
                             commandBuffer.AddComponent<DataOwner>(modified, new DataOwner(sourceConnector.node));
+                            commandBuffer.AddComponent<PrefabRef>(modified, new PrefabRef(fakePrefabRef));
                             DynamicBuffer<GeneratedConnection> connections = commandBuffer.AddBuffer<GeneratedConnection>(modified);
                             ModifiedLaneConnections modifiedLaneConnections = new ModifiedLaneConnections()
                             {

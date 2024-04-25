@@ -3,6 +3,7 @@ using Game.Modding;
 using Game.Net;
 using Game.Rendering;
 using Game.SceneFlow;
+using Game.Serialization;
 using JetBrains.Annotations;
 using Traffic.Debug;
 using Traffic.Rendering;
@@ -49,6 +50,8 @@ namespace Traffic
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
+
+            updateSystem.UpdateBefore<PreDeserialize<ModDefaultsSystem>>(SystemUpdatePhase.Deserialize);
             
             updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);
 #if DEBUG_TOOL

@@ -105,7 +105,7 @@ namespace Traffic.Systems.LaneConnections
 
                 // StringBuilder sb = new StringBuilder();
                 // sb.Append($"Node: {node} edge: {edge} isEnd: {isEnd} |S: {composition.m_StartNode} E: {composition.m_EndNode}").AppendLine();
-                LaneFlags laneFlags = /*(!includeAnchored) ? LaneFlags.FindAnchor :*/ ((LaneFlags)0);
+                // LaneFlags laneFlags = /*(!includeAnchored) ? LaneFlags.FindAnchor :*/ ((LaneFlags)0);
                 if (!deletedData.HasComponent(edge) && subLanes.HasBuffer(edge))
                 {
                     DynamicBuffer<SubLane> dynamicBuffer2 = subLanes[edge];

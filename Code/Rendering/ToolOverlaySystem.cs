@@ -72,9 +72,9 @@ namespace Traffic.Rendering
             
             _colorSet = new ConnectorColorSet
             {
-                fillActiveColor = Color.clear,
+                fillActiveColor = new Color(1f, 1f, 1f, 0.92f),
                 outlineActiveColor = new Color(1f, 1f, 1f, 0.92f),
-                fillSourceColor = Color.clear,
+                fillSourceColor =new Color(0f, 0.83f, 1f, 1f),
                 outlineSourceColor = new Color(0f, 0.83f, 1f, 1f),
                 fillSourceTrackColor = Color.clear,
                 outlineSourceTrackColor = new Color(0.87f, 0.6f, 0.26f, 1f),
@@ -180,7 +180,7 @@ namespace Traffic.Rendering
                     endNodeGeometryData = SystemAPI.GetComponentLookup<EndNodeGeometry>(true),
                     netGeometryData = SystemAPI.GetComponentLookup<NetGeometryData>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-                    lineWidth = 0.75f,
+                    lineWidth = 0.25f,
                     overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle2)
                 };
                 JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, overlayRenderJobHandle2);

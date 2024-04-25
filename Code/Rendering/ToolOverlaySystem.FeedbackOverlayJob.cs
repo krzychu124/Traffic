@@ -73,22 +73,22 @@ namespace Traffic.Rendering
 
             private void DrawEdgeHalfOutline(Segment edgeSegment)
             {
-                Color color = new Color(1f, 0.65f, 0f, 0.88f);
+                Color color = new Color(1f, 0.65f, 0f, 1f);
                 //start edge line
-                overlayBuffer.DrawLine( Color.clear, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth);
+                overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth);
                 //left edge line
-                overlayBuffer.DrawCurve(Color.clear, color, 0, 0, edgeSegment.m_Left, lineWidth, 1);
+                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Left, lineWidth, 1);
                 //right edge line
-                overlayBuffer.DrawCurve(Color.clear, color, 0, 0, edgeSegment.m_Right, lineWidth, 1);
+                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 1);
                 //middle edge cut line
-                overlayBuffer.DrawLine( Color.clear, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth);
+                overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth);
             }
 
             private void DrawNodeOutline(Entity node)
             {
                 if (connectedEdgeData.HasBuffer(node))
                 {
-                    Color color = new Color(1f, 0.65f, 0f, 0.88f);
+                    Color color = new Color(1f, 0.65f, 0f, 1f);
                     DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeData[node];
                     for (var i = 0; i < connectedEdges.Length; i++)
                     {
@@ -96,10 +96,10 @@ namespace Traffic.Rendering
                         bool isNearEnd = node == edgeData[edge.m_Edge].m_End;
                         EdgeGeometry edgeGeometry = edgeGeometryData[edge.m_Edge];
                         Segment edgeSegment = !isNearEnd ? edgeGeometry.m_Start : edgeGeometry.m_End;
-                        overlayBuffer.DrawLine( Color.clear, color, 0, 0, new Line3.Segment(math.select(edgeSegment.m_Left.a, edgeSegment.m_Left.d, isNearEnd), math.select(edgeSegment.m_Right.a, edgeSegment.m_Right.d, isNearEnd)), lineWidth, 1);
+                        overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(math.select(edgeSegment.m_Left.a, edgeSegment.m_Left.d, isNearEnd), math.select(edgeSegment.m_Right.a, edgeSegment.m_Right.d, isNearEnd)), lineWidth, 1);
                         EdgeNodeGeometry edgeNodeGeometry = !isNearEnd ? startNodeGeometryData[edge.m_Edge].m_Geometry : endNodeGeometryData[edge.m_Edge].m_Geometry;
-                        overlayBuffer.DrawCurve(Color.clear, color, 0, 0, edgeNodeGeometry.m_Left.m_Left, lineWidth, 1);
-                        overlayBuffer.DrawCurve(Color.clear, color, 0, 0, edgeNodeGeometry.m_Right.m_Right, lineWidth, 1);
+                        overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Left.m_Left, lineWidth, 1);
+                        overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Right.m_Right, lineWidth, 1);
                     }
                 }
             }

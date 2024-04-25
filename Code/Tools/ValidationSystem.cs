@@ -68,8 +68,9 @@ namespace Traffic.Tools
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
-                subLaneTypeHandle = SystemAPI.GetBufferTypeHandle<SubLane>(true),
+                tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
+                tempData = SystemAPI.GetComponentLookup<Temp>(true),
                 upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
                 deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
@@ -80,7 +81,6 @@ namespace Traffic.Tools
                 laneData= SystemAPI.GetComponentLookup<Lane>(true),
                 curveData= SystemAPI.GetComponentLookup<Curve>(true),
                 prefabRefData= SystemAPI.GetComponentLookup<PrefabRef>(true),
-                warnResetUpgradeBuffer = SystemAPI.GetBufferLookup<WarnResetUpgrade>(true),
                 connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
                 tightCurvePrefabEntity = _tightCurveErrorPrefab,

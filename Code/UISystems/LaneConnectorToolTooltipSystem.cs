@@ -1,12 +1,14 @@
-﻿using Colossal.Entities;
+﻿using System.Collections.Generic;
 using Game.Common;
 using Game.Tools;
 using Game.UI.Localization;
 using Game.UI.Tooltip;
+using Traffic.CommonData;
 using Traffic.Components;
-using Traffic.Components.LaneConnections;
 using Traffic.Tools;
+using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace Traffic.UISystems
 {
@@ -14,19 +16,16 @@ namespace Traffic.UISystems
     {
         private CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip> _tooltipStringBuilder;
         private CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier> _modifierStringBuilder;
+        private CachedLocalizedStringBuilder<FeedbackMessageType> _feedbackStringBuilder;
         private ToolSystem _toolSystem;
         private LaneConnectorToolSystem _laneConnectorTool;
-        // private NetToolSystem _netTool;
         private StringTooltip _tooltip;
-        private StringTooltip _tooltipWarnings;
-        private StringTooltip _tooltipErrors;
-        private StringTooltip _tooltipInfo;
+        private List<StringTooltip> _feedbackTooltips;
         private StringTooltip _tooltipDebug;
 #if DEBUG_TOOL
         private StringTooltip _posTooltip;
         private StringTooltip _posTooltip2;
 #endif
-        private EntityQuery _warnQuery;
         private EntityQuery _errorQuery;
 
         protected override void OnCreate() {
@@ -34,54 +33,69 @@ namespace Traffic.UISystems
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _laneConnectorTool = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
             _tooltip = new StringTooltip { path = "laneConnectorTool" };
-            _tooltipInfo = new StringTooltip { path = "laneConnectorToolInfo" };
+            _feedbackTooltips = new List<StringTooltip>()
+            {
+                new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_0" },
+                new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_1" },
+                new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_2" },
+                new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_3" },
+                new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_4" },
+            };
             _tooltipDebug = new StringTooltip() { path = "laneConnectorToolDebug", color = TooltipColor.Success };
-            _tooltipWarnings = new StringTooltip() { path = "laneConnectorToolWarnings", color = TooltipColor.Warning, };
-            _tooltipErrors = new StringTooltip() { path = "laneConnectorToolErrors", color = TooltipColor.Error, };
 #if DEBUG_TOOL
             _posTooltip = new StringTooltip() { path = "laneConnectorToolPosition", color = TooltipColor.Warning, };
             _posTooltip2 = new StringTooltip() { path = "laneConnectorToolPosition2", color = TooltipColor.Warning, };
 #endif
-            _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
-            _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Mod.MOD_NAME}.Tools.Tooltip[{t:G}]");
-            _warnQuery = GetEntityQuery(ComponentType.ReadOnly<WarnResetUpgrade>(), ComponentType.Exclude<Deleted>());
-            _errorQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Error>(), ComponentType.Exclude<Deleted>());
+            _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Mod.MOD_NAME}.Tools.Tooltip.LaneConnector[{t:G}]");
+            _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Mod.MOD_NAME}.Tools.Tooltip.LaneConnector[{t:G}]");
+            _feedbackStringBuilder = CachedLocalizedStringBuilder<FeedbackMessageType>.Id((FeedbackMessageType m) => $"{Mod.MOD_NAME}.Tools.Tooltip.FeedbackMessage[{m:G}]");
+            _errorQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new []{ComponentType.ReadOnly<ToolFeedbackInfo>()},
+                None = new []{ ComponentType.ReadOnly<Deleted>()},
+            });
         }
 
         protected override void OnUpdate() {
-            if (_toolSystem.activeTool != _laneConnectorTool)
+            
+            bool hasError = false;
+            if (!_errorQuery.IsEmptyIgnoreFilter)
+            {
+                NativeArray<ArchetypeChunk> archetypeChunks = _errorQuery.ToArchetypeChunkArray(Allocator.Temp);
+                BufferTypeHandle<ToolFeedbackInfo> feedbackBufferType = SystemAPI.GetBufferTypeHandle<ToolFeedbackInfo>(true);
+
+                int usedTooltips = 0;
+                bool warningAdded = false;
+                foreach (ArchetypeChunk chunk in archetypeChunks)
+                {
+                    BufferAccessor<ToolFeedbackInfo> feedbackInfoAccessor = chunk.GetBufferAccessor(ref feedbackBufferType);
+                    for (var i = 0; i < feedbackInfoAccessor.Length; i++)
+                    {
+                        DynamicBuffer<ToolFeedbackInfo> feedbackInfos = feedbackInfoAccessor[i];
+                        for (var j = 0; j < feedbackInfos.Length; j++)
+                        {
+                            if (usedTooltips++ > 5 || warningAdded)
+                            {
+                                break;
+                            }
+                            FeedbackMessageType messageType = feedbackInfos[j].type;
+                            bool isError = messageType >= FeedbackMessageType.ErrorHasRoundabout;
+                            StringTooltip tooltip = _feedbackTooltips[usedTooltips];
+                            tooltip.value = _feedbackStringBuilder[messageType];
+                            tooltip.color = isError ? TooltipColor.Error : TooltipColor.Warning;
+                            AddMouseTooltip(tooltip);
+                            hasError |= isError;
+                            warningAdded |= !isError;
+                        }
+                    }
+                }
+                
+                archetypeChunks.Dispose();
+            }
+
+            if (hasError || _toolSystem.activeTool != _laneConnectorTool)
             {
                 return;
-            }
-            
-            if (_laneConnectorTool.ToolMode == LaneConnectorToolSystem.Mode.Default &&
-                _laneConnectorTool.ToolState == LaneConnectorToolSystem.State.Default)
-            {
-                if (!_errorQuery.IsEmptyIgnoreFilter)
-                {
-                    _tooltipErrors.value = "Modifying lane connections on selected intersection is not supported";
-                    AddMouseTooltip(_tooltipErrors);
-                    return;
-                } 
-                else if(!_warnQuery.IsEmptyIgnoreFilter)
-                {
-                    _tooltipWarnings.value = "Entering modification mode will remove all Forbidden maneuvers";
-                    AddMouseTooltip(_tooltipWarnings);
-                }
-            }
-            if (_laneConnectorTool.ToolState == LaneConnectorToolSystem.State.SelectingSourceConnector &&
-                _laneConnectorTool.SelectedNode != Entity.Null && 
-                EntityManager.TryGetBuffer(_laneConnectorTool.SelectedNode, true, out DynamicBuffer<ModifiedLaneConnections> connections) &&
-                !connections.IsEmpty)
-            {
-                _tooltipInfo.value = "Press Delete to reset Lane Connections";
-                AddMouseTooltip(_tooltipInfo);
-            }
-            
-            if (_laneConnectorTool.ToolState == LaneConnectorToolSystem.State.SelectingTargetConnector &&
-                !_warnQuery.IsEmptyIgnoreFilter) {
-                _tooltipWarnings.value = "U-Turn not allowed!";
-                AddMouseTooltip(_tooltipWarnings);
             }
             
 #if DEBUG_TOOL
@@ -132,20 +146,5 @@ namespace Traffic.UISystems
             }
             return TooltipColor.Info;
         }
-
-        // TODO use in feedback system
-        // private bool MatchingRequirement(NetPieceRequirements[] requirements) {
-        //     for (var i = 0; i < requirements.Length; i++)
-        //     {
-        //         for (var j = 0; j < _warnRequirements.Length; j++)
-        //         {
-        //             if (requirements[i] == _warnRequirements[j])
-        //             {
-        //                 return true;
-        //             }   
-        //         }
-        //     }
-        //     return false;
-        // }
     }
 }

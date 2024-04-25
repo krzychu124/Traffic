@@ -36,6 +36,11 @@ namespace Traffic
         public static void DebugLaneSystem(string message) {
             _log.Info(message);
         }
+         
+        [Conditional("SERIALIZATION")]
+        public static void Serialization(string message) {
+            _log.Info(message);
+        }
 
         public static void Warning(string message) {
             _log.Warn(message);

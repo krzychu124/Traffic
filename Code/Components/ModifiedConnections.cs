@@ -1,8 +1,9 @@
-﻿using Unity.Entities;
+﻿using Colossal.Serialization.Entities;
+using Unity.Entities;
 
 namespace Traffic.Components
 {
-    public struct ModifiedConnections : IComponentData
+    public struct ModifiedConnections : IComponentData, IEmptySerializable
     {
         
     }

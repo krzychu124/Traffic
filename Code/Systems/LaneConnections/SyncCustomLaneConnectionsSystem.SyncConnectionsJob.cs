@@ -17,6 +17,14 @@ namespace Traffic.Systems.LaneConnections
 {
     public partial class SyncCustomLaneConnectionsSystem
     {
+        internal struct EdgeInfo
+        {
+            public Entity edge;
+            public bool wasTemp;
+            public bool isStart;
+            public bool2 compositionChanged;
+        }
+
 #if WITH_BURST
         [BurstCompile]
 #endif
@@ -80,20 +88,31 @@ namespace Traffic.Systems.LaneConnections
                                 bool2 compositionChanged = false;
                                 if (compositionData.HasComponent(edgeValue.m_Edge) && compositionData.HasComponent(tempEdge.m_Original))
                                 {
+                                    Entity originalEdge = tempEdge.m_Original;
                                     Composition composition = compositionData[edgeValue.m_Edge];
-                                    Composition originalComposition = compositionData[tempEdge.m_Original];
+                                    Composition originalComposition = compositionData[originalEdge];
+                                    if ((tempEdge.m_Flags & TempFlags.Combine) != 0)
+                                    {
+                                        if (nodeEdgeMap.IsCreated && nodeEdgeMap.TryGetValue(new NodeEdgeKey(entity, edgeValue.m_Edge), out Entity oldEdgeValue) && compositionData.HasComponent(oldEdgeValue))
+                                        {
+                                            originalComposition = compositionData[oldEdgeValue];
+                                            Logger.DebugConnectionsSync($"Edge(temp-isCombine): {edgeValue.m_Edge}[{originalEdge}] replacing old: {oldEdgeValue}");
+                                            originalEdge = oldEdgeValue;
+                                        }
+                                    }
 #if DEBUG_CONNECTIONS_SYNC
-                                    LogCompositionData($"\n\tTemp Edge Composition {edgeValue.m_Edge}", composition.m_Edge, composition.m_StartNode, composition.m_EndNode);
-                                    LogCompositionData($"\n\tOriginal Edge Composition {tempEdge.m_Original}", originalComposition.m_Edge, originalComposition.m_StartNode, originalComposition.m_EndNode);
+                                    // LogCompositionData($"\n\tTemp Edge Composition {edgeValue.m_Edge}", composition.m_Edge, composition.m_StartNode, composition.m_EndNode);
+                                    // LogCompositionData($"\n\tOriginal Edge Composition {tempEdge.m_Original}", originalComposition.m_Edge, originalComposition.m_StartNode, originalComposition.m_EndNode);
 #endif
-                                    compositionChanged = CheckComposition(entity, temp.m_Original, tempEdge.m_Original, originalComposition, edgeValue.m_Edge, composition, !edgeValue.m_End, (tempEdge.m_Flags & TempFlags.Modify) != 0);
+                                    compositionChanged = CheckComposition(entity, temp.m_Original, originalEdge, originalComposition, edgeValue.m_Edge, composition, !edgeValue.m_End, (tempEdge.m_Flags & TempFlags.Modify) != 0);
                                 }
                                 if (tempEdge.m_Original != Entity.Null)
                                 {
                                     Logger.DebugConnectionsSync($"Edge(temp): {edgeValue.m_Edge} with original: {tempEdge.m_Original}");
                                     edgeMap.Add(tempEdge.m_Original, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = true, isStart = !edgeValue.m_End, compositionChanged = compositionChanged });
                                 }
-                                else if (nodeEdgeMap.IsCreated && nodeEdgeMap.TryGetValue(new NodeEdgeKey(entity, edgeValue.m_Edge), out Entity oldEdge))
+                                
+                                if (nodeEdgeMap.IsCreated && nodeEdgeMap.TryGetValue(new NodeEdgeKey(entity, edgeValue.m_Edge), out Entity oldEdge))
                                 {
                                     Logger.DebugConnectionsSync($"Edge(temp): {edgeValue.m_Edge} with calculated: {oldEdge} | {entity} -> {edgeValue.m_Edge}");
                                     edgeMap.Add(oldEdge, new EdgeInfo() { edge = edgeValue.m_Edge, wasTemp = true, isStart = !edgeValue.m_End, compositionChanged = compositionChanged });
@@ -291,16 +310,16 @@ namespace Traffic.Systems.LaneConnections
             {
                 Entity tPrefab = prefabData[tempEdge];
                 Entity oPrefab = prefabData[originalEdge];
-                Logger.DebugConnectionsSync($"|CheckComposition| tN: {tempNode}, oN: {originalNode} | tE: {tempEdge}, oE: {originalEdge} | iS: {isStartEdge}, modifying: {isModifyFlag} | tPref: {tPrefab}, oPref: {oPrefab}");
+                // Logger.DebugConnectionsSync($"|CheckComposition| tN: {tempNode}, oN: {originalNode} | tE: {tempEdge}, oE: {originalEdge} | iS: {isStartEdge}, modifying: {isModifyFlag} | tPref: {tPrefab}, oPref: {oPrefab}");
 
                 Edge tEdge = edgeData[tempEdge];
                 Edge oEdge = edgeData[originalEdge];
-                Logger.DebugConnectionsSync($"|CheckComposition|Edges| tE: {tEdge.m_Start} {tEdge.m_End} | oE: {oEdge.m_Start} {oEdge.m_End}");
+                // Logger.DebugConnectionsSync($"|CheckComposition|Edges| tE: {tEdge.m_Start} {tEdge.m_End} | oE: {oEdge.m_Start} {oEdge.m_End}");
                 //check if edge was not inverted
                 bool wasStart = oEdge.m_Start.Equals(originalNode);
                 NetCompositionData nodeComposition = netCompositionData[wasStart ? originalComposition.m_StartNode : originalComposition.m_EndNode];
                 bool wasStartEdge = (nodeComposition.m_Flags.m_General & CompositionFlags.General.Invert) != 0; //isStartNode ? tEdge.m_Start : tEdge.m_End;
-                Logger.DebugConnectionsSync($"|CheckComposition|Direction| tNode: {tempNode}, wasStart: {wasStartEdge} || ");
+                // Logger.DebugConnectionsSync($"|CheckComposition|Direction| tNode: {tempNode}, wasStart: {wasStartEdge} || ");
                 if (isStartEdge != wasStartEdge)
                 {
                     Logger.DebugConnectionsSync($"|CheckComposition|Direction| Different edge direction! {wasStartEdge} => {isStartEdge}");
@@ -322,15 +341,15 @@ namespace Traffic.Systems.LaneConnections
 
                     if (oELeft != tELeft || oERight != tERight)
                     {
-                        Logger.DebugConnectionsSync($"|CheckComposition| Different Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
+                        // Logger.DebugConnectionsSync($"|CheckComposition| Different Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
                         return new bool2(oELeft != tELeft, oERight != tERight);
                     }
-                    Logger.DebugConnectionsSync($"|CheckComposition| Acceptable Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
+                    // Logger.DebugConnectionsSync($"|CheckComposition| Acceptable Edge Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
 
                     Entity oldNodeCompositionEntity = wasStart ? originalComposition.m_StartNode : originalComposition.m_EndNode;
                     Entity newNodeCompositionEntity = isStartEdge ? tempComposition.m_StartNode : tempComposition.m_EndNode;
                     bool isDifferentComposition = !oldNodeCompositionEntity.Equals(newNodeCompositionEntity);
-                    Logger.DebugConnectionsSync($"|CheckComposition| {(isDifferentComposition ? "Different" : "The same")} node composition: {oldNodeCompositionEntity} => {newNodeCompositionEntity}");
+                    // Logger.DebugConnectionsSync($"|CheckComposition| {(isDifferentComposition ? "Different" : "The same")} node composition: {oldNodeCompositionEntity} => {newNodeCompositionEntity}");
                     if (isDifferentComposition)
                     {
                         NetCompositionData oNCompositionData = netCompositionData[oldNodeCompositionEntity];
@@ -341,10 +360,10 @@ namespace Traffic.Systems.LaneConnections
                         CompositionFlags.Side tNRight = tNCompositionData.m_Flags.m_Right & importantFlags;
                         if (oNLeft != tNLeft || oNRight != tNRight)
                         {
-                            Logger.DebugConnectionsSync($"|CheckComposition| Different Node Composition flags = Left: [{oNLeft}]->[{tNLeft}] Right: [{oNRight}]->[{tNRight}]");
+                            // Logger.DebugConnectionsSync($"|CheckComposition| Different Node Composition flags = Left: [{oNLeft}]->[{tNLeft}] Right: [{oNRight}]->[{tNRight}]");
                             return new bool2(oNLeft != tNLeft, oNRight != tNRight);
                         }
-                        Logger.DebugConnectionsSync($"|CheckComposition| Acceptable Node Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
+                        // Logger.DebugConnectionsSync($"|CheckComposition| Acceptable Node Composition flags = Left: [{oELeft}]->[{tELeft}] Right: [{oERight}]->[{tERight}]");
                     }
                     return false;
                 }
@@ -356,5 +375,6 @@ namespace Traffic.Systems.LaneConnections
                 }
             }
         }
+
     }
 }

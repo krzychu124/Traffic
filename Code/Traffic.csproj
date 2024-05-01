@@ -124,9 +124,6 @@
       <Compile Update="Tools\LaneConnectorToolSystem.ApplyLaneConnectionsActionJob.cs">
         <DependentUpon>LaneConnectorToolSystem.cs</DependentUpon>
       </Compile>
-      <Compile Update="Systems\LaneConnections\SyncCustomLaneConnectionsSystem.MapOriginalEntitiesJob.cs">
-        <DependentUpon>SyncCustomLaneConnectionsSystem.cs</DependentUpon>
-      </Compile>
       <Compile Update="Systems\LaneConnections\SyncCustomLaneConnectionsSystem.SyncConnectionsJob.cs">
         <DependentUpon>SyncCustomLaneConnectionsSystem.cs</DependentUpon>
       </Compile>
@@ -140,9 +137,6 @@
         <DependentUpon>ModificationDataSyncSystem.cs</DependentUpon>
       </Compile>
       <Compile Update="Systems\LaneConnections\ApplyLaneConnectionsSystem.HandleTempEntitiesJob.cs">
-        <DependentUpon>ApplyLaneConnectionsSystem.cs</DependentUpon>
-      </Compile>
-      <Compile Update="Systems\LaneConnections\ApplyLaneConnectionsSystem.MapReplacedEdgesJob.cs">
         <DependentUpon>ApplyLaneConnectionsSystem.cs</DependentUpon>
       </Compile>
       <Compile Update="Systems\LaneConnections\GenerateConnectorsSystem.CollectConnectorsJob.cs">

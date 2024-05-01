@@ -1191,7 +1191,7 @@ namespace Traffic.Systems
                                             ConnectPosition cs = FindNodeConnectPosition(tempSourceConnectPositions, connectionsEntity.edgeEntity, connectionsEntity.laneIndex, TrackTypes.None,  out int sourcePosIndex, out int sourcePosGroupIndex, out int sourceLaneCount);
                                             if (cs.m_Owner == Entity.Null || cs.m_Owner != sourceMainCarConnectPos.m_Owner || cs.m_LaneData.m_Group != sourceMainCarConnectPos.m_LaneData.m_Group)
                                             {
-                                                Logger.DebugLaneSystem($"Skip 2 o: {cs.m_Owner} | sO: {sourceMainCarConnectPos.m_Owner} ||g: {cs.m_LaneData.m_Group} sG: {sourceMainCarConnectPos.m_LaneData.m_Group}");
+                                                Logger.DebugLaneSystem($"Skip 2 o: {cs.m_Owner} | sO: {sourceMainCarConnectPos.m_Owner} || lIdx: {connectionsEntity.laneIndex} ||g: {cs.m_LaneData.m_Group} sG: {sourceMainCarConnectPos.m_LaneData.m_Group}");
                                                 continue;
                                             }
                                             

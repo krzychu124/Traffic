@@ -4,6 +4,7 @@ using Game.Net;
 using Game.Rendering;
 using Game.SceneFlow;
 using Game.Serialization;
+using Game.Tools;
 using JetBrains.Annotations;
 using Traffic.Debug;
 using Traffic.Rendering;
@@ -46,7 +47,7 @@ namespace Traffic
             
             // updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
-            updateSystem.UpdateAt<ApplyLaneConnectionsSystem>(SystemUpdatePhase.ApplyTool);
+            updateSystem.UpdateBefore<ApplyLaneConnectionsSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
@@ -75,46 +76,46 @@ namespace Traffic
     }
 #if DEBUG_TOOL
 
-    internal partial class CleanUp : GameSystemBase
-    {
-        protected override void OnUpdate() {
-            Logger.Info("CleanUp!");
-        }
-    }
-    
-    internal partial class ApplyTool : GameSystemBase
-    {
-        private ToolSystem _toolSystem;
-        private LaneConnectorToolSystem _laneConnectorTool;
-        protected override void OnCreate() {
-            base.OnCreate();
-            _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
-            _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
-        }
-
-        protected override void OnUpdate() {
-            if (_toolSystem.activeTool == _laneConnectorTool)
-            {
-                Logger.Info("ApplyTool!");
-            }
-        }
-    }
-    internal partial class ClearTool : GameSystemBase
-    {
-        private ToolSystem _toolSystem;
-        private LaneConnectorToolSystem _laneConnectorTool;
-        protected override void OnCreate() {
-            base.OnCreate();
-            _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
-            _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
-        }
-
-        protected override void OnUpdate() {
-            if (_toolSystem.activeTool == _laneConnectorTool)
-            {
-                Logger.Info("ClearTool!");
-            }
-        }
-    }
+    // internal partial class CleanUp : GameSystemBase
+    // {
+    //     protected override void OnUpdate() {
+    //         Logger.Info("CleanUp!");
+    //     }
+    // }
+    //
+    // internal partial class ApplyTool : GameSystemBase
+    // {
+    //     private ToolSystem _toolSystem;
+    //     private LaneConnectorToolSystem _laneConnectorTool;
+    //     protected override void OnCreate() {
+    //         base.OnCreate();
+    //         _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
+    //         _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
+    //     }
+    //
+    //     protected override void OnUpdate() {
+    //         if (_toolSystem.activeTool == _laneConnectorTool)
+    //         {
+    //             Logger.Info("ApplyTool!");
+    //         }
+    //     }
+    // }
+    // internal partial class ClearTool : GameSystemBase
+    // {
+    //     private ToolSystem _toolSystem;
+    //     private LaneConnectorToolSystem _laneConnectorTool;
+    //     protected override void OnCreate() {
+    //         base.OnCreate();
+    //         _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
+    //         _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
+    //     }
+    //
+    //     protected override void OnUpdate() {
+    //         if (_toolSystem.activeTool == _laneConnectorTool)
+    //         {
+    //             Logger.Info("ClearTool!");
+    //         }
+    //     }
+    // }
 #endif
 }

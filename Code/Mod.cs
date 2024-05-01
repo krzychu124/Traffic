@@ -1,4 +1,6 @@
-﻿using Game;
+﻿using System.Linq;
+using System.Reflection;
+using Game;
 using Game.Modding;
 using Game.Net;
 using Game.Rendering;
@@ -25,11 +27,13 @@ namespace Traffic
     public class Mod : IMod
     {
         public const string MOD_NAME = "Traffic";
+        public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(4);
+        public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
         
         private ModSettings _modSettings;
 
         public void OnLoad(UpdateSystem updateSystem) {
-            Logger.Info(nameof(OnLoad));
+            Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
 #if DEBUG_GIZMO            
             updateSystem.UpdateAt<LaneConnectorDebugSystem>(SystemUpdatePhase.DebugGizmos);

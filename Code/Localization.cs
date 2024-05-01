@@ -38,7 +38,20 @@ namespace Traffic
                 return new Dictionary<string, string>
                 {
                     {_setting.GetSettingsLocaleID(), "Traffic" },
-                    {_setting.GetOptionLabelLocaleID(ModSettings.MaintenanceSection), "Maintenance"},
+                    
+                    {_setting.GetOptionGroupLocaleID(ModSettings.MainSection), "General"},
+                    {_setting.GetOptionGroupLocaleID(ModSettings.MaintenanceSection), "Maintenance"},
+                    {_setting.GetOptionGroupLocaleID(ModSettings.AboutSection), "About"},
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ModVersion)), "Version" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ModVersion)), $"Mod current version" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.InformationalVersion)), "Informational Version" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.InformationalVersion)), $"Mod version with the commit ID" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.OpenRepositoryAtVersion)), "Show on GitHub" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.OpenRepositoryAtVersion)), $"Opens the mod GitHub repository for the current version" },
+                    
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetLaneConnections)), "Reset Lane Connections" },
                     {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetLaneConnections)), $"While in-game, it will remove all custom lane connections" },
                     {_setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetLaneConnections)), "Are you sure you want to remove all custom lane connections?" },

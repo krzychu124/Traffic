@@ -67,7 +67,7 @@ namespace Traffic
                     {$"{Mod.MOD_NAME}.Tools.Tooltip.FeedbackMessage[{nameof(FeedbackMessageType.ErrorApplyRoundabout)}]", "Roundabout upgrade cannot be used at an intersection with non-standard lane connections"},
                     
                     /*In-game UI*/
-                    {UIKeys.TRAFFIC_MOD, "Traffic Mod"},
+                    {UIKeys.TRAFFIC_MOD, "Modification provides additional tools that could help managing in-game traffic. At the moment the Lane Connector tool, more to come soon. If you have suggestions for new tools or improvements, feel free to comment on the mod forum thread or open a feature suggestion on the mod GitHub page"},
                     {UIKeys.LANE_CONNECTION_TOOL, "Lane Connection Tool"},
                     {UIKeys.SELECT_INTERSECTION, "Select intersection to begin editing"},
                     {UIKeys.REMOVE_ALL_CONNECTIONS, "Remove All Connections"},

@@ -11,6 +11,9 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
     /// <summary>
     /// Searching and mapping updated edges with their connected node
     /// </summary>
+#if WITH_BURST
+        [BurstCompile]
+#endif
     internal struct MapNodeEdgeEntitiesJob : IJobChunk
     {
         [ReadOnly] public EntityTypeHandle entityTypeHandle;
@@ -20,7 +23,7 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
         [ReadOnly] public ComponentLookup<Edge> edgeData;
 #if DEBUG_CONNECTIONS
         [ReadOnly] public ComponentLookup<Node> nodeData;
-        [ReadOnly] public string debugSystemName;
+        [ReadOnly] public FixedString32Bytes debugSystemName;
 #endif
         [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
         public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;

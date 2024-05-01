@@ -9,6 +9,20 @@ namespace Traffic
     public class Localization
     {
 
+        public class UIKeys
+        {
+            public const string TRAFFIC_MOD = Mod.MOD_NAME+".UI.Tooltip.MainButton";
+            public const string LANE_CONNECTION_TOOL = Mod.MOD_NAME+".Tools.LaneConnector[Title]";
+            public const string SELECT_INTERSECTION = Mod.MOD_NAME+".Tools.LaneConnector[SelectIntersectionMessage]";
+            /*lane connector toolbox*/
+            public const string REMOVE_ALL_CONNECTIONS = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveAllConnections]";
+            public const string REMOVE_U_TURNS = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUturns]";
+            public const string REMOVE_UNSAFE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUnsafe]";
+            public const string RESET_TO_VANILLA = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla]";
+            /*tooltips*/
+            public const string REMOVE_UNSAFE_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title";
+            public const string REMOVE_UNSAFE_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message";
+        }
         
 
         public class LocaleEN : IDictionarySource
@@ -51,6 +65,17 @@ namespace Traffic
                     
                     {$"{Mod.MOD_NAME}.Tools.Tooltip.FeedbackMessage[{nameof(FeedbackMessageType.ErrorHasRoundabout)}]", "Modifying lane connections at a selected intersection is not supported"},
                     {$"{Mod.MOD_NAME}.Tools.Tooltip.FeedbackMessage[{nameof(FeedbackMessageType.ErrorApplyRoundabout)}]", "Roundabout upgrade cannot be used at an intersection with non-standard lane connections"},
+                    
+                    /*In-game UI*/
+                    {UIKeys.TRAFFIC_MOD, "Traffic Mod"},
+                    {UIKeys.LANE_CONNECTION_TOOL, "Lane Connection Tool"},
+                    {UIKeys.SELECT_INTERSECTION, "Select intersection to begin editing"},
+                    {UIKeys.REMOVE_ALL_CONNECTIONS, "Remove All Connections"},
+                    {UIKeys.REMOVE_U_TURNS, "Remove U-Turns"},
+                    {UIKeys.REMOVE_UNSAFE, "Remove Unsafe"},
+                    {UIKeys.RESET_TO_VANILLA, "Reset To Vanilla"},
+                    {UIKeys.REMOVE_UNSAFE_TOOLTIP_TITLE, "Unsafe lane"},
+                    {UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE, "Unsafe lane is a lane with a higher pathfinding penalty, meaning that lane connection has a lower selection priority when other options are available"},
                 };
             }
             

@@ -25,6 +25,7 @@ namespace Traffic.Utils
             builder.AddImport("{ Entity }", "cs2/utils");
             builder.Substitute(typeof(Entity), new RtSimpleTypeName("Entity"));
             builder.ExportAsClass<UIBindingConstants>().DontIncludeToNamespace().WithPublicFields();
+            builder.ExportAsClass<Localization.UIKeys>().DontIncludeToNamespace().WithPublicFields();
             builder.ExportAsEnum<TempFlags>();
             builder.ExportAsEnum<ModUISystem.ActionOverlayPreview>();
             builder.ExportAsInterface<float3>()

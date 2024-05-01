@@ -1,15 +1,15 @@
 import React, { useCallback, useState } from "react";
-import { Portal, Button, Number2 } from "cs2/ui";
 import classNames from "classnames";
-import mod from "../../mod.json";
-import trafficIcon from 'images/traffic_icon.svg';
-import { NetworkDebugInfo } from "debugUi/networkDebugInfo/networkDebugInfo";
-import styles from 'debugUi/debugUi.module.scss';
+import { Button, Number2 } from "cs2/ui";
+import { tool } from "cs2/bindings";
 import { useValue, trigger } from "cs2/api";
 import { isDebugVisible$ } from "bindings";
-import { UIBindingConstants } from "types/traffic";
-import { tool } from "cs2/bindings";
+import { NetworkDebugInfo } from "debugUi/networkDebugInfo/networkDebugInfo";
 import { LaneConnectorTool } from "modUI/laneConnectorTool/laneConnectorTool";
+import { UIBindingConstants } from "types/traffic";
+import mod from "../../mod.json";
+import trafficIcon from 'images/traffic_icon.svg';
+import styles from 'debugUi/debugUi.module.scss';
 
 
 export const DebugUi = () => {
@@ -37,7 +37,6 @@ export const DebugUiEditorButton = () => {
   const selectedTool = useValue(tool.activeTool$);
   const [position, setPosition] = useState<Number2>({ x: 0.025, y: 0.8 })
 
-  // const changeIsVisible = useCallback(() => trigger(mod.id, UIBindingConstants.SET_VISIBILITY, !isVisible), [isVisible]);
   const changeIsVisible = useCallback(() => {
     trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL);
     trigger(mod.id, UIBindingConstants.TOGGLE_TOOL, selectedTool.id !== UIBindingConstants.LANE_CONNECTOR_TOOL);

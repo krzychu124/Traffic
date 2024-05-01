@@ -1,6 +1,9 @@
 declare module "cs2/ui" {
-  import { CSSProperties, HTMLAttributes, PropsWithChildren, ReactNode } from 'react';
+  import { CSSProperties, HTMLAttributes, PropsWithChildren, ReactElement, ReactNode, Ref } from 'react';
   
+  export interface RefReactElement<T = any, P = any> extends ReactElement<P> {
+  	ref?: Ref<T>;
+  }
   export interface TransitionStyles {
   	base?: string;
   	enter?: string;
@@ -34,6 +37,7 @@ declare module "cs2/ui" {
   	theme?: Partial<BalloonTheme>;
   	direction?: BalloonDirection;
   	alignment?: BalloonAlignment;
+  	children: RefReactElement;
   }
   export export const Tooltip: ({ tooltip, disabled, theme, direction, alignment, className, children }: PropsWithChildren<TooltipProps>) => JSX.Element;
   export interface ConfirmationDialogProps {
@@ -364,7 +368,9 @@ declare module "cs2/ui" {
   	className?: string;
   }
   export export const Icon: ({ tinted, className, src }: IconProps) => JSX.Element;
-  export const PortalContainerProvider: ({ children }: PropsWithChildren) => JSX.Element;
+  export const PortalContainerProvider: ({ children }: {
+  	children: RefReactElement<HTMLElement>;
+  }) => JSX.Element;
   export function usePortalContainer(): HTMLElement;
   export interface IPortal {
   	({ children }: PropsWithChildren): React.ReactPortal;

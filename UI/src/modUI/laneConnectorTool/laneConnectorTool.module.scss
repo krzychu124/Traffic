@@ -13,7 +13,18 @@
 .actionButton {
   pointer-events: auto;
   margin-bottom: 5rem;
+  background-color: #0f1013;
+  border-radius: 4rem;
+
   &:last-child {
     margin-bottom: 0;
+  }
+
+  &:hover {
+    background-color: #1d1f25
+  }
+
+  &:active {
+    background-color: #23262d
   }
 }

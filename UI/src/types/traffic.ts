@@ -15,6 +15,18 @@ export class UIBindingConstants
 	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
 	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
 }
+export class UIKeys
+{
+	public static TRAFFIC_MOD: string = `Traffic.UI.Tooltip.MainButton`;
+	public static LANE_CONNECTION_TOOL: string = `Traffic.Tools.LaneConnector[Title]`;
+	public static SELECT_INTERSECTION: string = `Traffic.Tools.LaneConnector[SelectIntersectionMessage]`;
+	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections]`;
+	public static REMOVE_U_TURNS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUturns]`;
+	public static REMOVE_UNSAFE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe]`;
+	public static RESET_TO_VANILLA: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla]`;
+	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title`;
+	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message`;
+}
 export enum TempFlags {
 	Create = 1,
 	Delete = 2,

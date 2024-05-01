@@ -517,7 +517,8 @@ declare module "cs2/bindings" {
   	BodiesPerMonth = "bodiesPerMonth",
   	XP = "xp",
   	Temperature = "temperature",
-  	NetElevation = "netElevation"
+  	NetElevation = "netElevation",
+  	ScreenFrequency = "screenFrequency"
   }
   export enum LocElementType {
   	Bounds = "Game.UI.Localization.LocalizedBounds",
@@ -2488,6 +2489,7 @@ declare module "cs2/bindings" {
   const elevationUpDisabled$: ValueBinding<boolean>;
   const colorSupported$: ValueBinding<boolean>;
   const color$: ValueBinding<Color>;
+  const isEditor$: ValueBinding<boolean>;
   function setColor(color: Color): void;
   function selectTool(toolID: string): void;
   function selectToolMode(modeIndex: number): void;
@@ -2964,7 +2966,7 @@ declare module "cs2/bindings" {
   	export { LightingState, SimulationDate, SimulationDateTime, SimulationTime, TimeSettings, calculateDateFromDays, calculateDateFromTicks, calculateDateTimeFromTicks, calculateMinutesSinceMidnightFromTicks, calculateTimeFromMinutesSinceMidnight, dateEquals, day$, lightingState$, setSimulationPaused, setSimulationSpeed, simulationPaused$, simulationPausedBarrier$, simulationSpeed$, ticks$, timeSettings$ };
   }
   export namespace tool {
-  	export { AREA_TOOL, BULLDOZE_TOOL, Brush, DEFAULT_TOOL, NET_TOOL, OBJECT_TOOL, ROUTE_TOOL, SELECTION_TOOL, TERRAIN_TOOL, Tool, ToolMode, UPGRADE_TOOL, ZONE_TOOL, activeTool$, allSnapMask$, allowBrush$, availableSnapMask$, brushAngle$, brushSize$, brushSizeMax$, brushSizeMin$, brushStrength$, brushes$, bulldozeConfirmationRequested$, changeElevation, color$, colorSupported$, confirmBulldoze, elevation$, elevationDown, elevationDownDisabled$, elevationRange$, elevationScroll, elevationStep$, elevationUp, elevationUpDisabled$, parallelMode$, parallelModeSupported$, parallelOffset$, selectBrush, selectTool, selectToolMode, selectedBrush$, selectedSnapMask$, setBrushAngle, setBrushSize, setBrushStrength, setColor, setElevationStep, setParallelOffset, setSelectedSnapMask, setUndergroundMode, snapOptionNames$, toggleParallelMode, undergroundMode$, undergroundModeSupported$ };
+  	export { AREA_TOOL, BULLDOZE_TOOL, Brush, DEFAULT_TOOL, NET_TOOL, OBJECT_TOOL, ROUTE_TOOL, SELECTION_TOOL, TERRAIN_TOOL, Tool, ToolMode, UPGRADE_TOOL, ZONE_TOOL, activeTool$, allSnapMask$, allowBrush$, availableSnapMask$, brushAngle$, brushSize$, brushSizeMax$, brushSizeMin$, brushStrength$, brushes$, bulldozeConfirmationRequested$, changeElevation, color$, colorSupported$, confirmBulldoze, elevation$, elevationDown, elevationDownDisabled$, elevationRange$, elevationScroll, elevationStep$, elevationUp, elevationUpDisabled$, isEditor$, parallelMode$, parallelModeSupported$, parallelOffset$, selectBrush, selectTool, selectToolMode, selectedBrush$, selectedSnapMask$, setBrushAngle, setBrushSize, setBrushStrength, setColor, setElevationStep, setParallelOffset, setSelectedSnapMask, setUndergroundMode, snapOptionNames$, toggleParallelMode, undergroundMode$, undergroundModeSupported$ };
   }
   export namespace toolbar$1 {
   	export { Asset$1 as Asset, AssetCategory, Theme$1 as Theme, ToolbarGroup, ToolbarItem, ToolbarItemType, assetCategories$, assets$, clearAssetSelection, selectAsset, selectAssetCategory, selectAssetMenu, selectTheme, selectedAsset$, selectedAssetCategory$, selectedAssetMenu$, selectedTheme$, themes$$1 as themes$, toolbarGroups$ };

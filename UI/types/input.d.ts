@@ -204,11 +204,12 @@ declare module "cs2/input" {
   	onRefocus?: (controller: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
   	onChange?: (key: UniqueFocusKey | null) => void;
   	allowFocusExit?: boolean;
+  	forceFocus?: UniqueFocusKey | null;
   }
   /**
    * Automatic navigation in lists, grids and forms.
    */
-  export export const AutoNavigationScope: ({ focusKey, initialFocused, direction, activation, children, onChange, onRefocus, allowFocusExit }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
+  export export const AutoNavigationScope: ({ focusKey, initialFocused, direction, activation, children, onChange, onRefocus, allowFocusExit, forceFocus }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
   export interface FocusBoundaryProps {
   	disabled?: boolean;
   	onFocusChange?: FocusCallback;

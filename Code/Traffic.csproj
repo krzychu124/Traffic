@@ -32,8 +32,9 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DefineConstants>WITH_BURST;SERIALIZATION</DefineConstants>
+      <DefineConstants>WITH_BURST</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <DebugType>none</DebugType>
     </PropertyGroup>
 
     <!--Imports must be after PropertyGroup block-->

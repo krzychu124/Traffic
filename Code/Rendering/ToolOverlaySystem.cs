@@ -33,7 +33,7 @@ namespace Traffic.Rendering
         private ToolOverlayParameterData _defaultOverlayParams;
 #if DEBUG_GIZMO
         // private EntityQuery _modifiedConnectionsQuery;
-        private LaneConnectorDebugSystem _laneConnectorDebugSystem;
+        // private LaneConnectorDebugSystem _laneConnectorDebugSystem;
 #endif
     
         protected override void OnCreate() {
@@ -42,7 +42,7 @@ namespace Traffic.Rendering
             _laneConnectorToolSystem = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
             _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
 #if DEBUG_GIZMO
-            _laneConnectorDebugSystem = World.GetExistingSystemManaged<LaneConnectorDebugSystem>();
+            // _laneConnectorDebugSystem = World.GetExistingSystemManaged<LaneConnectorDebugSystem>();
             // _modifiedConnectionsQuery = GetEntityQuery(new EntityQueryDesc()
             // {
             //     All = new []{ ComponentType.ReadOnly<CreationDefinition>(), ComponentType.ReadOnly<ConnectionDefinition>(), ComponentType.ReadOnly<TempLaneConnection>(),  },
@@ -118,14 +118,8 @@ namespace Traffic.Rendering
                 
                 if (_laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default)
                 {
-#if DEBUG_GIZMO
-                    bool overlays = !_laneConnectorDebugSystem.GizmoEnabled;
-#else
-                    const bool overlays = true;
-#endif
-
                     ActionOverlayData actionOverlayData = SystemAPI.GetSingleton<ActionOverlayData>();
-                    if (overlays && !(_laneConnectorToolSystem.UIDisabled && actionOverlayData.mode == 0))
+                    if (!(_laneConnectorToolSystem.UIDisabled && actionOverlayData.mode == 0))
                     {
                         NativeArray<ArchetypeChunk> chunks = _connectionsQuery.ToArchetypeChunkArray(Allocator.TempJob);
                         ConnectionsOverlayJob connectionsOverlayJob = new ConnectionsOverlayJob

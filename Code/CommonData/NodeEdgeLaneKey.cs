@@ -2,7 +2,7 @@ using System;
 
 namespace Traffic.CommonData
 {
-    internal struct NodeEdgeLaneKey : IEquatable<NodeEdgeLaneKey>
+    internal struct NodeEdgeLaneKey : IEquatable<NodeEdgeLaneKey>, IComparable<NodeEdgeLaneKey>
     {
         public int nodeIndex;
         public int edgeIndex;
@@ -26,6 +26,15 @@ namespace Traffic.CommonData
                 hashCode = (hashCode * 397) ^ laneIndex;
                 return hashCode;
             }
+        }
+        
+        public int CompareTo(NodeEdgeLaneKey other)
+        {
+            int nodeIndexComparison = nodeIndex.CompareTo(other.nodeIndex);
+            if (nodeIndexComparison != 0) return nodeIndexComparison;
+            int edgeIndexComparison = edgeIndex.CompareTo(other.edgeIndex);
+            if (edgeIndexComparison != 0) return edgeIndexComparison;
+            return laneIndex.CompareTo(other.laneIndex);
         }
     }
 }

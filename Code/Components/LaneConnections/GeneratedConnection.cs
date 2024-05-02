@@ -1,4 +1,7 @@
-﻿using Colossal.Serialization.Entities;
+﻿#if DEBUG_GIZMO
+using Colossal.Mathematics;
+#endif
+using Colossal.Serialization.Entities;
 using Game.Pathfind;
 using Unity.Entities;
 using Unity.Mathematics;

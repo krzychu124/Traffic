@@ -1,4 +1,5 @@
 ﻿using System;
+using Colossal.IO.AssetDatabase;
 using Game;
 using Game.Modding;
 using Game.SceneFlow;
@@ -11,6 +12,7 @@ using UnityEngine.Device;
 
 namespace Traffic
 {
+    [FileLocation("Traffic")]
     [SettingsUISection("Traffic", MainSection)]
     [SettingsUIGroupOrder(MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
     [SettingsUIShowGroupName( MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
@@ -115,6 +117,7 @@ namespace Traffic
                 laneConnectorSize = ConnectorSize,
                 laneConnectorLineWidth = ConnectionLaneWidth,
             });
+            base.Apply();
         }
     }
 }

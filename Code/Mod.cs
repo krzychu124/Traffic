@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Reflection;
+using Colossal.IO.AssetDatabase;
 using Game;
 using Game.Modding;
 using Game.Net;
@@ -66,6 +67,7 @@ namespace Traffic
 #endif
             _modSettings = new ModSettings(this);
             _modSettings.RegisterInOptionsUI();
+            AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, _modSettings, new ModSettings(this));
             if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(_modSettings.GetSettingsLocaleID()))
             {
                 GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(_modSettings));

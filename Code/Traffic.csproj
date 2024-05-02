@@ -27,7 +27,7 @@
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-      <DefineConstants>TRACE;SERIALIZATION;DEBUG_CONNECTIONS;DEBUG_CONNECTIONS_SYNC;DEBUG_TOOL</DefineConstants>
+      <DefineConstants>TRACE;SERIALIZATION;DEBUG_CONNECTIONS;DEBUG_CONNECTIONS_SYNC;DEBUG_TOOL;DEBUG_GIZMO</DefineConstants>
       <DebugType>portable</DebugType>
     </PropertyGroup>
 
@@ -43,6 +43,9 @@
     <ItemGroup>
         <Reference Include="Colossal.Collections">
             <Private>false</Private>
+        </Reference>
+        <Reference Include="Colossal.IO.AssetDatabase">
+          <HintPath>D:\SteamLibrary\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.IO.AssetDatabase.dll</HintPath>
         </Reference>
         <Reference Include="Colossal.Localization">
             <Private>false</Private>

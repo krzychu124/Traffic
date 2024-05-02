@@ -2,6 +2,7 @@ using Game.Net;
 using Game.Rendering;
 using Game.Tools;
 using Traffic.Components;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;

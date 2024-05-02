@@ -40,7 +40,8 @@ namespace Traffic
                     {_setting.GetSettingsLocaleID(), "Traffic" },
                     
                     {_setting.GetOptionGroupLocaleID(ModSettings.MainSection), "General"},
-                    {_setting.GetOptionGroupLocaleID(ModSettings.MaintenanceSection), "Maintenance"},
+                    {_setting.GetOptionGroupLocaleID(ModSettings.LaneConnectorSection), "Lane Connector"},
+                    {_setting.GetOptionGroupLocaleID(ModSettings.OverlaysSection), "Overlay Style"},
                     {_setting.GetOptionGroupLocaleID(ModSettings.AboutSection), "About"},
                     
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ModVersion)), "Version" },
@@ -55,6 +56,18 @@ namespace Traffic
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetLaneConnections)), "Reset Lane Connections" },
                     {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetLaneConnections)), $"While in-game, it will remove all custom lane connections" },
                     {_setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetLaneConnections)), "Are you sure you want to remove all custom lane connections?" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.FeedbackOutlineWidth)), "Feedback outline width" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.FeedbackOutlineWidth)), $"The width of the outline when feedback overlay is rendered, e.g.: when applying some changes may overwrite mod or vanilla settings" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ConnectorSize)), "Lane Connector size" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ConnectorSize)), $"The size of the rendered lane connector overlay - the source or target lane circle" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ConnectionLaneWidth)), "Lane Connection width" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ConnectionLaneWidth)), $"The width of the rendered lane connector overlay" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetStyle)), "Reset Style Settings" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetStyle)), $"Resets stle settings to the mod defautls" },
                     
                     /* lane connector tool general tooltips */
                     {$"{Mod.MOD_NAME}.Tools.Tooltip.LaneConnector[{nameof(LaneConnectorToolSystem.Tooltip.SelectIntersection)}]", "Select Intersection"},

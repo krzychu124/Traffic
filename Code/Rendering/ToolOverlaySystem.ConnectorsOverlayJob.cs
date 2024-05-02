@@ -25,6 +25,7 @@ namespace Traffic.Rendering
             [ReadOnly] public LaneConnectorToolSystem.State state;
             [ReadOnly] public LaneConnectorToolSystem.StateModifier modifier;
             [ReadOnly] public ConnectorColorSet colorSet;
+            [ReadOnly] public float connectorSize;
             [ReadOnly] public NativeList<ControlPoint> controlPoints;
             public OverlayRenderSystem.Buffer overlayBuffer;
 
@@ -61,8 +62,8 @@ namespace Traffic.Rendering
                         Entity entity = entities[j];
                         bool isSource = entity == source;
                         bool isTarget = entity == target && renderTarget;
-                        float diameter = isSource || isTarget ? 1f : 1.2f;
-                        float outline = isSource || isTarget ? diameter/2/*0.35f*/ : 0.25f;
+                        float diameter = isSource || isTarget ? connectorSize : connectorSize * 1.1f;
+                        float outline = isSource || isTarget ? diameter/2f : connectorSize * 0.3f;
                         Connector connector = connectors[j];
                         if (IsNotMatchingModifier(modifier, connector))
                         {

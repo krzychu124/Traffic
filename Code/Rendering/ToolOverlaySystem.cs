@@ -9,7 +9,6 @@ using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Tools;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -29,10 +28,11 @@ namespace Traffic.Rendering
         private ConnectorColorSet _colorSet;
         private EntityQuery _connectorsQuery;
         private EntityQuery _connectionsQuery;
+        private EntityQuery _editIntersectionQuery;
         private EntityQuery _toolFeedbackQuery;
+        private ToolOverlayParameterData _defaultOverlayParams;
 #if DEBUG_GIZMO
         // private EntityQuery _modifiedConnectionsQuery;
-        // private EntityQuery _editIntersectionQuery;
         private LaneConnectorDebugSystem _laneConnectorDebugSystem;
 #endif
     
@@ -43,11 +43,6 @@ namespace Traffic.Rendering
             _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
 #if DEBUG_GIZMO
             _laneConnectorDebugSystem = World.GetExistingSystemManaged<LaneConnectorDebugSystem>();
-            // _editIntersectionQuery = GetEntityQuery(new EntityQueryDesc()
-            // {
-            //     All = new []{ ComponentType.ReadOnly<EditIntersection>() },
-            //     None = new [] {ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Deleted>()}
-            // });
             // _modifiedConnectionsQuery = GetEntityQuery(new EntityQueryDesc()
             // {
             //     All = new []{ ComponentType.ReadOnly<CreationDefinition>(), ComponentType.ReadOnly<ConnectionDefinition>(), ComponentType.ReadOnly<TempLaneConnection>(),  },
@@ -63,6 +58,11 @@ namespace Traffic.Rendering
             {
                 All = new []{ ComponentType.ReadOnly<Connection>() },
                 None = new []{ ComponentType.ReadOnly<Deleted>(), ComponentType.ReadOnly<CustomLaneConnection>(), },
+            });
+            _editIntersectionQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new []{ ComponentType.ReadOnly<EditIntersection>() },
+                None = new [] {ComponentType.ReadOnly<Deleted>()}
             });
             _toolFeedbackQuery = GetEntityQuery(new EntityQueryDesc()
             {
@@ -87,13 +87,35 @@ namespace Traffic.Rendering
                 fillTwoWayColor = Color.clear,
                 outlineTwoWayColor =  new Color(1f, 0.92f, 0.02f, 1f),
             };
-            RequireAnyForUpdate(_connectorsQuery, _connectionsQuery, _toolFeedbackQuery);
+            SetDefautlOverlayParams(out _defaultOverlayParams);
+            
+            RequireAnyForUpdate(_connectorsQuery, _connectionsQuery, _editIntersectionQuery, _toolFeedbackQuery);
         }
 
         protected override void OnUpdate() {
             JobHandle jobHandle = default;
             if (_toolSystem.activeTool == _laneConnectorToolSystem)
             {
+                ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
+                if (!_editIntersectionQuery.IsEmptyIgnoreFilter)
+                {
+                    jobHandle = new HighlightIntersectionJob()
+                    {
+                        editIntersectionTypeHandle = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                        tempComponentTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                        toolActionBlockedComponentTypeHandle = SystemAPI.GetComponentTypeHandle<ToolActionBlocked>(true),
+                        connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                        edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                        nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                        edgeGeometryData = SystemAPI.GetComponentLookup<EdgeGeometry>(true),
+                        startNodeGeometryData = SystemAPI.GetComponentLookup<StartNodeGeometry>(true),
+                        endNodeGeometryData = SystemAPI.GetComponentLookup<EndNodeGeometry>(true),
+                        lineWidth = overlayParameters.feedbackLinesWidth * 0.75f,
+                        overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle)
+                    }.Schedule(_editIntersectionQuery, JobHandle.CombineDependencies(Dependency, overlayRenderJobHandle));
+                    _overlayRenderSystem.AddBufferWriter(jobHandle);
+                }
+                
                 if (_laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default)
                 {
 #if DEBUG_GIZMO
@@ -117,6 +139,7 @@ namespace Traffic.Rendering
                             actionOverlayData = actionOverlayData,
                             controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle3),
                             colorSet = _colorSet,
+                            connectionWidth = overlayParameters.laneConnectorLineWidth,
                             overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle3)
                         };
                         JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle3, overlayRenderJobHandle3));
@@ -137,6 +160,7 @@ namespace Traffic.Rendering
                         state = _laneConnectorToolSystem.ToolState,
                         modifier = _laneConnectorToolSystem.ToolModifiers,
                         colorSet = _colorSet,
+                        connectorSize = overlayParameters.laneConnectorSize,
                         controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle2),
                         overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle2)
                     };
@@ -167,6 +191,7 @@ namespace Traffic.Rendering
             
             if (!_toolFeedbackQuery.IsEmptyIgnoreFilter)
             {
+                ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
                 FeedbackOverlayJob feedbackOverlayJob = new FeedbackOverlayJob()
                 {
                     entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
@@ -180,7 +205,7 @@ namespace Traffic.Rendering
                     endNodeGeometryData = SystemAPI.GetComponentLookup<EndNodeGeometry>(true),
                     netGeometryData = SystemAPI.GetComponentLookup<NetGeometryData>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-                    lineWidth = 0.25f,
+                    lineWidth = overlayParameters.feedbackLinesWidth,
                     overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle2)
                 };
                 JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, overlayRenderJobHandle2);
@@ -189,6 +214,37 @@ namespace Traffic.Rendering
             }
             
             Dependency = jobHandle;
+        }
+
+        public void SetDefautlOverlayParams(out ToolOverlayParameterData data)
+        {
+            
+            data = new ToolOverlayParameterData()
+            {
+                laneConnectorSize = 1f,
+                laneConnectorLineWidth = 0.4f,
+                feedbackLinesWidth = 0.3f,
+            };
+            if (SystemAPI.HasSingleton<ToolOverlayParameterData>())
+            {
+                SystemAPI.SetSingleton(_defaultOverlayParams);
+            }
+            else
+            {
+                Entity entity = EntityManager.CreateEntity(typeof(ToolOverlayParameterData));
+                EntityManager.SetComponentData(entity, _defaultOverlayParams);
+            }
+        }
+
+        public void ApplyOverlayParams(ToolOverlayParameterData parameters)
+        {
+            RefRW<ToolOverlayParameterData> currentData = SystemAPI.GetSingletonRW<ToolOverlayParameterData>();
+            if (currentData.IsValid)
+            {
+                currentData.ValueRW.feedbackLinesWidth = parameters.feedbackLinesWidth;
+                currentData.ValueRW.laneConnectorSize = parameters.laneConnectorSize;
+                currentData.ValueRW.laneConnectorLineWidth = parameters.laneConnectorLineWidth;
+            }
         }
 
         //todo move to a system, make adjustable via options or expose as theme?

@@ -31,6 +31,7 @@ namespace Traffic.Tools
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionType;
+            [ReadOnly] public ComponentTypeHandle<ToolActionBlocked> toolActionBlockedType;
             [ReadOnly] public ComponentTypeHandle<Temp> tempType;
             [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
             [ReadOnly] public ComponentLookup<Temp> tempData;
@@ -56,6 +57,7 @@ namespace Traffic.Tools
                 NativeArray<Temp> temps = chunk.GetNativeArray(ref tempType);
                 NativeList<ToolFeedbackInfo> feedbackInfos = new NativeList<ToolFeedbackInfo>(Allocator.Temp);
                 BufferAccessor<ModifiedLaneConnections> modifiedConnectionsBuffer = chunk.GetBufferAccessor(ref modifiedLaneConnectionsType);
+                bool hasBlocked = chunk.Has(ref toolActionBlockedType);
 
                 bool hasModifiedConnections = chunk.Has(ref modifiedLaneConnectionsType);
                 bool hasWarningIconEntity = tightCurvePrefabEntity != Entity.Null;
@@ -107,7 +109,8 @@ namespace Traffic.Tools
                             }
                         }
                     }
-                    
+
+                    bool hasFeedbackError = false;
                     if (nodeEntity != Entity.Null && connectedEdgesBuffer.HasBuffer(nodeEntity))
                     {
                         DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[nodeEntity];
@@ -135,6 +138,7 @@ namespace Traffic.Tools
                                             commandBuffer.AddComponent<Error>(temp.m_Original);
                                             commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
                                             feedbackInfos.Add(new ToolFeedbackInfo() { type = hasModifiedConnections ? FeedbackMessageType.ErrorApplyRoundabout : FeedbackMessageType.ErrorHasRoundabout});
+                                            hasFeedbackError = true;
                                         }
                                     }
                                 }
@@ -148,11 +152,15 @@ namespace Traffic.Tools
                                 if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
                                 {
                                     bool hadUpgrade = false;
+                                    bool isUpgrade = false;
+                                    bool willDelete = false;
                                     if (tempData.HasComponent(connectedEdge.m_Edge))
                                     {
                                         Temp tempConnEdge = tempData[connectedEdge.m_Edge];
+                                        isUpgrade = (tempConnEdge.m_Flags & (TempFlags.Essential | TempFlags.Upgrade)) != 0;
+                                        willDelete = (tempConnEdge.m_Flags & TempFlags.Delete) != 0;
                                         if (tempConnEdge.m_Original!= Entity.Null &&
-                                            tempConnEdge.m_Flags != 0 &&
+                                            (tempConnEdge.m_Flags & ~TempFlags.Delete) != 0 &&
                                             upgradedData.HasComponent(tempConnEdge.m_Original))
                                         {
                                             Edge oldEdge = edgeData[tempConnEdge.m_Original];
@@ -164,8 +172,13 @@ namespace Traffic.Tools
                                     {
                                         feedbackInfos.Add(new ToolFeedbackInfo() {container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades});
                                     }
+
+                                    if (willDelete)
+                                    {
+                                        continue;
+                                    }
                                     
-                                    if (!hadUpgrade && hasModifiedConnections)
+                                    if (!hadUpgrade && hasModifiedConnections && isUpgrade)
                                     {
                                         feedbackInfos.Add(new ToolFeedbackInfo() {container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnForbiddenTurnApply});
                                     }
@@ -183,6 +196,13 @@ namespace Traffic.Tools
                         DynamicBuffer<ToolFeedbackInfo> feedbackBuffer = commandBuffer.AddBuffer<ToolFeedbackInfo>(entity);
                         feedbackBuffer.CopyFrom(feedbackInfos.AsArray());
                         feedbackInfos.Clear();
+                        if (hasFeedbackError)
+                        {
+                            commandBuffer.AddComponent<ToolActionBlocked>(entity);
+                        } else if (hasBlocked)
+                        {
+                            commandBuffer.RemoveComponent<ToolActionBlocked>(entity);
+                        }
                     }
                 }
                 feedbackInfos.Dispose();

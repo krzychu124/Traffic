@@ -353,11 +353,19 @@ namespace Traffic.Systems.LaneConnections
                     if (isDifferentComposition)
                     {
                         NetCompositionData oNCompositionData = netCompositionData[oldNodeCompositionEntity];
-                        NetCompositionData tNCompositionData = netCompositionData[oldNodeCompositionEntity];
+                        NetCompositionData tNCompositionData = netCompositionData[newNodeCompositionEntity];
                         CompositionFlags.Side oNLeft = oNCompositionData.m_Flags.m_Left & importantFlags;
                         CompositionFlags.Side oNRight = oNCompositionData.m_Flags.m_Right & importantFlags;
                         CompositionFlags.Side tNLeft = tNCompositionData.m_Flags.m_Left & importantFlags;
                         CompositionFlags.Side tNRight = tNCompositionData.m_Flags.m_Right & importantFlags;
+                        
+                        // force composition changed result on roundabout
+                        if ((tNCompositionData.m_Flags.m_General & CompositionFlags.General.Roundabout) != 0)
+                        {
+                            // Logger.DebugConnectionsSync($"|CheckComposition| Temp node is Roundabout!, force composition change result");
+                            return true;
+                        }
+                        
                         if (oNLeft != tNLeft || oNRight != tNRight)
                         {
                             // Logger.DebugConnectionsSync($"|CheckComposition| Different Node Composition flags = Left: [{oNLeft}]->[{tNLeft}] Right: [{oNRight}]->[{tNRight}]");

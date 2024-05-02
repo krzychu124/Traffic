@@ -74,7 +74,7 @@ namespace Traffic.Tools
                     /*---------- highlight selected node ---------*/
                     CreationDefinition nodeDef = new CreationDefinition()
                     {
-                        m_Flags = CreationFlags.Recreate | CreationFlags.Select,
+                        m_Flags = 0,
                         m_Original = node,
                         m_Prefab = prefabRefData[node].m_Prefab
                     };

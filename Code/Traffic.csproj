@@ -166,6 +166,9 @@
       <Compile Update="Rendering\ToolOverlaySystem.ConnectorsOverlayJob.cs">
         <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
       </Compile>
+      <Compile Update="Rendering\ToolOverlaySystem.HighlightIntersectionJob.cs">
+        <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

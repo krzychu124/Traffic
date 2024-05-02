@@ -80,6 +80,7 @@ namespace Traffic.Tools
 
         public override string toolID => UIBindingConstants.LANE_CONNECTOR_TOOL;
 
+        private Game.Tools.ValidationSystem _validationSystem;
         private ModRaycastSystem _modRaycastSystem;
         private ModUISystem _modUISystem;
 
@@ -103,6 +104,7 @@ namespace Traffic.Tools
         private EntityQuery _tempQuery;
         private EntityQuery _raycastHelpersQuery;
         private EntityQuery _editIntersectionQuery;
+        private EntityQuery _toolFeedbackQuery;
 
         private InputAction _delAction;
         private Camera _mainCamera;
@@ -152,6 +154,7 @@ namespace Traffic.Tools
             _modUISystem = World.GetOrCreateSystemManaged<ModUISystem>();
             _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
             _modRaycastSystem = World.GetOrCreateSystemManaged<ModRaycastSystem>();
+            _validationSystem = World.GetOrCreateSystemManaged<Game.Tools.ValidationSystem>();
             _audioManager = World.GetOrCreateSystemManaged<AudioManager>();
             // Queries
             _definitionQuery = GetDefinitionQuery();
@@ -167,6 +170,11 @@ namespace Traffic.Tools
             {
                 All = new [] { ComponentType.ReadOnly<EditIntersection>(), },
                 None = new[] { ComponentType.ReadOnly<Deleted>() }
+            });
+            _toolFeedbackQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new []{ ComponentType.ReadOnly<ToolFeedbackInfo>(), ComponentType.ReadOnly<ToolActionBlocked>() },
+                None = new []{ ComponentType.ReadOnly<Deleted>() },
             });
             // Actions
             _delAction = new InputAction("LaneConnectorTool_Delete", InputActionType.Button, "<keyboard>/delete");
@@ -222,6 +230,7 @@ namespace Traffic.Tools
             _secondaryApplyAction.shouldBeEnabled = true;
             _modRaycastSystem.Enabled = true;
             _delAction.Enable();
+            _validationSystem.Enabled = false;
         }
 
         protected override void OnStopRunning() {
@@ -235,6 +244,7 @@ namespace Traffic.Tools
             _secondaryApplyAction.shouldBeEnabled = false;
             _modRaycastSystem.Enabled = false;
             _delAction.Disable();
+            _validationSystem.Enabled = true;
         }
 
         public override void InitializeRaycast() {
@@ -398,7 +408,7 @@ namespace Traffic.Tools
                 return GetAllowApply();
             }
             // workaround for vanilla OriginalDeletedSystem result (fix bug)
-            return m_ToolSystem.ignoreErrors || m_ErrorQuery.IsEmptyIgnoreFilter;
+            return _toolFeedbackQuery.IsEmptyIgnoreFilter && (m_ToolSystem.ignoreErrors || m_ErrorQuery.IsEmptyIgnoreFilter);
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps) {
@@ -453,7 +463,7 @@ namespace Traffic.Tools
                         _controlPoints.Clear();
                         return SelectIntersectionNode(inputDeps, entity);
                     }
-                    Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default| Not allowed or miss, updating!");
+                    Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default| Miss, updating!");
                     return Update(inputDeps);
 
                 case State.SelectingSourceConnector:
@@ -464,7 +474,6 @@ namespace Traffic.Tools
                     {
                         _lastControlPoint = controlPointSource;
                         _controlPoints.Add(in controlPointSource);
-                        // _controlPoints.Add(in controlPointSource);
                         PlaySelectedSound();
                         _state = State.SelectingTargetConnector;
                         applyMode = ApplyMode.Apply;
@@ -697,6 +706,7 @@ namespace Traffic.Tools
                 case State.Default:
                     applyMode = ApplyMode.Clear;
                     _state = State.Default;
+                    m_ToolSystem.activeTool = m_DefaultToolSystem;
                     return SelectIntersectionNode(inputHandle, Entity.Null);
                 case State.SelectingSourceConnector:
                     applyMode = ApplyMode.Clear;

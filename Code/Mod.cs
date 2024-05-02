@@ -74,7 +74,7 @@ namespace Traffic
 
         public void OnDispose() {
             Logger.Info(nameof(OnDispose));
-            _modSettings.UnregisterInOptionsUI();
+            _modSettings?.UnregisterInOptionsUI();
             _modSettings = null;
         }
     }

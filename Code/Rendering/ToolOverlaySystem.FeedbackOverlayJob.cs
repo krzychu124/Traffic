@@ -22,7 +22,7 @@ namespace Traffic.Rendering
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public BufferTypeHandle<ToolFeedbackInfo> feedbackInfoTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionTypeHandle; 
+            [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Node> nodeTypeHandle;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
@@ -33,14 +33,14 @@ namespace Traffic.Rendering
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public float lineWidth;
             public OverlayRenderSystem.Buffer overlayBuffer;
-            
+
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 BufferAccessor<ToolFeedbackInfo> feedbackBufferAccessor = chunk.GetBufferAccessor(ref feedbackInfoTypeHandle);
                 NativeArray<Node> nodeChunkData = chunk.GetNativeArray(ref nodeTypeHandle);
                 NativeArray<EditIntersection> editIntersectionsChunkData = chunk.GetNativeArray(ref editIntersectionTypeHandle);
-                
+
                 for (int i = 0; i < feedbackBufferAccessor.Length; i++)
                 {
                     DynamicBuffer<ToolFeedbackInfo> feedbackInfos = feedbackBufferAccessor[i];
@@ -51,7 +51,18 @@ namespace Traffic.Rendering
                         {
                             if (toolFeedbackInfo.type == FeedbackMessageType.WarnForbiddenTurnApply && nodeChunkData.Length > 0)
                             {
-                                DrawNodeOutline(entities[i]);
+                                OverlayRenderingHelpers.DrawNodeOutline(
+                                    entities[i],
+                                    ref connectedEdgeData,
+                                    ref startNodeGeometryData,
+                                    ref endNodeGeometryData,
+                                    ref edgeData,
+                                    ref edgeGeometryData,
+                                    ref overlayBuffer,
+                                    new Color(1f, 0.65f, 0f, 1f),
+                                    lineWidth,
+                                    0f
+                                );
                             }
                             if (toolFeedbackInfo.type == FeedbackMessageType.WarnResetForbiddenTurnUpgrades && prefabRefData.HasComponent(toolFeedbackInfo.container))
                             {
@@ -63,43 +74,15 @@ namespace Traffic.Rendering
                                     bool isNearEnd = editIntersection.node == edge.m_End;
                                     EdgeGeometry edgeGeometry = edgeGeometryData[toolFeedbackInfo.container];
                                     Segment edgeSegment = !isNearEnd ? edgeGeometry.m_Start : edgeGeometry.m_End;
-                                    DrawEdgeHalfOutline(edgeSegment);
+                                    OverlayRenderingHelpers.DrawEdgeHalfOutline(
+                                        edgeSegment,
+                                        ref overlayBuffer,
+                                        new Color(1f, 0.65f, 0f, 1f),
+                                        lineWidth
+                                    );
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            private void DrawEdgeHalfOutline(Segment edgeSegment)
-            {
-                Color color = new Color(1f, 0.65f, 0f, 1f);
-                //start edge line
-                overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth);
-                //left edge line
-                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Left, lineWidth, 1);
-                //right edge line
-                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 1);
-                //middle edge cut line
-                overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth);
-            }
-
-            private void DrawNodeOutline(Entity node)
-            {
-                if (connectedEdgeData.HasBuffer(node))
-                {
-                    Color color = new Color(1f, 0.65f, 0f, 1f);
-                    DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeData[node];
-                    for (var i = 0; i < connectedEdges.Length; i++)
-                    {
-                        ConnectedEdge edge = connectedEdges[i];
-                        bool isNearEnd = node == edgeData[edge.m_Edge].m_End;
-                        EdgeGeometry edgeGeometry = edgeGeometryData[edge.m_Edge];
-                        Segment edgeSegment = !isNearEnd ? edgeGeometry.m_Start : edgeGeometry.m_End;
-                        overlayBuffer.DrawLine( color, color, 0, 0, new Line3.Segment(math.select(edgeSegment.m_Left.a, edgeSegment.m_Left.d, isNearEnd), math.select(edgeSegment.m_Right.a, edgeSegment.m_Right.d, isNearEnd)), lineWidth, 1);
-                        EdgeNodeGeometry edgeNodeGeometry = !isNearEnd ? startNodeGeometryData[edge.m_Edge].m_Geometry : endNodeGeometryData[edge.m_Edge].m_Geometry;
-                        overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Left.m_Left, lineWidth, 1);
-                        overlayBuffer.DrawCurve(color, color, 0, 0, edgeNodeGeometry.m_Right.m_Right, lineWidth, 1);
                     }
                 }
             }

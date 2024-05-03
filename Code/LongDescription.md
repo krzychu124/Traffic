@@ -1,16 +1,8 @@
-<Publish>
-  <!--Id must be set in order to update existed mod. it is not required for publishing mod for the first time-->
-  <ModId Value="" />
-  <!--Name of the mod to display to players-->
-  <DisplayName Value="Traffic" />
-  <!--Short description of the mod-->
-  <ShortDescription Value="Set of tools helping the player with managing in-game traffic" />
-  <!--Long description of the mod-->
-  <LongDescription># Traffic
+﻿# Traffic
 
 ## Successor to TM:PE for Cities Skylines II
 
-The goal of the project is to bring more tools to the game that could help users manage traffic.
+The goal of the project is to bring more tools to the game that could help users manage traffic, well known from CS1 TM:PE mod and new ones.
 
 ### Included features
 
@@ -59,27 +51,4 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
 - Bad Peanut - in-game button menu icon,
 - Chameleon TBN - testing and feedback,
 - Algernon, Klyte45, Quboid, T.D.W. and yenyang - Cooperative development, testing and feedback.
-- Slyh (Traffic Lights Enhancement) - help with compatibility and mod details for lane data migration tool</LongDescription>
-  <!--Thumbnail-->
-  <Thumbnail Value="Properties/Thumbnail.png" />
-  <!--Screenshot, can be set multiple-->
-  <Screenshot Value="" />
-  <!--Tag, can be set multiple-->
-  <Tag Value="Code Mod" />
-  <!--Link to the forum post where the mod can be discussed-->
-  <ForumLink Value="" />
-  <!--Version of the mod-->
-  <ModVersion Value="0.1.7" />
-  <!--Recommended version of the base game to use the mod-->
-  <GameVersion Value="1.1.*" />
-  <!--Dependency for the mod, can be set multiple-->
-  <Dependency Id="" DisplayName="" Version="" />
-  <!--Change log for new version-->
-  <ChangeLog Value="Initial Release">## Initial PDX Mods release v.0.1.7
-- _Lane Connector tool_ with UI toolbox containing common actions
-- Compatibilty with _Traffic Lights Enhancement_ Lane direction tool - data migration
-- Mod settings page: 
-  - reset all custom connections on the map
-  - basic overlay customization
-  - details about the mod, verion, link to GitHub</ChangeLog>
-</Publish>
+- Slyh (Traffic Lights Enhancement) - help with compatibility and mod details for lane data migration tool

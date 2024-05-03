@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import classNames from "classnames";
 import { Button, Number2 } from "cs2/ui";
 import { tool } from "cs2/bindings";
@@ -35,7 +35,7 @@ export const DebugUi = () => {
 
 export const DebugUiEditorButton = () => {
   const selectedTool = useValue(tool.activeTool$);
-  const [position, setPosition] = useState<Number2>({ x: 0.025, y: 0.8 })
+  // const [position, setPosition] = useState<Number2>({ x: 0.025, y: 0.8 })
 
   const changeIsVisible = useCallback(() => {
     trigger(mod.id, UIBindingConstants.SET_VISIBILITY, selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL);
@@ -57,7 +57,7 @@ export const DebugUiEditorButton = () => {
         {/*)}*/}
       </div>
       {selectedTool.id === UIBindingConstants.LANE_CONNECTOR_TOOL && (
-        <LaneConnectorTool position={position} onPositionChanged={setPosition} />
+        <LaneConnectorTool /*position={position} onPositionChanged={setPosition}*/ isEditor />
       )}
     </div>
   )

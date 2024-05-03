@@ -1,5 +1,5 @@
-import { Panel, PanelSection, Button, Number2 } from "cs2/ui";
-import { useRef, useCallback, useMemo } from "react";
+import { Panel, PanelSection, Button } from "cs2/ui";
+import { useRef, useCallback, useMemo, CSSProperties } from "react";
 import { useValue, trigger } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { selectedIntersection$ } from "bindings";
@@ -7,22 +7,22 @@ import mod from "mod.json";
 import styles from 'modUI/laneConnectorTool/laneConnectorTool.module.scss';
 import { UIBindingConstants, ActionOverlayPreview, UIKeys } from "types/traffic";
 import { useToolActions } from "modUI/laneConnectorTool/helpers/useToolActions";
-import { useUpdatePanelPosition } from "modUI/laneConnectorTool/helpers/useUpdatePanelPosition";
 import { VanillaComponentsResolver } from "types/internal";
-
+import { useRem } from "cs2/utils";
 
 interface Props {
-  position: Number2;
-  onPositionChanged: (value: Number2) => void;
+  isEditor?: boolean;
 }
 
-export const LaneConnectorTool = ({ position, onPositionChanged }: Props) => {
+export const LaneConnectorTool = ({isEditor}: Props) => {
   const selected = useValue(selectedIntersection$);
   const isSelected = useMemo(() => (selected?.entity.index || 0) > 0, [selected])
   const panel = useRef<HTMLDivElement | null>(null);
+  const rem = useRem();
 
   const {translate} = useLocalization();
   const {DescriptionTooltip} = VanillaComponentsResolver.instance;
+  const positionStyle: Partial<CSSProperties> = useMemo(() => ({top:`${(isEditor ? 800: 750) * rem}rem`, left: `${55*rem}rem`}), [isEditor, rem])
 
   const {
     handleEnterButton,
@@ -32,13 +32,11 @@ export const LaneConnectorTool = ({ position, onPositionChanged }: Props) => {
   const confirmActivePreview = useCallback(() => {
     trigger(mod.id, UIBindingConstants.APPLY_TOOL_ACTION_PREVIEW)
   }, []);
-  useUpdatePanelPosition({panel, onPositionChanged});
 
   return (
     <Panel
       className={styles.panel}
-      draggable
-      initialPosition={position}
+      style={positionStyle}
       header={(<>
         <span className={styles.title}>{translate(UIKeys.LANE_CONNECTION_TOOL)}</span>
       </>)}

@@ -8,13 +8,6 @@
         <!--The folder where Cities2.exe is located. Set it only if the game is not installed in the default location, otherwise keep it empty-->
         <CustomInstallationPath>D:\SteamLibrary\steamapps\common\Cities Skylines II</CustomInstallationPath>
 
-        
-        
-        
-        
-        
-        
-
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>

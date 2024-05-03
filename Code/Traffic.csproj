@@ -45,7 +45,7 @@
             <Private>false</Private>
         </Reference>
         <Reference Include="Colossal.IO.AssetDatabase">
-          <HintPath>D:\SteamLibrary\steamapps\common\Cities Skylines II\Cities2_Data\Managed\Colossal.IO.AssetDatabase.dll</HintPath>
+            <Private>false</Private>
         </Reference>
         <Reference Include="Colossal.Localization">
             <Private>false</Private>

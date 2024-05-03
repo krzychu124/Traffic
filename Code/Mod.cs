@@ -1,56 +1,61 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
-using Colossal.IO.AssetDatabase;
-using Game;
-using Game.Modding;
-using Game.Net;
-using Game.Rendering;
-using Game.SceneFlow;
-using Game.Serialization;
-using Game.Tools;
-using JetBrains.Annotations;
-using Traffic.Debug;
-using Traffic.Rendering;
-using Traffic.Systems;
-using Traffic.Systems.ModCompatibility;
-using Traffic.Tools;
-using Traffic.UISystems;
-using Traffic.Utils;
-using Unity.Entities;
-using UnityEngine;
-using ApplyLaneConnectionsSystem = Traffic.Systems.LaneConnections.ApplyLaneConnectionsSystem;
-using GenerateConnectorsSystem = Traffic.Systems.LaneConnections.GenerateConnectorsSystem;
-using GenerateLaneConnectionsSystem = Traffic.Systems.LaneConnections.GenerateLaneConnectionsSystem;
-using SearchSystem = Traffic.Systems.LaneConnections.SearchSystem;
-using SyncCustomLaneConnectionsSystem = Traffic.Systems.LaneConnections.SyncCustomLaneConnectionsSystem;
-using ValidationSystem = Traffic.Tools.ValidationSystem;
+﻿
 
 namespace Traffic
 {
+    using System;
+    using System.Linq;
+    using System.Reflection;
+    using Colossal.IO.AssetDatabase;
+    using Game;
+    using Game.Modding;
+    using Game.Net;
+    using Game.Rendering;
+    using Game.SceneFlow;
+    using Game.Serialization;
+    using Game.Tools;
+    using JetBrains.Annotations;
+    using Traffic.Debug;
+    using Traffic.Rendering;
+    using Traffic.Systems;
+    using Traffic.Systems.ModCompatibility;
+    using Traffic.Tools;
+    using Traffic.UISystems;
+    using Traffic.Utils;
+    using Unity.Entities;
+    using UnityEngine;
+    using ApplyLaneConnectionsSystem = Traffic.Systems.LaneConnections.ApplyLaneConnectionsSystem;
+    using GenerateConnectorsSystem = Traffic.Systems.LaneConnections.GenerateConnectorsSystem;
+    using GenerateLaneConnectionsSystem = Traffic.Systems.LaneConnections.GenerateLaneConnectionsSystem;
+    using SearchSystem = Traffic.Systems.LaneConnections.SearchSystem;
+    using SyncCustomLaneConnectionsSystem = Traffic.Systems.LaneConnections.SyncCustomLaneConnectionsSystem;
+    using ValidationSystem = Traffic.Tools.ValidationSystem;
+
     [UsedImplicitly]
     public class Mod : IMod
     {
         public const string MOD_NAME = "Traffic";
         public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(4);
         public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+
         public static bool IsTLEEnabled => _isTLEEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => {
             Logger.Info($"{x}");
             return x.StartsWith("C2VM.CommonLibraries.LaneSystem");
         });
+
         private static bool? _isTLEEnabled;
- 
+
         private ModSettings _modSettings;
         private const string SETTINGS_ASSET_NAME = "Traffic General Settings";
 
-        public void OnLoad(UpdateSystem updateSystem) {
+        public void OnLoad(UpdateSystem updateSystem)
+        {
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
-#if DEBUG_GIZMO            
+#if DEBUG_GIZMO
             updateSystem.UpdateAt<LaneConnectorDebugSystem>(SystemUpdatePhase.DebugGizmos);
 #endif
             updateSystem.UpdateAfter<ToolOverlaySystem, AreaRenderSystem>(SystemUpdatePhase.Rendering);
-            
+
             VanillaSystemHelpers.ModifyLaneSystemUpdateRequirements(updateSystem.World.GetOrCreateSystemManaged<LaneSystem>());
             updateSystem.UpdateBefore<TrafficLaneSystem, LaneSystem>(SystemUpdatePhase.Modification4);
             updateSystem.UpdateBefore<SyncCustomLaneConnectionsSystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
@@ -58,8 +63,8 @@ namespace Traffic
             updateSystem.UpdateAt<GenerateLaneConnectionsSystem>(SystemUpdatePhase.Modification3);
 
             updateSystem.UpdateAt<ModRaycastSystem>(SystemUpdatePhase.Raycast);
-            updateSystem.UpdateAfter<ValidationSystem, Game.Tools.ValidationSystem>(SystemUpdatePhase.ModificationEnd);
-            
+            updateSystem.UpdateAfter<ValidationSystem, Tools.ValidationSystem>(SystemUpdatePhase.ModificationEnd);
+
             // updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateBefore<ApplyLaneConnectionsSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
@@ -79,7 +84,7 @@ namespace Traffic
 #endif
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibitlityFix);
-            
+
             _modSettings = new ModSettings(this);
             _modSettings.RegisterInOptionsUI();
             AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, _modSettings, new ModSettings(this));
@@ -89,7 +94,8 @@ namespace Traffic
             }
         }
 
-        public void OnDispose() {
+        public void OnDispose()
+        {
             Logger.Info(nameof(OnDispose));
             _modSettings?.UnregisterInOptionsUI();
             _modSettings = null;
@@ -117,7 +123,6 @@ namespace Traffic
         }
     }
 #if DEBUG_TOOL
-
     // internal partial class CleanUp : GameSystemBase
     // {
     //     protected override void OnUpdate() {

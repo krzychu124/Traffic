@@ -41,6 +41,7 @@ namespace Traffic.Systems.LaneConnections
             [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionBuffer;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
             [ReadOnly] public Entity fakePrefabRef;
+            [ReadOnly] public bool leftHandTraffic;
             public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;
             public NativeArray<Entity>.ReadOnly tempNodes;
             public EntityCommandBuffer.ParallelWriter commandBuffer;
@@ -318,7 +319,7 @@ namespace Traffic.Systems.LaneConnections
                 //check if edge was not inverted
                 bool wasStart = oEdge.m_Start.Equals(originalNode);
                 NetCompositionData nodeComposition = netCompositionData[wasStart ? originalComposition.m_StartNode : originalComposition.m_EndNode];
-                bool wasStartEdge = (nodeComposition.m_Flags.m_General & CompositionFlags.General.Invert) != 0; //isStartNode ? tEdge.m_Start : tEdge.m_End;
+                bool wasStartEdge = !leftHandTraffic ? (nodeComposition.m_Flags.m_General & CompositionFlags.General.Invert) != 0 : (nodeComposition.m_Flags.m_General & CompositionFlags.General.Invert) == 0; //isStartNode ? tEdge.m_Start : tEdge.m_End;
                 // Logger.DebugConnectionsSync($"|CheckComposition|Direction| tNode: {tempNode}, wasStart: {wasStartEdge} || ");
                 if (isStartEdge != wasStartEdge)
                 {

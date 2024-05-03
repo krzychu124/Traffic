@@ -1,4 +1,5 @@
 ﻿using Game;
+using Game.City;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
@@ -28,12 +29,14 @@ namespace Traffic.Systems.LaneConnections
 #endif
     public partial class SyncCustomLaneConnectionsSystem : GameSystemBase
     {
+        private CityConfigurationSystem _cityConfigurationSystem;
         private EntityQuery _updatedEdgesQuery;
         private EntityQuery _updatedNodesQuery;
 
         protected override void OnCreate()
         {
             base.OnCreate();
+            _cityConfigurationSystem = World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             _updatedEdgesQuery = GetEntityQuery(new EntityQueryDesc()
             {
                 All = new[] { ComponentType.ReadOnly<Edge>(), ComponentType.ReadOnly<ConnectedNode>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
@@ -105,6 +108,7 @@ namespace Traffic.Systems.LaneConnections
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
                 fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
+                leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
                 nodeEdgeMap = tempMap,
                 tempNodes = updatedNodes.AsReadOnly(),
                 commandBuffer = commandBuffer.AsParallelWriter(),

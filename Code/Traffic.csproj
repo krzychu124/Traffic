@@ -107,6 +107,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Include="..\..\Keys.props" Link="Properties\Keys.props"/>
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props"/>
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets"/>
     </ItemGroup>

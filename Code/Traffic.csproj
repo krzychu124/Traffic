@@ -30,6 +30,7 @@
     </PropertyGroup>
 
     <!--Imports must be after PropertyGroup block-->
+    <Import Project="..\..\Keys.props"/>
     <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.props"/>
     <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.targets"/>
     
@@ -104,7 +105,11 @@
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props"/>
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets"/>
     </ItemGroup>
-
+    
+    <Target Name="BuildUI" AfterTargets="AfterBuild">
+        <Exec Command="npm run build" WorkingDirectory="$(ProjectDir)..\UI" />
+    </Target>
+    
     <ItemGroup>
       <Compile Update="Tools\ValidationSystem.ValidateLaneConnectorTool.cs">
         <DependentUpon>ValidationSystem.cs</DependentUpon>

@@ -1,6 +1,6 @@
 <Publish>
   <!--Id must be set in order to update existed mod. it is not required for publishing mod for the first time-->
-  <ModId Value="" />
+  <ModId Value="80095" />
   <!--Name of the mod to display to players-->
   <DisplayName Value="Traffic" />
   <!--Short description of the mod-->
@@ -63,7 +63,7 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Thumbnail-->
   <Thumbnail Value="Properties/Thumbnail.png" />
   <!--Screenshot, can be set multiple-->
-  <Screenshot Value="Properties/Screenshots/Generic.png" />
+  <Screenshot Value="Properties/Thumbnail.png" />
   <!--Tag, can be set multiple-->
   <Tag Value="Code Mod" />
   <!--Link to the forum post where the mod can be discussed-->
@@ -75,11 +75,12 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog Value="Initial Release">## Initial PDX Mods release v.0.1.7
+  <ChangeLog>## Initial PDX Mods release v.0.1.7
 - _Lane Connector tool_ with UI toolbox containing common actions
 - Compatibilty with _Traffic Lights Enhancement_ Lane direction tool - data migration
 - Mod settings page: 
   - reset all custom connections on the map
   - basic overlay customization
   - details about the mod, verion, link to GitHub</ChangeLog>
+  <ExternalLink Type="" Url="" />
 </Publish>

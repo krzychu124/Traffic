@@ -8,7 +8,6 @@ import styles from 'modUI/laneConnectorTool/laneConnectorTool.module.scss';
 import { UIBindingConstants, ActionOverlayPreview, UIKeys } from "types/traffic";
 import { useToolActions } from "modUI/laneConnectorTool/helpers/useToolActions";
 import { VanillaComponentsResolver } from "types/internal";
-import { useRem } from "cs2/utils";
 
 interface Props {
   isEditor?: boolean;
@@ -18,11 +17,10 @@ export const LaneConnectorTool = ({isEditor}: Props) => {
   const selected = useValue(selectedIntersection$);
   const isSelected = useMemo(() => (selected?.entity.index || 0) > 0, [selected])
   const panel = useRef<HTMLDivElement | null>(null);
-  const rem = useRem();
 
   const {translate} = useLocalization();
   const {DescriptionTooltip} = VanillaComponentsResolver.instance;
-  const positionStyle: Partial<CSSProperties> = useMemo(() => ({top:`${(isEditor ? 800: 750) * rem}rem`, left: `${55*rem}rem`}), [isEditor, rem])
+  const positionStyle: Partial<CSSProperties> = useMemo(() => ({ top:`${(isEditor ? 800: 750)}rem`, left: `55rem` }), [isEditor]);
 
   const {
     handleEnterButton,

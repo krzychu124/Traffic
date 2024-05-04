@@ -63,7 +63,14 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Thumbnail-->
   <Thumbnail Value="Properties/Thumbnail.png" />
   <!--Screenshot, can be set multiple-->
-  <Screenshot Value="Properties/Thumbnail.png" />
+  <Screenshot>
+Properties/Screenshots/Screenshot1.png
+Properties/Screenshots/Screenshot2.png
+Properties/Screenshots/Screenshot3.png
+Properties/Screenshots/Screenshot4.png
+Properties/Screenshots/Screenshot5.png
+Properties/Screenshots/Screenshot6.png
+  </Screenshot>
   <!--Tag, can be set multiple-->
   <Tag Value="Code Mod" />
   <!--Link to the forum post where the mod can be discussed-->

@@ -8,16 +8,29 @@ The goal of the project is to bring more tools to the game that could help users
 
 - **Lane Connector Tool** - no need to describe it for users familiar with TM:PE in CS1, but for new players, it's a tool which allows for changing lane connections at intersection to any that suits your usecase. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to add or change connections. More details below.
 
+### Usage
+
+**Ctrl+R** enable **Lane Connector Tool** or simply click on the button in top left corner, then select any intersection.
+
+Change lane connections by selecting source and target lane circles.
+
+For more advanced setups:
+- hold **Alt** to change the mode to _**unsafe** connection (dashed)_ - doesn't work for track connections
+- hold **Ctrl** for _**track-only** connection_,
+- hold **Shift** for _**road-only** connection_
+- hold **Ctrl+Shift** for _**shared-only** connection_ (e.g.: Car+Tram)
+
 #### Known issues and limitations (in the current version)
 
 - No support at intersections with _the roundabout upgrade_, custom lane connections has to be reset first to apply the upgrade
 - No support for vanilla _forbidden direction_ upgrades (tooltips with more information is available in game)
 - No support for managing bi-directinal lane connections (e.g.: two-way single train/tram track connections)
 - Intersection with custom _Lane Connections_ will not generate lane connections when modified by e.g.: adding new intersecting road - connections need to be created manually or simply reset
-- Custom _Lane Connections_ may be automatically removed (leaving lanes not connected!) in following conditions:
-    - when the network composition has changed e.g.: "small two-way road" was replaced with asymetric 2+1 variant
-    - road direction has changed with help of replace tool
-    - tram track upgrade has been applied or removed
+
+Custom _Lane Connections_ may be automatically removed (leaving lanes not connected!) in following conditions:
+- when the network composition has changed e.g.: "small two-way road" was replaced with asymetric 2+1 variant
+- road direction has changed with help of replace tool
+- tram track upgrade has been applied or removed
 
 Issues and limitations above are not impossible to solve (mostly), but they require extensive effort which would delay the release of the mod, so I deciced to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
 

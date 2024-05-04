@@ -1,7 +1,7 @@
 ---
 name: Report a Bug
 about: Tell us what we need to fix...
-labels: BUG, triage
+labels: bug, triage
 ---
 
 ### Describe the problem

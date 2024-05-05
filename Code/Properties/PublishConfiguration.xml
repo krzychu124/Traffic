@@ -76,14 +76,12 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Thumbnail-->
   <Thumbnail Value="Properties/Thumbnail.png" />
   <!--Screenshot, can be set multiple-->
-  <Screenshot>
-Properties/Screenshots/Screenshot1.png
-Properties/Screenshots/Screenshot2.png
-Properties/Screenshots/Screenshot3.png
-Properties/Screenshots/Screenshot4.png
-Properties/Screenshots/Screenshot5.png
-Properties/Screenshots/Screenshot6.png
-  </Screenshot>
+  <Screenshot Value="Properties/Screenshots/Screenshot1.png" />
+  <Screenshot Value="Properties/Screenshots/Screenshot2.png" />
+  <Screenshot Value="Properties/Screenshots/Screenshot3.png" />
+  <Screenshot Value="Properties/Screenshots/Screenshot4.png" />
+  <Screenshot Value="Properties/Screenshots/Screenshot5.png" />
+  <Screenshot Value="Properties/Screenshots/Screenshot6.png" />
   <!--Tag, can be set multiple-->
   <Tag Value="Code Mod" />
   <!--Link to the forum post where the mod can be discussed-->
@@ -98,5 +96,6 @@ Properties/Screenshots/Screenshot6.png
   <ChangeLog>## v.0.1.7.1
 
 - fix incorrect registration of ValidationSystem, should now display tooltips properly</ChangeLog>
-  <ExternalLink Type="" Url="" />
+  <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
+  <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
 </Publish>

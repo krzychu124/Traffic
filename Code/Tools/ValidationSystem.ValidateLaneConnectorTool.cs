@@ -48,10 +48,12 @@ namespace Traffic.Tools
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgesBuffer;
             [ReadOnly] public BufferLookup<SubLane> subLaneBuffer;
             [ReadOnly] public Entity tightCurvePrefabEntity;
+            [ReadOnly] public bool leftHandTraffic;
             public EntityCommandBuffer commandBuffer;
             public IconCommandBuffer iconCommandBuffer;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
                 NativeArray<Temp> temps = chunk.GetNativeArray(ref tempType);
@@ -60,152 +62,235 @@ namespace Traffic.Tools
                 bool hasBlocked = chunk.Has(ref toolActionBlockedType);
 
                 bool hasModifiedConnections = chunk.Has(ref modifiedLaneConnectionsType);
-                bool hasWarningIconEntity = tightCurvePrefabEntity != Entity.Null;
-                
-                for (int i = 0; i < entities.Length; i++)
+
+                if (chunk.Has(ref editIntersectionType))
                 {
-                    Entity entity = entities[i];
-                    Temp temp = temps[i];
-                    Entity nodeEntity = Entity.Null;
-                    int numConnections = hasModifiedConnections ? modifiedConnectionsBuffer[i].Length : 0;
-                    if (chunk.Has(ref editIntersectionType))
+                    for (int i = 0; i < entities.Length; i++)
                     {
-                        EditIntersection e = editIntersections[i];
-                        nodeEntity = e.node;
-                    }
-                    else if (hasModifiedConnections)
-                    {
-                        nodeEntity = entity;
-                        
-                        if (hasWarningIconEntity && subLaneBuffer.HasBuffer(nodeEntity))
+                        Entity entity = entities[i];
+                        Entity nodeEntity = editIntersections[i].node;
+
+                        if (nodeEntity == Entity.Null)
                         {
-                            DynamicBuffer<SubLane> subLanes = subLaneBuffer[nodeEntity];
-                            for (var j = 0; j < subLanes.Length; j++)
-                            {
-                                SubLane subLane = subLanes[j];
-                                if ((subLane.m_PathMethods & PathMethod.Track) != 0 &&
-                                    trackLaneData.HasComponent(subLane.m_SubLane))
-                                {
-                                    Lane lane = laneData[subLane.m_SubLane];
-                                    if (lane.m_StartNode.OwnerEquals(lane.m_EndNode))
-                                    {
-                                        commandBuffer.AddComponent<Error>(nodeEntity);
-                                        commandBuffer.AddComponent<BatchesUpdated>(nodeEntity);
-                                        break;
-                                    }
-                                    
-                                    PrefabRef prefabRef = prefabRefData[subLane.m_SubLane];
-                                    TrackLane trackLane = trackLaneData[subLane.m_SubLane];
-                                    TrackLaneData track = trackLanePrefabData[prefabRef.m_Prefab];
-                                    if (trackLane.m_Curviness > track.m_MaxCurviness)
-                                    {
-                                        Curve curve = curveData[subLane.m_SubLane];
-                                        float3 position = MathUtils.Position(curve.m_Bezier, 0.5f);
-                                        iconCommandBuffer.Add(subLane.m_SubLane, tightCurvePrefabEntity, position, IconPriority.Warning, IconClusterLayer.Default, (IconFlags)0, Entity.Null, isTemp: true);
-                                        commandBuffer.AddComponent(nodeEntity, default(Warning));
-                                        commandBuffer.AddComponent(nodeEntity, default(BatchesUpdated));
-                                    }
-                                }
-                            }
+                            continue;
                         }
-                    }
 
-                    bool hasFeedbackError = false;
-                    if (nodeEntity != Entity.Null && connectedEdgesBuffer.HasBuffer(nodeEntity))
-                    {
-                        DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[nodeEntity];
-                        for (int j = 0; j < connectedEdges.Length; j++)
+                        bool hasFeedbackError = CheckEditIntersection(entity, nodeEntity, temps[i], ref feedbackInfos, hasModifiedConnections);
+
+                        if (feedbackInfos.Length > 0)
                         {
-                            ConnectedEdge connectedEdge = connectedEdges[j];
-                            if (j == 0)
+                            DynamicBuffer<ToolFeedbackInfo> feedbackBuffer = commandBuffer.AddBuffer<ToolFeedbackInfo>(entity);
+                            feedbackBuffer.CopyFrom(feedbackInfos.AsArray());
+                            feedbackInfos.Clear();
+                            if (hasFeedbackError)
                             {
-                                // check node composition if is roundabout (node is start or end of connectedEdge),
-                                // "Edge" entity holds info about network Composition (edge, startNode, endNode)
-                                Edge edge = edgeData[connectedEdge.m_Edge];
-                                bool? isStartNode = math.any(new bool2(edge.m_Start.Equals(nodeEntity), edge.m_End.Equals(nodeEntity))) ? edge.m_Start.Equals(nodeEntity) : null;
-                                if (isStartNode.HasValue && compositionData.HasComponent(connectedEdge.m_Edge))
-                                {
-                                    Composition composition = compositionData[connectedEdge.m_Edge];
-                                    CompositionFlags compositionFlags = netCompositionData[isStartNode.Value ? composition.m_StartNode : composition.m_EndNode].m_Flags;
-                                    if ((compositionFlags.m_General &  CompositionFlags.General.Roundabout) != 0)
-                                    {
-                                        if (temp.m_Original != Entity.Null)
-                                        {
-                                            commandBuffer.AddComponent<Error>(entity);
-                                            commandBuffer.AddComponent<BatchesUpdated>(entity);
-                                            
-                                            //highlight and block node modification
-                                            commandBuffer.AddComponent<Error>(temp.m_Original);
-                                            commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
-                                            feedbackInfos.Add(new ToolFeedbackInfo() { type = hasModifiedConnections ? FeedbackMessageType.ErrorApplyRoundabout : FeedbackMessageType.ErrorHasRoundabout});
-                                            hasFeedbackError = true;
-                                        }
-                                    }
-                                }
+                                commandBuffer.AddComponent<ToolActionBlocked>(entity);
                             }
-                            
-                            if (upgradedData.HasComponent(connectedEdge.m_Edge) && !deletedData.HasComponent(connectedEdge.m_Edge))
+                            else if (hasBlocked)
                             {
-                                Upgraded upgraded = upgradedData[connectedEdge.m_Edge];
-                                Edge edge = edgeData[connectedEdge.m_Edge];
-                                CompositionFlags.Side side = edge.m_Start == nodeEntity ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
-                                if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
-                                {
-                                    bool hadUpgrade = false;
-                                    bool isUpgrade = false;
-                                    bool willDelete = false;
-                                    if (tempData.HasComponent(connectedEdge.m_Edge))
-                                    {
-                                        Temp tempConnEdge = tempData[connectedEdge.m_Edge];
-                                        isUpgrade = (tempConnEdge.m_Flags & (TempFlags.Essential | TempFlags.Upgrade)) != 0;
-                                        willDelete = (tempConnEdge.m_Flags & TempFlags.Delete) != 0;
-                                        if (tempConnEdge.m_Original!= Entity.Null &&
-                                            (tempConnEdge.m_Flags & ~TempFlags.Delete) != 0 &&
-                                            upgradedData.HasComponent(tempConnEdge.m_Original))
-                                        {
-                                            Edge oldEdge = edgeData[tempConnEdge.m_Original];
-                                            Upgraded oldUpgradedEdge = upgradedData[tempConnEdge.m_Original];
-                                            hadUpgrade = ((oldEdge.m_Start == temp.m_Original ? oldUpgradedEdge.m_Flags.m_Left : oldUpgradedEdge.m_Flags.m_Right) & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        feedbackInfos.Add(new ToolFeedbackInfo() {container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades});
-                                    }
-
-                                    if (willDelete)
-                                    {
-                                        continue;
-                                    }
-                                    
-                                    if (!hadUpgrade && hasModifiedConnections && isUpgrade)
-                                    {
-                                        feedbackInfos.Add(new ToolFeedbackInfo() {container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnForbiddenTurnApply});
-                                    }
-                                    else if (hadUpgrade && numConnections > 0)
-                                    {
-                                        feedbackInfos.Add(new ToolFeedbackInfo() {container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades});
-                                    }
-                                }
+                                commandBuffer.RemoveComponent<ToolActionBlocked>(entity);
                             }
-                        }
-                    }
-
-                    if (feedbackInfos.Length > 0)
-                    {
-                        DynamicBuffer<ToolFeedbackInfo> feedbackBuffer = commandBuffer.AddBuffer<ToolFeedbackInfo>(entity);
-                        feedbackBuffer.CopyFrom(feedbackInfos.AsArray());
-                        feedbackInfos.Clear();
-                        if (hasFeedbackError)
-                        {
-                            commandBuffer.AddComponent<ToolActionBlocked>(entity);
-                        } else if (hasBlocked)
-                        {
-                            commandBuffer.RemoveComponent<ToolActionBlocked>(entity);
                         }
                     }
                 }
+                else
+                {
+
+                    for (int i = 0; i < entities.Length; i++)
+                    {
+                        Entity entity = entities[i];
+                        Temp temp = temps[i];
+                        int numConnections = hasModifiedConnections ? modifiedConnectionsBuffer[i].Length : 0;
+
+                        if ((temp.m_Flags & TempFlags.Delete) != 0)
+                        {
+                            continue;
+                        }
+
+                        bool hasFeedbackError = false;
+                        if (connectedEdgesBuffer.HasBuffer(entity))
+                        {
+                            DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[entity];
+                            for (int j = 0; j < connectedEdges.Length; j++)
+                            {
+                                ConnectedEdge connectedEdge = connectedEdges[j];
+                                if (j == 0)
+                                {
+                                    // check node composition if is roundabout (node is start or end of connectedEdge),
+                                    // "Edge" entity holds info about network Composition (edge, startNode, endNode)
+
+                                    if ((temp.m_Flags & TempFlags.Essential) != 0)
+                                    {
+                                        Edge edge = edgeData[connectedEdge.m_Edge];
+                                        bool? isStartNode = math.any(new bool2(edge.m_Start.Equals(entity), edge.m_End.Equals(entity))) ? edge.m_Start.Equals(entity) : null;
+                                        if (isStartNode.HasValue && compositionData.HasComponent(connectedEdge.m_Edge))
+                                        {
+                                            Composition composition = compositionData[connectedEdge.m_Edge];
+                                            CompositionFlags compositionFlags = netCompositionData[isStartNode.Value ? composition.m_StartNode : composition.m_EndNode].m_Flags;
+                                            if ((compositionFlags.m_General & CompositionFlags.General.Roundabout) != 0 && temp.m_Original != Entity.Null)
+                                            {
+                                                if (tempData.HasComponent(connectedEdge.m_Edge))
+                                                {
+                                                    Temp tempEdge = tempData[connectedEdge.m_Edge];
+                                                    if ((tempEdge.m_Flags & TempFlags.Delete) != 0)
+                                                    {
+                                                        continue;
+                                                    }
+                                                    if (compositionData.HasComponent(tempEdge.m_Original))
+                                                    {
+                                                        Composition edgeComposition = compositionData[tempEdge.m_Original];
+                                                        CompositionFlags edgeCompositionFlags = netCompositionData[isStartNode.Value ? edgeComposition.m_StartNode : edgeComposition.m_EndNode].m_Flags;
+                                                        if ((edgeCompositionFlags.m_General & CompositionFlags.General.Roundabout) != 0)
+                                                        {
+                                                            //skip, had a roundabout upgrade, nothing has changed
+                                                            continue;
+                                                        }
+                                                    }
+                                                }
+
+                                                commandBuffer.AddComponent<Error>(entity);
+                                                commandBuffer.AddComponent<BatchesUpdated>(entity);
+
+                                                //highlight and block node modification
+                                                commandBuffer.AddComponent<Error>(temp.m_Original);
+                                                commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
+                                                feedbackInfos.Add(new ToolFeedbackInfo() { type = FeedbackMessageType.ErrorApplyRoundabout });
+                                                hasFeedbackError = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (upgradedData.HasComponent(connectedEdge.m_Edge) && !deletedData.HasComponent(connectedEdge.m_Edge))
+                                {
+                                    Upgraded upgraded = upgradedData[connectedEdge.m_Edge];
+                                    Edge edge = edgeData[connectedEdge.m_Edge];
+                                    CompositionFlags.Side side = edge.m_Start == entity == !leftHandTraffic ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
+                                    if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
+                                    {
+                                        bool isUpgrade = false;
+                                        if (tempData.HasComponent(connectedEdge.m_Edge))
+                                        {
+                                            Temp tempConnEdge = tempData[connectedEdge.m_Edge];
+                                            isUpgrade = (tempConnEdge.m_Flags & (TempFlags.Essential | TempFlags.Upgrade)) != 0;
+                                            if ((tempConnEdge.m_Flags & TempFlags.Delete) != 0)
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        if (isUpgrade && hasModifiedConnections && numConnections > 0)
+                                        {
+                                            feedbackInfos.Add(new ToolFeedbackInfo() { container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnForbiddenTurnApply });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (feedbackInfos.Length > 0)
+                        {
+                            DynamicBuffer<ToolFeedbackInfo> feedbackBuffer = commandBuffer.AddBuffer<ToolFeedbackInfo>(entity);
+                            feedbackBuffer.CopyFrom(feedbackInfos.AsArray());
+                            feedbackInfos.Clear();
+                            if (hasFeedbackError)
+                            {
+                                commandBuffer.AddComponent<ToolActionBlocked>(entity);
+                            }
+                            else if (hasBlocked)
+                            {
+                                commandBuffer.RemoveComponent<ToolActionBlocked>(entity);
+                            }
+                        }
+                    }
+                }
+
                 feedbackInfos.Dispose();
+            }
+
+            private bool CheckEditIntersection(Entity entity, Entity nodeEntity, Temp temp, ref NativeList<ToolFeedbackInfo> feedbackInfos, bool hasModifiedConnections)
+            {
+                bool hasWarningIconEntity = tightCurvePrefabEntity != Entity.Null;
+                if (hasModifiedConnections &&
+                    hasWarningIconEntity &&
+                    subLaneBuffer.HasBuffer(nodeEntity))
+                {
+                    DynamicBuffer<SubLane> subLanes = subLaneBuffer[nodeEntity];
+                    for (int i = 0; i < subLanes.Length; i++)
+                    {
+                        SubLane subLane = subLanes[i];
+                        if ((subLane.m_PathMethods & PathMethod.Track) != 0 &&
+                            trackLaneData.HasComponent(subLane.m_SubLane))
+                        {
+                            Lane lane = laneData[subLane.m_SubLane];
+                            if (lane.m_StartNode.OwnerEquals(lane.m_EndNode))
+                            {
+                                commandBuffer.AddComponent<Error>(nodeEntity);
+                                commandBuffer.AddComponent<BatchesUpdated>(nodeEntity);
+                                break;
+                            }
+
+                            PrefabRef prefabRef = prefabRefData[subLane.m_SubLane];
+                            TrackLane trackLane = trackLaneData[subLane.m_SubLane];
+                            TrackLaneData track = trackLanePrefabData[prefabRef.m_Prefab];
+                            if (trackLane.m_Curviness > track.m_MaxCurviness)
+                            {
+                                Curve curve = curveData[subLane.m_SubLane];
+                                float3 position = MathUtils.Position(curve.m_Bezier, 0.5f);
+                                iconCommandBuffer.Add(subLane.m_SubLane, tightCurvePrefabEntity, position, IconPriority.Warning, IconClusterLayer.Default, (IconFlags)0, Entity.Null, isTemp: true);
+                                commandBuffer.AddComponent(nodeEntity, default(Warning));
+                                commandBuffer.AddComponent(nodeEntity, default(BatchesUpdated));
+                            }
+                        }
+                    }
+                }
+
+                if (connectedEdgesBuffer.HasBuffer(nodeEntity))
+                {
+                    DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[nodeEntity];
+                    for (int j = 0; j < connectedEdges.Length; j++)
+                    {
+                        ConnectedEdge connectedEdge = connectedEdges[j];
+                        if (j == 0)
+                        {
+                            Edge edge = edgeData[connectedEdge.m_Edge];
+                            bool? isStartNode = math.any(new bool2(edge.m_Start.Equals(nodeEntity), edge.m_End.Equals(nodeEntity))) ? edge.m_Start.Equals(nodeEntity) : null;
+                            if (isStartNode.HasValue && compositionData.HasComponent(connectedEdge.m_Edge))
+                            {
+                                Composition composition = compositionData[connectedEdge.m_Edge];
+                                CompositionFlags compositionFlags = netCompositionData[isStartNode.Value ? composition.m_StartNode : composition.m_EndNode].m_Flags;
+
+                                if ((compositionFlags.m_General & CompositionFlags.General.Roundabout) != 0)
+                                {
+                                    if (temp.m_Original != Entity.Null)
+                                    {
+                                        commandBuffer.AddComponent<Error>(entity);
+                                        commandBuffer.AddComponent<BatchesUpdated>(entity);
+
+                                        //highlight and block node modification
+                                        commandBuffer.AddComponent<Error>(temp.m_Original);
+                                        commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
+                                        feedbackInfos.Add(new ToolFeedbackInfo() { type = FeedbackMessageType.ErrorHasRoundabout });
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (upgradedData.HasComponent(connectedEdge.m_Edge) && !deletedData.HasComponent(connectedEdge.m_Edge))
+                        {
+                            Upgraded upgraded = upgradedData[connectedEdge.m_Edge];
+                            Edge edge = edgeData[connectedEdge.m_Edge];
+                            CompositionFlags.Side side = edge.m_Start == nodeEntity == !leftHandTraffic ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
+                            if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
+                            {
+                                feedbackInfos.Add(new ToolFeedbackInfo() { container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades });
+                            }
+                        }
+                    }
+                }
+
+                return false;
             }
         }
     }

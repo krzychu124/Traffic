@@ -1,4 +1,5 @@
 ﻿using Game;
+using Game.City;
 using Game.Common;
 using Game.Net;
 using Game.Notifications;
@@ -20,12 +21,18 @@ namespace Traffic.Tools
         private EntityQuery _toolErrorPrefabQuery;
         private ModificationEndBarrier _modificationBarrier;
         private IconCommandSystem _iconCommandSystem;
+        private ToolSystem _toolSystem;
+        private BulldozeToolSystem _bulldozeToolSystem;
+        private CityConfigurationSystem _cityConfigurationSystem;
         private Entity _tightCurveErrorPrefab;
 
         protected override void OnCreate() {
             base.OnCreate();
             _modificationBarrier = World.GetOrCreateSystemManaged<ModificationEndBarrier>();
             _iconCommandSystem = World.GetOrCreateSystemManaged<IconCommandSystem>();
+            _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
+            _bulldozeToolSystem = World.GetOrCreateSystemManaged<BulldozeToolSystem>();
+            _cityConfigurationSystem = World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             _tempQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<Temp>()},
@@ -63,34 +70,38 @@ namespace Traffic.Tools
                     }
                 }
             }
-            
-            ValidateLaneConnectorTool validateJob = new ValidateLaneConnectorTool()
+
+            if (_toolSystem.activeTool != _bulldozeToolSystem)
             {
-                entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
-                editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
-                tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
-                modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
-                tempData = SystemAPI.GetComponentLookup<Temp>(true),
-                upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
-                deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
-                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-                compositionData = SystemAPI.GetComponentLookup<Composition>(true),
-                netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
-                trackLaneData= SystemAPI.GetComponentLookup<TrackLane>(true),
-                trackLanePrefabData = SystemAPI.GetComponentLookup<TrackLaneData>(true),
-                laneData= SystemAPI.GetComponentLookup<Lane>(true),
-                curveData= SystemAPI.GetComponentLookup<Curve>(true),
-                prefabRefData= SystemAPI.GetComponentLookup<PrefabRef>(true),
-                connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
-                tightCurvePrefabEntity = _tightCurveErrorPrefab,
-                commandBuffer = _modificationBarrier.CreateCommandBuffer(),
-                iconCommandBuffer = _iconCommandSystem.CreateCommandBuffer(),
-            };
-            JobHandle jobHandle = validateJob.Schedule(_tempQuery, Dependency);
-            _iconCommandSystem.AddCommandBufferWriter(jobHandle);
-            _modificationBarrier.AddJobHandleForProducer(jobHandle);
-            Dependency = jobHandle;
+                ValidateLaneConnectorTool validateJob = new ValidateLaneConnectorTool()
+                {
+                    entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                    editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                    tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                    modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
+                    tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                    upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
+                    deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
+                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                    compositionData = SystemAPI.GetComponentLookup<Composition>(true),
+                    netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
+                    trackLaneData = SystemAPI.GetComponentLookup<TrackLane>(true),
+                    trackLanePrefabData = SystemAPI.GetComponentLookup<TrackLaneData>(true),
+                    laneData = SystemAPI.GetComponentLookup<Lane>(true),
+                    curveData = SystemAPI.GetComponentLookup<Curve>(true),
+                    prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
+                    connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                    subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
+                    tightCurvePrefabEntity = _tightCurveErrorPrefab,
+                    leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
+                    commandBuffer = _modificationBarrier.CreateCommandBuffer(),
+                    iconCommandBuffer = _iconCommandSystem.CreateCommandBuffer(),
+                };
+                JobHandle jobHandle = validateJob.Schedule(_tempQuery, Dependency);
+                _iconCommandSystem.AddCommandBufferWriter(jobHandle);
+                _modificationBarrier.AddJobHandleForProducer(jobHandle);
+                Dependency = jobHandle;
+            }
         }
     }
 }

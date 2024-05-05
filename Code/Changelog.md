@@ -1,3 +1,4 @@
-﻿## v.0.1.7.1
+﻿## v.0.1.7.2
 
-- fix incorrect registration of ValidationSystem, should now display tooltips properly
+- fixed validation and feedback tooltips at roundabouts, 
+- improved detection in Left Hand traffic cities

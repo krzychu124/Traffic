@@ -5,7 +5,6 @@ namespace Traffic
     using System;
     using System.Linq;
     using System.Reflection;
-    using Colossal.IO.AssetDatabase;
     using Game;
     using Game.Modding;
     using Game.Net;
@@ -28,7 +27,6 @@ namespace Traffic
     using GenerateLaneConnectionsSystem = Traffic.Systems.LaneConnections.GenerateLaneConnectionsSystem;
     using SearchSystem = Traffic.Systems.LaneConnections.SearchSystem;
     using SyncCustomLaneConnectionsSystem = Traffic.Systems.LaneConnections.SyncCustomLaneConnectionsSystem;
-    using ValidationSystem = Traffic.Tools.ValidationSystem;
 
     [UsedImplicitly]
     public class Mod : IMod
@@ -63,7 +61,7 @@ namespace Traffic
             updateSystem.UpdateAt<GenerateLaneConnectionsSystem>(SystemUpdatePhase.Modification3);
 
             updateSystem.UpdateAt<ModRaycastSystem>(SystemUpdatePhase.Raycast);
-            updateSystem.UpdateAfter<ValidationSystem, Tools.ValidationSystem>(SystemUpdatePhase.ModificationEnd);
+            updateSystem.UpdateAfter<Traffic.Tools.ValidationSystem, Game.Tools.ValidationSystem>(SystemUpdatePhase.ModificationEnd);
 
             // updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
@@ -87,7 +85,7 @@ namespace Traffic
 
             _modSettings = new ModSettings(this);
             _modSettings.RegisterInOptionsUI();
-            AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, _modSettings, new ModSettings(this));
+            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, _modSettings, new ModSettings(this));
             if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(_modSettings.GetSettingsLocaleID()))
             {
                 GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(_modSettings));

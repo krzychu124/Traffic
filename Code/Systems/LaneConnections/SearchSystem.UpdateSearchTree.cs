@@ -44,7 +44,7 @@ namespace Traffic.Systems.LaneConnections
                         Entity entity = entities[index];
                         Connector connector = connectors[index];
                         int lod = RenderingUtils.CalculateLodLimit(RenderingUtils.GetRenderingSize(new float2(1f)));
-                        searchTree.Add(entity, new QuadTreeBoundsXZ(new Bounds3(connector.position - .25f, connector.position + .25f), BoundsMask.NormalLayers, lod));
+                        searchTree.Add(entity, new QuadTreeBoundsXZ(new Bounds3(connector.position - .5f, connector.position + .5f), BoundsMask.NormalLayers, lod));
                     }
                 }
             }

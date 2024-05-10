@@ -307,9 +307,11 @@ namespace Traffic.Tools
 
             if (_mainCamera && _state > State.Default)
             {
+                ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
                 CustomRaycastInput input;
+                float posHitRadius = math.lerp(0.8f, 1.7f, math.clamp((overlayParameters.laneConnectorSize - 0.5f) / 1.5f, 0, 1f));
                 input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
-                input.offset = new float3(0, 0, 0);
+                input.offset = new float3(posHitRadius, 0, posHitRadius);
                 input.heightOverride = 0;
                 input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
                 input.connectorType = _state switch

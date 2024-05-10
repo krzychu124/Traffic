@@ -66,7 +66,6 @@ namespace Traffic.Systems
             NativeList<Entity> entities = new NativeList<Entity>(Allocator.TempJob);
             RaycastJobs.FindConnectionNodeFromTreeJob job = new RaycastJobs.FindConnectionNodeFromTreeJob()
             {
-                expand = 0.25f,
                 input = input,
                 entityList = entities,
                 searchTree = _searchSystem.GetSearchTree(true, out JobHandle dependencies)

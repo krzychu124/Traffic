@@ -27,29 +27,26 @@ namespace Traffic.Helpers
         {
             private struct FindConnectionNodeIterator : INativeQuadTreeIterator<Entity, QuadTreeBoundsXZ>, IUnsafeQuadTreeIterator<Entity, QuadTreeBoundsXZ>
             {
+                public float radius;
+                public float3 offset;
                 public Line3.Segment line;
-                public float3 minOffset;
-                public float3 maxOffset;
                 public NativeList<Entity> entityList;
             
                 public bool Intersect(QuadTreeBoundsXZ bounds) {
-                    bounds.m_Bounds.min += minOffset;
-                    bounds.m_Bounds.max += maxOffset;
+                    bounds.m_Bounds.min += -offset;
+                    bounds.m_Bounds.max += offset;
                     return MathUtils.Intersect(bounds.m_Bounds, line, out float2 _);
                 }
 
                 public void Iterate(QuadTreeBoundsXZ bounds, Entity item) {
-                    bounds.m_Bounds.min += minOffset;
-                    bounds.m_Bounds.max += maxOffset;
-                    if (MathUtils.Intersect(bounds.m_Bounds, line, out float2 _))
+                    float3 center = MathUtils.Center(bounds.m_Bounds);
+                    if (MathUtils.Intersect(new Sphere3(radius, center), line, out float2 _))
                     {
                         entityList.Add(in item);
                     }
                 }
             }
         
-            [ReadOnly]
-            public float expand;
             [ReadOnly]
             public CustomRaycastInput input;
             [ReadOnly]
@@ -61,8 +58,8 @@ namespace Traffic.Helpers
                 FindConnectionNodeIterator nodeIterator = new FindConnectionNodeIterator
                 {
                     line = input.line,
-                    minOffset = math.min(-input.offset, 0f - expand),
-                    maxOffset = math.max(-input.offset, expand),
+                    radius = math.cmax(input.offset),
+                    offset = new float3(input.offset * new float3(1,0,1)),
                     entityList = entityList
                 };
                 searchTree.Iterate(ref nodeIterator);

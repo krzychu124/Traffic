@@ -24,7 +24,7 @@ namespace Traffic.Systems
             
             public void Execute() {
 
-                Line3.Segment segment = input.line + input.offset;
+                Line3.Segment segment = input.line;
                 if ((input.typeMask & TypeMask.Terrain) != 0 && TerrainUtils.Raycast(ref terrainData, segment, false, out float t2, out float3 normal))
                 {
                     float3 pos = MathUtils.Position(segment, t2);

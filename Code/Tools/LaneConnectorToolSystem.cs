@@ -478,7 +478,7 @@ namespace Traffic.Tools
                         _controlPoints.Add(in controlPointSource);
                         PlaySelectedSound();
                         _state = State.SelectingTargetConnector;
-                        applyMode = ApplyMode.Apply;
+                        applyMode = ApplyMode.Clear;
                         inputDeps = UpdateDefinitions(inputDeps);
                         Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectSource| Hit!");
                         return inputDeps;

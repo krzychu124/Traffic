@@ -1,0 +1,32 @@
+
+.scrollable {
+  max-height: 200rem;
+  padding: 5rem;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  pointer-events: auto;
+
+  background-color: rgba(34, 40, 44, 0.6);
+  border-radius: 4rem;
+
+  .text {
+    width: 90%;
+    min-width: 150rem;
+    display: flex;
+    flex-direction: row;
+    padding: 2rem 5rem;
+  }
+
+  &:hover {
+    background-color: rgba(62, 72, 80, 0.6);
+  }
+}
+
+.entity {
+  color: var(--accentColorLight);
+}

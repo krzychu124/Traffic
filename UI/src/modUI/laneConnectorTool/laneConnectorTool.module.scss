@@ -2,16 +2,28 @@
 .panel {
   pointer-events: auto;
   position: absolute;
+
 }
+
+.panel.withIssues {
+  --panelOpacityNormal: 0.75;
+  --panelOpacityDark: 0.85;
+
+  & > div {
+    backdrop-filter: none !important;
+  }
+}
+
 
 .title {
   padding: 5rem;
 }
 .selectIntersectionMessage {
   padding: 5rem;
+  align-self: center;
 }
 
-.actionButton {
+.actionButton, .actionLoadingResultsButton {
   pointer-events: auto;
   margin-bottom: 5rem;
   background-color: #0f1013;
@@ -28,4 +40,42 @@
   &:active {
     background-color: #23262d
   }
+
+  &.focused {
+    background-color: #23262d
+  }
+}
+
+.actionLoadingResultsButton {
+  margin-top: 5rem;
+  background-color: #a50000;
+
+  &:hover {
+    background-color: #9a2525;
+  }
+
+  &:active {
+    background-color: #9a3d3d;
+  }
+
+  &:focus {
+    background-color: #c66767;
+  }
+
+  &.focused {
+    background-color: #23262d
+  }
+}
+
+.loadingErrors {
+  margin-top: 5rem;
+  border-top: gray 1px solid;
+  padding: 5rem;
+}
+
+.loadingErrorsMessage {
+  padding: 2rem;
+  border-radius: 4rem;
+  background-color: rgba(166, 0, 0, 0.76);
+  font-size: 14rem;
 }

@@ -49,9 +49,9 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                 
                 if ((temp.m_Flags & TempFlags.Replace) != 0)
                 {
-#if DEBUG_CONNECTIONS
                     Temp startNodeTemp = tempData[edge.m_Start];
                     Temp endNodeTemp = tempData[edge.m_End];
+#if DEBUG_CONNECTIONS
                     Logger.DebugConnections($"({debugSystemName})|Edge|Replace| {entity} T[{temp.m_Original} | {temp.m_Flags}]\n" +
                         $"\t\t\t\tStart: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}]\n" +
                         $"\t\t\t\tEnd:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}]");

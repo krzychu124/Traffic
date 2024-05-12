@@ -17,6 +17,9 @@ using SubLane = Game.Net.SubLane;
 
 namespace Traffic.Systems.ModCompatibility
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class TLEDataMigrationSystem : GameSystemBase
     {
         private EntityQuery _query;

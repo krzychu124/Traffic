@@ -14,6 +14,10 @@ export class UIBindingConstants
 	public static SELECTED_INTERSECTION: string = `selectedIntersection`;
 	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
 	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
+	public static LOADING_ERRORS_PRESENT: string = `loadingErrorsPresent`;
+	public static ERROR_AFFECTED_INTERSECTIONS: string = `errorAffectedIntersection`;
+	public static REMOVE_ENTITY_FROM_LIST: string = `removeEntityFromList`;
+	public static NAVIGATE_TO_ENTITY: string = `navigateToEntity`;
 }
 export class UIKeys
 {

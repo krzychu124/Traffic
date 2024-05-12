@@ -16,8 +16,6 @@ using Edge = Game.Net.Edge;
 using SecondaryLane = Game.Net.SecondaryLane;
 using SubLane = Game.Net.SubLane;
 
-namespace Traffic.CommonData
-{ }
 
 namespace Traffic.Systems.LaneConnections
 {

@@ -66,7 +66,7 @@ namespace Traffic.Systems.Helpers
                 {
                     if (targetEdge != Entity.Null)
                     {
-                        Composition targetComposition = compositionData[sourceEdge];
+                        Composition targetComposition = compositionData[targetEdge];
                         DynamicBuffer<NetCompositionLane> targetNetCompositionLanes = compositionLanes[targetComposition.m_Edge];
                         int targetLaneIndex = laneIndexMap.y;
                         if (targetLaneIndex >= targetNetCompositionLanes.Length)

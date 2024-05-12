@@ -1,5 +1,6 @@
-import { Panel, PanelSection, Button } from "cs2/ui";
 import { useRef, useCallback, useMemo, CSSProperties } from "react";
+import classNames from "classnames";
+import { Panel, PanelSection, Button } from "cs2/ui";
 import { useValue, trigger } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { selectedIntersection$ } from "bindings";
@@ -11,9 +12,11 @@ import { VanillaComponentsResolver } from "types/internal";
 
 interface Props {
   isEditor?: boolean;
+  onOpenLoadingResults?: () => void;
+  showLoadingErrorsButton?: boolean;
 }
 
-export const LaneConnectorTool = ({isEditor}: Props) => {
+export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoadingResults}: Props) => {
   const selected = useValue(selectedIntersection$);
   const isSelected = useMemo(() => (selected?.entity.index || 0) > 0, [selected])
   const panel = useRef<HTMLDivElement | null>(null);
@@ -33,7 +36,7 @@ export const LaneConnectorTool = ({isEditor}: Props) => {
 
   return (
     <Panel
-      className={styles.panel}
+      className={classNames(styles.panel, {[styles.withIssues]: showLoadingErrorsButton})}
       style={positionStyle}
       header={(<>
         <span className={styles.title}>{translate(UIKeys.LANE_CONNECTION_TOOL)}</span>
@@ -92,6 +95,21 @@ export const LaneConnectorTool = ({isEditor}: Props) => {
               </Button>
             </>
           )}
+          {!isSelected &&
+           showLoadingErrorsButton &&
+           onOpenLoadingResults && (
+             <div className={styles.loadingErrors}>
+               <p className={styles.loadingErrorsMessage}>The mod data has been loaded with errors</p>
+               <Button variant="flat"
+                       className={styles.actionLoadingResultsButton}
+                       onClick={onOpenLoadingResults}
+                       type="button"
+               >
+                 {translate("Show data loading results", "Show data loading results")}
+               </Button>
+             </div>
+           )
+          }
         </PanelSection>
       </div>
     </Panel>

@@ -70,8 +70,6 @@ namespace Traffic.Tools
                 Logger.DebugTool($"Node: {node} | {intersectionNode}, state: {state}, count: {count}");
                 if (nodeData.HasComponent(node))
                 {
-                    Logger.DebugTool($"Highlighting {node}");
-                    /*---------- highlight selected node ---------*/
                     CreationDefinition nodeDef = new CreationDefinition()
                     {
                         m_Flags = 0,
@@ -100,13 +98,14 @@ namespace Traffic.Tools
 
                     Entity nodeEntity = commandBuffer.CreateEntity();
                     commandBuffer.AddComponent(nodeEntity, nodeDef);
-                    commandBuffer.AddComponent<Updated>(nodeEntity);
                     commandBuffer.AddComponent(nodeEntity, netCourse);
+                    commandBuffer.AddComponent<Updated>(nodeEntity);
                     /*----------------------------------------------*/
                 }
 
                 if (state == State.Default || node == Entity.Null ||  editingIntersection == Entity.Null || count < 1)
                 {
+                    Logger.DebugTool($"CreateDefinitionsJob finished! state:{state}, n:{node}, edit:{editingIntersection}, count:{count}");
                     return;
                 }
                 Logger.DebugTool($"Creating connector definitions: {count}, {editingIntersection}");
@@ -194,6 +193,7 @@ namespace Traffic.Tools
                 }
 
                 connectorsMap.Dispose();
+                Logger.DebugTool("CreateDefinitionsJob finished 2");
             }
 
             private void FillConnectorMap(DynamicBuffer<ConnectorElement> connectorElements, NativeHashMap<ConnectorKey, Entity> connectorsMap) {

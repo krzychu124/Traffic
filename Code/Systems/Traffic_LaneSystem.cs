@@ -1023,7 +1023,7 @@ namespace Traffic.Systems
                             if (modifiedLaneConnections.Length > 0 /*&& tempComponents.Length == 0*/)
                             {
                                 DynamicBuffer<ModifiedLaneConnections> connections = modifiedLaneConnections[entityIndex];
-                                FillModifiedLaneConnections(connections, tempModifiedLaneEnds);
+                                FillModifiedLaneConnections(connections, tempModifiedLaneEnds, tempComponents.Length != 0);
                                 testKeys = true;
                             }
                             /*NON-STOCK*/
@@ -5296,11 +5296,16 @@ namespace Traffic.Systems
                 }
             }
 
-            private void FillModifiedLaneConnections(DynamicBuffer<ModifiedLaneConnections> connections, NativeHashSet<LaneEndKey> output) {
+            private void FillModifiedLaneConnections(DynamicBuffer<ModifiedLaneConnections> connections, NativeHashSet<LaneEndKey> output, bool isTemp)
+            {
+                Temp temp;
                 for (var i = 0; i < connections.Length; i++)
                 {
                     ModifiedLaneConnections connection = connections[i];
-                    output.Add(new LaneEndKey(connection.edgeEntity, connection.laneIndex));
+                    if (!isTemp || m_TempData.TryGetComponent(connection.modifiedConnections, out temp) && (temp.m_Flags & TempFlags.Delete) == 0)
+                    {
+                        output.Add(new LaneEndKey(connection.edgeEntity, connection.laneIndex));
+                    }
                 }
             }
 

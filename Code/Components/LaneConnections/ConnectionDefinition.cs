@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Traffic.Components.LaneConnections
 {
@@ -10,6 +11,8 @@ namespace Traffic.Components.LaneConnections
         public Entity owner;
         public Entity node;
         public int laneIndex;
+        public int2 carriagewayAndGroup;
+        public float3 lanePosition;
         public ConnectionFlags flags;
     }
 

@@ -1,5 +1,4 @@
 ﻿
-
 namespace Traffic
 {
     using System;
@@ -16,6 +15,7 @@ namespace Traffic
     using Traffic.Debug;
     using Traffic.Rendering;
     using Traffic.Systems;
+    using Traffic.Systems.DataMigration;
     using Traffic.Systems.ModCompatibility;
     using Traffic.Tools;
     using Traffic.UISystems;
@@ -35,10 +35,7 @@ namespace Traffic
         public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(4);
         public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
-        public static bool IsTLEEnabled => _isTLEEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => {
-            Logger.Info($"{x}");
-            return x.StartsWith("C2VM.CommonLibraries.LaneSystem");
-        });
+        public static bool IsTLEEnabled => _isTLEEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("C2VM.CommonLibraries.LaneSystem"));
 
         private static bool? _isTLEEnabled;
 
@@ -49,6 +46,8 @@ namespace Traffic
         {
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
+            updateSystem.UpdateBefore<PreDeserialize<ModUISystem>>(SystemUpdatePhase.Deserialize);
+            
 #if DEBUG_GIZMO
             updateSystem.UpdateAt<LaneConnectorDebugSystem>(SystemUpdatePhase.DebugGizmos);
 #endif
@@ -57,6 +56,10 @@ namespace Traffic
             VanillaSystemHelpers.ModifyLaneSystemUpdateRequirements(updateSystem.World.GetOrCreateSystemManaged<LaneSystem>());
             updateSystem.UpdateBefore<TrafficLaneSystem, LaneSystem>(SystemUpdatePhase.Modification4);
             updateSystem.UpdateBefore<SyncCustomLaneConnectionsSystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
+            
+            /*data migration - requires NetCompositions to work correctly - not possible to run in SystemUpdatePhase.Deserialize */
+            updateSystem.UpdateBefore<TrafficDataMigrationSystem, SyncCustomLaneConnectionsSystem>(SystemUpdatePhase.Modification4);
+            
             updateSystem.UpdateAt<ModificationDataSyncSystem>(SystemUpdatePhase.Modification4B);
             updateSystem.UpdateAt<GenerateLaneConnectionsSystem>(SystemUpdatePhase.Modification3);
 
@@ -81,7 +84,7 @@ namespace Traffic
             // updateSystem.UpdateAt<ClearTool>(SystemUpdatePhase.ClearTool);
 #endif
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
-            GameManager.instance.RegisterUpdater(TLECompatibitlityFix);
+            GameManager.instance.RegisterUpdater(TLECompatibilityFix);
 
             _modSettings = new ModSettings(this);
             _modSettings.RegisterInOptionsUI();
@@ -90,6 +93,7 @@ namespace Traffic
             {
                 GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(_modSettings));
             }
+            GameManager.instance.RegisterUpdater(ListEnabledMods);
         }
 
         public void OnDispose()
@@ -99,7 +103,7 @@ namespace Traffic
             _modSettings = null;
         }
 
-        private void TLECompatibitlityFix()
+        private static void TLECompatibilityFix()
         {
             if (IsTLEEnabled)
             {
@@ -118,6 +122,11 @@ namespace Traffic
                     Logger.Error($"{e.Message}\n{e.StackTrace}\nInnerException:\n{e.InnerException?.Message}");
                 }
             }
+        }
+
+        private static void ListEnabledMods()
+        {
+            Logger.Info("\n======= Enabled Mods =======\n"+string.Join("\n\t",GameManager.instance.modManager.ListModsEnabled()) + "\n============================");
         }
     }
 #if DEBUG_TOOL

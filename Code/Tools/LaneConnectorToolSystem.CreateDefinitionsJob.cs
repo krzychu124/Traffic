@@ -222,6 +222,8 @@ namespace Traffic.Tools
                     node = sourceConnector.node,
                     owner = Entity.Null,
                     laneIndex = sourceConnector.laneIndex,
+                    lanePosition = sourceConnector.lanePosition,
+                    carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
                     flags = ConnectionFlags.Create | ConnectionFlags.Essential
                 };
                 commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
@@ -231,7 +233,7 @@ namespace Traffic.Tools
                 NativeList<TempLaneConnection> tempLaneConnections = new NativeList<TempLaneConnection>(4, Allocator.Temp);
                 
                 Logger.DebugTool($"Creating definitions ({sourceConnector.node}) for: {sourceConnector.edge}[{sourceConnector.laneIndex}] -> {targetConnector.edge}[{targetConnector.laneIndex}]");
-                Logger.DebugTool($"Connections:\n\t{string.Join(",\n\t", connections.AsArray().Select(c => $"s: {c.sourceEdge} t: {c.targetEdge} index: [{c.sourceNode.GetLaneIndex() & 0xff};{c.targetNode.GetLaneIndex() & 0xff}]"))}");
+                Logger.DebugTool($"Connections:\n\t{string.Join(",\n\t", connections.AsArray().Select(c => $"s: {c.sourceEdge} t: {c.targetEdge} index: [{c.sourceNode.GetLaneIndex() & 0xff};{c.targetNode.GetLaneIndex() & 0xff}] |details| {c.laneCarriagewayWithGroupIndexMap}, {c.lanePositionMap}"))}");
 
                 bool found = false;
                 for (var i = 0; i < connections.Length; i++)
@@ -257,6 +259,8 @@ namespace Traffic.Tools
                         connection.sourceEdge,
                         connection.targetEdge,
                         new int2(connection.sourceNode.GetLaneIndex() & 0xff, connection.targetNode.GetLaneIndex() & 0xff),
+                        connection.lanePositionMap,
+                        connection.laneCarriagewayWithGroupIndexMap,
                         connection.method,
                         connection.isUnsafe,
                         connection.curve,
@@ -276,6 +280,8 @@ namespace Traffic.Tools
                         sourceConnector.edge,
                         targetConnector.edge,
                         new int2(sourceConnector.laneIndex, targetConnector.laneIndex),
+                        new float3x2(sourceConnector.lanePosition, targetConnector.lanePosition),
+                        new int4(sourceConnector.carriagewayAndGroupIndex, targetConnector.carriagewayAndGroupIndex),
                         method,
                         (stateModifier & StateModifier.MakeUnsafe) != 0,
                         NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
@@ -310,6 +316,8 @@ namespace Traffic.Tools
                     node = sourceConnector.node,
                     owner = modifiedConnections.modifiedConnections,
                     laneIndex = sourceConnector.laneIndex,
+                    lanePosition = sourceConnector.lanePosition,
+                    carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
                     flags = ConnectionFlags.Modify | ConnectionFlags.Essential
                 };
                 commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
@@ -391,6 +399,8 @@ namespace Traffic.Tools
                                 sourceConnector.edge,
                                 targetConnector.edge,
                                 laneIndexMap,
+                                new float3x2(sourceConnector.lanePosition, targetConnector.lanePosition),
+                                new int4(sourceConnector.carriagewayAndGroupIndex, targetConnector.carriagewayAndGroupIndex),
                                 stateModifier == StateModifier.AnyConnector
                                     ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
                                     : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),

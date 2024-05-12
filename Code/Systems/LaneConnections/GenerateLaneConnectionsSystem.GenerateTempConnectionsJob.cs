@@ -48,6 +48,8 @@ namespace Traffic.Systems.LaneConnections
                                     sourceEntity = sourceEdgeEntity,
                                     targetEntity = targetEdgeEntity,
                                     laneIndexMap = tempLaneConnections[j].laneIndexMap,
+                                    lanePositionMap = tempLaneConnections[j].lanePositionMap,
+                                    carriagewayAndGroupIndexMap = tempLaneConnections[j].carriagewayAndGroupIndexMap,
                                     method = tempLaneConnections[j].method,
                                     isUnsafe = tempLaneConnections[j].isUnsafe,
 #if DEBUG_GIZMO
@@ -72,6 +74,8 @@ namespace Traffic.Systems.LaneConnections
                             flags = connectionDefinition.owner != Entity.Null ? TempFlags.Modify : TempFlags.Create,
                             edgeEntity = sourceEdgeEntity,
                             laneIndex = connectionDefinition.laneIndex,
+                            carriagewayAndGroup = connectionDefinition.carriagewayAndGroup,
+                            lanePosition = connectionDefinition.lanePosition,
                             generatedConnections = tempConnections.ToArray(Allocator.TempJob)
                         });
                         createdModifiedLaneConnections.Add(tempNodeEntity);

@@ -90,14 +90,17 @@ namespace Traffic.Systems.LaneConnections
             GenerateConnectionLanesJob job2 = new GenerateConnectionLanesJob()
             {
                 editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
-                nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                laneData = SystemAPI.GetComponentLookup<Lane>(true),
                 carLaneData = SystemAPI.GetComponentLookup<CarLane>(true),
-                masterLaneData = SystemAPI.GetComponentLookup<MasterLane>(true),
+                compositionData = SystemAPI.GetComponentLookup<Composition>(true),
                 curveData = SystemAPI.GetComponentLookup<Curve>(true),
+                laneData = SystemAPI.GetComponentLookup<Lane>(true),
+                masterLaneData = SystemAPI.GetComponentLookup<MasterLane>(true),
+                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                connectorsList = connectorsMap,
+                prefabCompositionLaneBuffer= SystemAPI.GetBufferLookup<NetCompositionLane>(true),
                 subLanesBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
+                connectorsList = connectorsMap,
                 commandBuffer = _modificationBarrier.CreateCommandBuffer(),
             };
             JobHandle jobHandle2 = job2.Schedule(_definitionQuery, collectConnectorsHandle);

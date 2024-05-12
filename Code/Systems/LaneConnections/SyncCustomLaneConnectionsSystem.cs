@@ -107,6 +107,7 @@ namespace Traffic.Systems.LaneConnections
                 modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                netCompositionLaneBuffer = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
                 fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                 leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
                 nodeEdgeMap = tempMap,

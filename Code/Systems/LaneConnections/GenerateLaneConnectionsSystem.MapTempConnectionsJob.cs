@@ -73,6 +73,8 @@ namespace Traffic.Systems.LaneConnections
                         {
                             edgeEntity = item.edgeEntity,
                             laneIndex = item.laneIndex,
+                            lanePosition = item.lanePosition,
+                            carriagewayAndGroup = item.carriagewayAndGroup,
                             modifiedConnections = modifiedConnectionEntity,
                         });
 #if DEBUG_CONNECTIONS

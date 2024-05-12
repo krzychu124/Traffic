@@ -44,8 +44,8 @@ namespace Traffic.Tools
             RequireForUpdate(_tempQuery);
         }
 
-        protected override void OnUpdate() {
-
+        protected override void OnUpdate() 
+        {
             if (!_toolErrorPrefabQuery.IsEmptyIgnoreFilter && _tightCurveErrorPrefab == Entity.Null)
             {
                 NativeArray<ArchetypeChunk> toolErrorChunks = _toolErrorPrefabQuery.ToArchetypeChunkArray(Allocator.Temp);
@@ -71,7 +71,7 @@ namespace Traffic.Tools
                 }
             }
 
-            if (_toolSystem.activeTool != _bulldozeToolSystem)
+            if (!_bulldozeToolSystem.toolID.Equals(_toolSystem.activeTool?.toolID))
             {
                 ValidateLaneConnectorTool validateJob = new ValidateLaneConnectorTool()
                 {

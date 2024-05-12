@@ -5,11 +5,11 @@ using Game.Common;
 using Game.Net;
 using Game.Tools;
 using Traffic.Components.LaneConnections;
-using Traffic.Tools;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace Traffic.Systems.LaneConnections
 {
@@ -119,6 +119,8 @@ namespace Traffic.Systems.LaneConnections
             public TempFlags flags;
             public Entity edgeEntity;
             public int laneIndex;
+            public int2 carriagewayAndGroup;
+            public float3 lanePosition;
             public NativeArray<GeneratedConnection> generatedConnections;
         }
     }

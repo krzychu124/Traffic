@@ -11,11 +11,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.1.7.2</Version>
+        <Version>0.1.7.3</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.1.7.2</AssemblyVersion>
-        <FileVersion>0.1.7.2</FileVersion>
+        <AssemblyVersion>0.1.7.3</AssemblyVersion>
+        <FileVersion>0.1.7.3</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -170,6 +170,12 @@
       </Compile>
       <Compile Update="Rendering\ToolOverlaySystem.HighlightIntersectionJob.cs">
         <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\DataMigration\TrafficDataMigrationSystem.FindIncompleteV1DataJob.cs">
+        <DependentUpon>TrafficDataMigrationSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\ModCompatibility\TLEDataMigrationSystem.MigrateCustomLaneDirectionsJob.cs">
+        <DependentUpon>TLEDataMigrationSystem.cs</DependentUpon>
       </Compile>
     </ItemGroup>
 

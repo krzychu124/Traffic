@@ -66,6 +66,8 @@ namespace Traffic.Tools
                             {
                                 edgeEntity = connector.edge,
                                 laneIndex = connector.laneIndex,
+                                lanePosition = connector.lanePosition,
+                                carriagewayAndGroup = connector.carriagewayAndGroupIndex,
                                 modifiedConnections = modified,
                             };
                             generatedModifiedConnections.Add(modifiedLaneConnections);
@@ -128,6 +130,8 @@ namespace Traffic.Tools
                             {
                                 edgeEntity = sourceConnector.edge,
                                 laneIndex = sourceConnector.laneIndex,
+                                lanePosition = sourceConnector.lanePosition,
+                                carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
                                 modifiedConnections = modified,
                             };
                             GenerateNonUturnConnections(sourceConnectorItem, connections);
@@ -215,7 +219,9 @@ namespace Traffic.Tools
                             {
                                 edgeEntity = sourceConnector.edge,
                                 laneIndex = sourceConnector.laneIndex,
-                                modifiedConnections = modified,
+                                lanePosition = sourceConnector.lanePosition,
+                                carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
+                                modifiedConnections = modified
                             };
                             GenerateSafeConnections(sourceConnectorItem, connections);
                             generatedModifiedConnections.Add(modifiedLaneConnections);
@@ -304,9 +310,14 @@ namespace Traffic.Tools
                                 {
                                     sourceEntity = connection.sourceEdge,
                                     targetEntity = connection.targetEdge,
+                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
+                                    lanePositionMap = connection.lanePositionMap,
+                                    carriagewayAndGroupIndexMap = connection.laneCarriagewayWithGroupIndexMap,
+#if DEBUG_GIZMO
+                                    debug_bezier = connection.curve,
+#endif
                                     method = connection.method,
                                     isUnsafe = connection.isUnsafe,
-                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
                                 });
                             }
                         }
@@ -335,9 +346,14 @@ namespace Traffic.Tools
                                 {
                                     sourceEntity = connection.sourceEdge,
                                     targetEntity = connection.targetEdge,
+                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
+                                    lanePositionMap = connection.lanePositionMap,
+                                    carriagewayAndGroupIndexMap = connection.laneCarriagewayWithGroupIndexMap,
+#if DEBUG_GIZMO
+                                    debug_bezier = connection.curve,
+#endif
                                     method = connection.method,
                                     isUnsafe = false,
-                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
                                 });
                             }
                         }

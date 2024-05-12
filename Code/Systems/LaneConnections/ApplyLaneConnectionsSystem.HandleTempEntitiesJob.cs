@@ -122,10 +122,22 @@ namespace Traffic.Systems.LaneConnections
                         if (tempData.HasComponent(tempModifiedLaneConnection.modifiedConnections))
                         {
                             Temp tempConnection = tempData[tempModifiedLaneConnection.modifiedConnections];
-                            Logger.DebugTool($"Testing old connection ({tempModifiedLaneConnection.modifiedConnections}) temp: {tempConnection.m_Original} flags: {tempConnection.m_Flags}");
-                            if (tempData.HasComponent(tempModifiedLaneConnection.edgeEntity))
+                            Logger.DebugTool($"Applying lane connection changes ({tempModifiedLaneConnection.modifiedConnections}) temp: {tempConnection.m_Original} flags: {tempConnection.m_Flags} ||" +
+                                $"edge: {tempModifiedLaneConnection.edgeEntity} idx: {tempModifiedLaneConnection.laneIndex} pos: {tempModifiedLaneConnection.lanePosition} carriageway&group: {tempModifiedLaneConnection.carriagewayAndGroup}");
+                            if ((tempConnection.m_Flags & TempFlags.Delete) != 0 && tempConnection.m_Original != Entity.Null)
                             {
+                                Logger.DebugTool($"[{j}] Trying to delete modifiedConnection: {tempModifiedLaneConnection.modifiedConnections} | {tempConnection.m_Original}");
+                                if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
+                                {
+                                    Logger.DebugTool($"[{j}] Delete connection: {tempModifiedLaneConnection.modifiedConnections} | {tempConnection.m_Original}");
+                                    DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
+                                    Logger.DebugTool($"[{j}] {tempNode.m_Original} has connections ({originalLaneConnections.Length})");
 
+                                    DeleteModifiedConnection(j, originalLaneConnections, tempConnection, tempNode, false, ref updated);
+                                }
+                            }
+                            else if (tempData.HasComponent(tempModifiedLaneConnection.edgeEntity))
+                            {
                                 Temp tempEdge = tempData[tempModifiedLaneConnection.edgeEntity];
                                 if ((tempConnection.m_Flags & TempFlags.Create) != 0)
                                 {
@@ -153,18 +165,6 @@ namespace Traffic.Systems.LaneConnections
                                             EditModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref updated);
                                         }
                                     }
-                                }
-                            }
-                            if ((tempConnection.m_Flags & TempFlags.Delete) != 0 && tempConnection.m_Original != Entity.Null)
-                            {
-                                Logger.DebugTool($"[{j}] Trying to delete modifiedConnection: {tempModifiedLaneConnection.modifiedConnections} | {tempConnection.m_Original}");
-                                if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
-                                {
-                                    Logger.DebugTool($"[{j}] Delete connection: {tempModifiedLaneConnection.modifiedConnections} | {tempConnection.m_Original}");
-                                    DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
-                                    Logger.DebugTool($"[{j}] {tempNode.m_Original} has connections ({originalLaneConnections.Length})");
-
-                                    DeleteModifiedConnection(j, originalLaneConnections, tempConnection, tempNode, isEditNodeChunk, ref updated);
                                 }
                             }
                         }
@@ -217,7 +217,7 @@ namespace Traffic.Systems.LaneConnections
                     if (generatedConnectionData.HasBuffer(tempConnectionsEntityOwner))
                     {
                         DynamicBuffer<GeneratedConnection> generatedConnections = generatedConnectionData[tempConnectionsEntityOwner];
-                        Entity sourceEdgeEntity = tempEdge.m_Original;
+                        Entity sourceEdgeEntity = (tempEdge.m_Flags & TempFlags.Replace) != 0 ? tempModifiedLaneConnection.edgeEntity : tempEdge.m_Original;
                         Logger.DebugTool($"[{index}] {tempNode.m_Original} patching generated connections ({generatedConnections.Length}) | sourceEdge: {sourceEdgeEntity}");
                         
                         for (int k = 0; k < generatedConnections.Length; k++)
@@ -228,16 +228,11 @@ namespace Traffic.Systems.LaneConnections
                             {
                                 Temp tempTargetEdge = tempData[connection.targetEntity];
                                 Logger.DebugTool($"Target is temp {connection.targetEntity} -> orig: {tempTargetEdge.m_Original} flags: {tempTargetEdge.m_Flags}");
-                                if (tempTargetEdge.m_Original == Entity.Null)
+                                if (tempTargetEdge.m_Original == Entity.Null || (tempTargetEdge.m_Flags & TempFlags.Combine) != 0)
                                 {
-                                    Logger.DebugTool($"Target {connection.targetEntity} has null temp original, do nothing, probably replaced");
+                                    Logger.DebugTool($"Target {connection.targetEntity} has null temp original, do nothing, use new edge entity");
                                 }
-                                else if ((tempTargetEdge.m_Flags & (TempFlags.Replace | TempFlags.Combine)) != 0 && tempEdgeMap.TryGetValue(new NodeEdgeKey(tempNode.m_Original, tempTargetEdge.m_Original), out Entity replacementEntity))
-                                {
-                                    Logger.DebugTool($"Target {connection.targetEntity} is [{tempTargetEdge.m_Flags}] replacing with {replacementEntity}");
-                                    connection.targetEntity = replacementEntity;
-                                }
-                                else
+                                else if ((tempTargetEdge.m_Flags & TempFlags.Replace) == 0)
                                 {
                                     connection.targetEntity = tempTargetEdge.m_Original;
                                 }
@@ -253,12 +248,20 @@ namespace Traffic.Systems.LaneConnections
                         for (var k = 0; k < originalLaneConnections.Length; k++)
                         {
                             ModifiedLaneConnections originalLaneConnection = originalLaneConnections[k];
-                            if (originalLaneConnection.laneIndex == tempModifiedLaneConnection.laneIndex &&
-                                originalLaneConnection.edgeEntity.Equals(sourceEdgeEntity))
+                            if (originalLaneConnection.modifiedConnections == tempConnection.m_Original)
                             {
-                                Logger.DebugTool($"Found Connection: e: {tempModifiedLaneConnection.edgeEntity}, idx: {tempModifiedLaneConnection.laneIndex} m: {tempModifiedLaneConnection.modifiedConnections}, updating: {tempConnection.m_Original}");
+                                Logger.DebugTool($"Found Connection: e: {originalLaneConnection.edgeEntity}, idx: {originalLaneConnection.laneIndex} mC: {originalLaneConnection.modifiedConnections} mCT: {tempModifiedLaneConnection.modifiedConnections}, updatingMc: {tempConnection.m_Original}");
                                 DynamicBuffer<GeneratedConnection> originalGeneratedConnections = generatedConnectionData[originalLaneConnection.modifiedConnections];
                                 originalGeneratedConnections.CopyFrom(generatedConnections);
+                                /*temp modified connection may have updated lane position and other details, update*/
+                                originalLaneConnection.laneIndex = tempModifiedLaneConnection.laneIndex;
+                                originalLaneConnection.carriagewayAndGroup = tempModifiedLaneConnection.carriagewayAndGroup;
+                                originalLaneConnection.lanePosition = tempModifiedLaneConnection.lanePosition;
+                                if ((tempEdge.m_Flags & TempFlags.Replace) != 0)
+                                {
+                                    originalLaneConnection.edgeEntity = tempModifiedLaneConnection.edgeEntity;
+                                }
+                                originalLaneConnections[k] = originalLaneConnection;
                                 commandBuffer.AddComponent<Deleted>(tempModifiedLaneConnection.modifiedConnections);
                                 break;
                             }
@@ -315,12 +318,15 @@ namespace Traffic.Systems.LaneConnections
                             for (int k = 0; k < originalLaneConnections.Length; k++)
                             {
                                 ModifiedLaneConnections originalLaneConnection = originalLaneConnections[k];
-                                if (originalLaneConnection.laneIndex == tempModifiedLaneConnection.laneIndex &&
-                                    originalLaneConnection.edgeEntity.Equals(oldEntity))
+                                if (originalLaneConnection.modifiedConnections == tempConnection.m_Original)
                                 {
-                                    Logger.DebugTool($"Found Connection: edge: {oldEntity}, idx: {originalLaneConnection.laneIndex} mC: {originalLaneConnection.modifiedConnections}, updatingMc: {tempConnection.m_Original} + edge: {sourceEdgeEntity}");
+                                    Logger.DebugTool($"Found Connection: edge: {oldEntity}, idx: {originalLaneConnection.laneIndex} mC: {originalLaneConnection.modifiedConnections} mCT: {tempModifiedLaneConnection.modifiedConnections}, updatingTempOriginalMc: {tempConnection.m_Original} + edge: {sourceEdgeEntity}");
                                     DynamicBuffer<GeneratedConnection> originalGeneratedConnections = generatedConnectionData[originalLaneConnection.modifiedConnections];
                                     originalGeneratedConnections.CopyFrom(generatedConnections);
+                                    /*temp modified connection may have updated lane position and other details, update*/
+                                    originalLaneConnection.laneIndex = tempModifiedLaneConnection.laneIndex;
+                                    originalLaneConnection.carriagewayAndGroup = tempModifiedLaneConnection.carriagewayAndGroup;
+                                    originalLaneConnection.lanePosition = tempModifiedLaneConnection.lanePosition;
                                     originalLaneConnection.edgeEntity = sourceEdgeEntity;
                                     originalLaneConnections[k] = originalLaneConnection;
                                     commandBuffer.AddComponent<Deleted>(tempModifiedLaneConnection.modifiedConnections);
@@ -375,12 +381,15 @@ namespace Traffic.Systems.LaneConnections
                             for (int k = 0; k < originalLaneConnections.Length; k++)
                             {
                                 ModifiedLaneConnections originalLaneConnection = originalLaneConnections[k];
-                                if (originalLaneConnection.laneIndex == tempModifiedLaneConnection.laneIndex &&
-                                    originalLaneConnection.edgeEntity.Equals(oldEntity))
+                                if (originalLaneConnection.modifiedConnections == tempConnection.m_Original)
                                 {
-                                    Logger.DebugTool($"Found Connection: edge: {oldEntity}, idx: {originalLaneConnection.laneIndex} mC: {originalLaneConnection.modifiedConnections}, updatingMc: {tempConnection.m_Original} + edge: {sourceEdgeEntity}");
+                                    Logger.DebugTool($"Found Connection: edge: {oldEntity}, idx: {originalLaneConnection.laneIndex} mC: {originalLaneConnection.modifiedConnections} mCT: {tempModifiedLaneConnection.modifiedConnections}, updatingTempOriginalMc: {tempConnection.m_Original} + edge: {sourceEdgeEntity}");
                                     DynamicBuffer<GeneratedConnection> originalGeneratedConnections = generatedConnectionData[originalLaneConnection.modifiedConnections];
                                     originalGeneratedConnections.CopyFrom(generatedConnections);
+                                    /*temp modified connection may have updated lane position and other details, update*/
+                                    originalLaneConnection.laneIndex = tempModifiedLaneConnection.laneIndex;
+                                    originalLaneConnection.carriagewayAndGroup = tempModifiedLaneConnection.carriagewayAndGroup;
+                                    originalLaneConnection.lanePosition = tempModifiedLaneConnection.lanePosition;
                                     originalLaneConnection.edgeEntity = sourceEdgeEntity;
                                     originalLaneConnections[k] = originalLaneConnection;
                                     commandBuffer.AddComponent<Deleted>(tempModifiedLaneConnection.modifiedConnections);

@@ -13,7 +13,12 @@
         //tools
         public const string LANE_CONNECTOR_TOOL = "Lane Connector Tool";
         
-        // helpers
+        //troubleshooting
+        public const string LOADING_ERRORS_PRESENT = "loadingErrorsPresent";
+        public const string ERROR_AFFECTED_INTERSECTIONS = "errorAffectedIntersection";
+        public const string REMOVE_ENTITY_FROM_LIST = "removeEntityFromList";
         
+        // helpers
+        public const string NAVIGATE_TO_ENTITY = "navigateToEntity";
     }
 }

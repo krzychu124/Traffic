@@ -11,6 +11,8 @@ namespace Traffic.Components.LaneConnections
         public Entity sourceEntity;
         public Entity targetEntity;
         public int2 laneIndexMap;
+        public int4 carriagewayAndGroupIndexMap;
+        public float3x2 lanePositionMap;
         public PathMethod method;
         public Bezier4x3 bezier;
         public bool isUnsafe;
@@ -20,16 +22,20 @@ namespace Traffic.Components.LaneConnections
             sourceEntity = generatedConnection.sourceEntity;
             targetEntity = generatedConnection.targetEntity;
             laneIndexMap = generatedConnection.laneIndexMap;
+            lanePositionMap = generatedConnection.lanePositionMap;
+            carriagewayAndGroupIndexMap = generatedConnection.carriagewayAndGroupIndexMap;
             method = generatedConnection.method;
             isUnsafe = generatedConnection.isUnsafe;
             bezier = curve;
             flags = 0;
         }
 
-        public TempLaneConnection(Entity source, Entity target, int2 map, PathMethod method, bool isUnsafe, Bezier4x3 curve, ConnectionFlags flags) {
+        public TempLaneConnection(Entity source, Entity target, int2 map, float3x2 positionMap, int4 carriagewayAndGroupIndex, PathMethod method, bool isUnsafe, Bezier4x3 curve, ConnectionFlags flags) {
             sourceEntity = source;
             targetEntity = target;
             laneIndexMap = map;
+            lanePositionMap = positionMap;
+            carriagewayAndGroupIndexMap = carriagewayAndGroupIndex;
             bezier = curve;
             this.method = method;
             this.isUnsafe = isUnsafe;

@@ -56,6 +56,19 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                         $"\t\t\t\tStart: {edge.m_Start} | startT: {startNodeTemp.m_Original} [{startNodeTemp.m_Flags}]\n" +
                         $"\t\t\t\tEnd:   {edge.m_End} | endT: {endNodeTemp.m_Original} [{endNodeTemp.m_Flags}]");
 #endif
+                    if (temp.m_Original != Entity.Null && edgeData.HasComponent(temp.m_Original))
+                    {
+                        Edge originalEdge = edgeData[temp.m_Original];
+                        bool2 commonNodeCheck = new bool2(originalEdge.m_Start.Equals(startNodeTemp.m_Original), originalEdge.m_End.Equals(endNodeTemp.m_Original));
+                        bool isStartChanged = !commonNodeCheck.x;
+                        Entity commonTempNodeEntity = !isStartChanged ? edge.m_Start : edge.m_End;
+                        Temp commonTempNode = !isStartChanged ? startNodeTemp : endNodeTemp;
+
+                        // original node -> orignal edge ->> new edge
+                        nodeEdgeMap.Add(new NodeEdgeKey(commonTempNode.m_Original, temp.m_Original), entity);
+                        // temp node -> new edge ->> original edge
+                        nodeEdgeMap.Add(new NodeEdgeKey(commonTempNodeEntity, entity), temp.m_Original);
+                    }
                     continue;
                 }
 

@@ -9,7 +9,9 @@ namespace Traffic.Components.LaneConnections
         public Entity edge;
         public Entity node;
         public int laneIndex;
+        public int2 carriagewayAndGroupIndex;
         public float3 position;
+        public float3 lanePosition;
         public float3 direction;
         public VehicleGroup vehicleGroup;
         public ConnectorType connectorType;

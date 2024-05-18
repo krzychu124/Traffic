@@ -1,4 +1,5 @@
-﻿using Unity.Entities;
+﻿using Traffic.Components.PrioritySigns;
+using Unity.Entities;
 
 namespace Traffic.Components
 {
@@ -6,13 +7,5 @@ namespace Traffic.Components
     {
         public PriorityType left;
         public PriorityType right;
-    }
-
-    public enum PriorityType
-    {
-        None,
-        RightOfWay,
-        Yield,
-        Stop,
     }
 }

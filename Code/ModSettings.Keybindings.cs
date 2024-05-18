@@ -7,16 +7,23 @@ namespace Traffic
     [SettingsUIMouseAction(KeyBindAction.ApplyTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"}, interactions: new []{"UIButton"})]
     [SettingsUIMouseAction(KeyBindAction.CancelTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"}, interactions: new []{"UIButton"})]
     [SettingsUIKeyboardAction(KeyBindAction.ToggleLaneConnectorTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.TogglePrioritiesTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
     [SettingsUIKeyboardAction(KeyBindAction.RemoveAllConnections, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
     [SettingsUIKeyboardAction(KeyBindAction.RemoveUTurns, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
     [SettingsUIKeyboardAction(KeyBindAction.RemoveUnsafe, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
     [SettingsUIKeyboardAction(KeyBindAction.ResetIntersectionToDefaults, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesToggleDisplayMode, Usages.kMenuUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesPriority, Usages.kMenuUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesYield, Usages.kMenuUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesStop, Usages.kMenuUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesReset, Usages.kMenuUsage, Usages.kToolUsage)]
 #if GAMEPAD_SUPPORT
     [SettingsUIGamepadAction(KeyBindAction.ToggleLaneConnectorTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
 #endif
     public partial class ModSettings
     {
         internal const string ToolsSection = "Tools";
+        internal const string PriorityToolSection = "KeybindsPriorityTools";
         internal const string SelectedNodeSection = "KeybindsSelectedNode";
         internal const string OtherSection = "OtherSection";
 
@@ -39,6 +46,10 @@ namespace Traffic
         [SettingsUIKeyboardBinding(BindingKeyboard.R, KeyBindAction.ToggleLaneConnectorTool, ctrl: true)]
         public ProxyBinding LaneConnectorToolAction { get; set; }
         
+        [SettingsUISection(KeybindingsTab, ToolsSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.T, KeyBindAction.TogglePrioritiesTool, ctrl: true)]
+        public ProxyBinding PrioritiesToolAction { get; set; }
+        
 #if GAMEPAD_SUPPORT
         [SettingsUISection(KeybindingsTab, ToolsSection)]
         [SettingsUIGamepadBinding(BindingGamepad.LeftShoulder, KeyBindAction.ToggleLaneConnectorTool, true)]
@@ -60,7 +71,27 @@ namespace Traffic
         [SettingsUISection(KeybindingsTab, SelectedNodeSection)]
         [SettingsUIKeyboardBinding(BindingKeyboard.Delete, KeyBindAction.ResetIntersectionToDefaults)]
         public ProxyBinding ResetIntersectionToDefaults { get; set; }
-
+        
+        [SettingsUISection(KeybindingsTab, PriorityToolSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.S, KeyBindAction.PrioritiesToggleDisplayMode, ctrl: true)]
+        public ProxyBinding PrioritiesToggleDisplayModeAction { get; set; }
+        
+        [SettingsUISection(KeybindingsTab, PriorityToolSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.Digit1, KeyBindAction.PrioritiesPriority, ctrl: true)]
+        public ProxyBinding PrioritiesUsePriorityAction { get; set; }
+        
+        [SettingsUISection(KeybindingsTab, PriorityToolSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.Digit2, KeyBindAction.PrioritiesYield, ctrl: true)]
+        public ProxyBinding PrioritiesUseYieldAction { get; set; }
+        
+        [SettingsUISection(KeybindingsTab, PriorityToolSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.Digit3, KeyBindAction.PrioritiesStop, ctrl: true)]
+        public ProxyBinding PrioritiesUseStopAction { get; set; }
+        
+        [SettingsUISection(KeybindingsTab, PriorityToolSection)]
+        [SettingsUIKeyboardBinding(BindingKeyboard.Digit4, KeyBindAction.PrioritiesReset, ctrl: true)]
+        public ProxyBinding PrioritiesUseResetAction { get; set; }
+        
         
         [SettingsUISection(KeybindingsTab, OtherSection)]
         public bool ResetBindings
@@ -119,10 +150,16 @@ namespace Traffic
             internal const string ApplyTool = "ApplyToolAction";
             internal const string CancelTool = "CancelToolAction";
             internal const string ToggleLaneConnectorTool = "ToggleLaneConnectorTool";
+            internal const string TogglePrioritiesTool = "TogglePrioritiesTool";
             internal const string RemoveAllConnections = "RemoveAllConnections";
             internal const string RemoveUTurns = "RemoveUTurns";
             internal const string RemoveUnsafe = "RemoveUnsafe";
             internal const string ResetIntersectionToDefaults = "ResetIntersectionToDefaults";
+            internal const string PrioritiesPriority = "PrioritiesPriority";
+            internal const string PrioritiesYield = "PrioritiesYield";
+            internal const string PrioritiesStop = "PrioritiesStop";
+            internal const string PrioritiesReset = "PrioritiesReset";
+            internal const string PrioritiesToggleDisplayMode = "PrioritiesToggleDisplayMode";
         }
     }
 }

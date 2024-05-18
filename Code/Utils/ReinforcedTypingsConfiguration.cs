@@ -1,10 +1,11 @@
-﻿using Game.Input;
+using Game.Input;
 using Game.Tools;
 using JetBrains.Annotations;
 using Reinforced.Typings.Ast.TypeNames;
 using Reinforced.Typings.Fluent;
 using Traffic.CommonData;
 using Traffic.Debug;
+using Traffic.Tools;
 using Traffic.UISystems;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -31,6 +32,9 @@ namespace Traffic.Utils
             builder.ExportAsInterface<ModUISystem.ModKeyBinds>().DontIncludeToNamespace().WithPublicFields().AutoI(false).OverrideNamespace("Traffic");;
             builder.ExportAsEnum<TempFlags>();
             builder.ExportAsEnum<ModUISystem.ActionOverlayPreview>();
+            builder.ExportAsEnum<ModUISystem.PriorityToolSetMode>();
+            builder.ExportAsEnum<ModUISystem.ModTool>();
+            builder.ExportAsEnum<ModUISystem.OverlayMode>();
             builder.ExportAsInterface<float3>()
                 .WithPublicFields(exportBuilder => { if (exportBuilder.Member.IsStatic) { exportBuilder.Ignore(); } })
                 .AutoI(false)

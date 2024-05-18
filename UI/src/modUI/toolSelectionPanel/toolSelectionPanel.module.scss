@@ -1,0 +1,45 @@
+
+.panel {
+  position: absolute;
+  top: 50rem;
+  margin-top: 5rem;
+  padding: 5rem 5rem 2rem 5rem;
+
+  display: flex;
+  flex-direction: column;
+
+  border-radius: 4rem;
+  background-color: var(--accentColorNormal);
+}
+
+
+.actionButton, .actionLoadingResultsButton {
+  pointer-events: auto;
+  background-color: #0f1013;
+  padding: 4rem;
+  border-radius: 4rem;
+  margin-bottom: 3rem;
+
+  &:hover {
+    background-color: #1d1f25
+  }
+
+  &:active {
+    color: black;
+    background-image: radial-gradient(farthest-corner, white, var(--accentColorLight));
+    background-color: white !important;
+    border-top-color: white !important;
+    border-right-color: white !important;
+    border-left-color: white !important;
+    border-bottom-color: white !important;
+  }
+
+  &.focused {
+    background-color: #23262d !important;
+  }
+
+  &.selected {
+    color: black;
+    background-color: var(--accentColorLight);
+  }
+}

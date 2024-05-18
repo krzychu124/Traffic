@@ -1,0 +1,66 @@
+
+.panel {
+  pointer-events: auto;
+  position: absolute;
+}
+
+.applyMode {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 210rem;
+}
+
+.actionModeDivider {
+  border-bottom: 1px solid darkgrey;
+  margin-top: 5rem;
+  margin-bottom: 5rem;
+}
+
+.sectionTitle {
+  font-size: 14rem;
+  justify-content: center;
+  margin-bottom: 5rem;
+}
+
+.title {
+  width: 100%;
+  padding: 5rem;
+  justify-content: center;
+}
+
+.modeButton {
+  width: 100rem;
+  padding: 4rem;
+}
+
+.actionButton {
+  pointer-events: auto;
+  margin-bottom: 5rem;
+  background-color: #0f1013;
+  border-radius: 4rem;
+
+  &:hover {
+    background-color: #1d1f25
+  }
+
+  &:active {
+    color: black;
+    background-image: radial-gradient(farthest-corner, var(--accentColorLighter), var(--accentColorLight));
+    background-color: white !important;
+    border-top-color: white !important;
+    border-right-color: white !important;
+    border-left-color: white !important;
+    border-bottom-color: white !important;
+  }
+
+  &.focused {
+    background-color: #23262d
+  }
+
+  &.selected {
+    color: black;
+    font-weight: bold;
+    background-color: var(--accentColorLight);
+  }
+}

@@ -54,14 +54,24 @@ namespace Traffic.Rendering
             }
         }
 
-        public static void DrawEdgeHalfOutline(Segment edgeSegment, ref OverlayRenderSystem.Buffer overlayBuffer, Color color, float lineWidth)
+        public static void DrawEdgeHalfOutline(Segment edgeSegment, ref OverlayRenderSystem.Buffer overlayBuffer, Color color, float lineWidth, bool isDashed = false)
         {
             //start edge line
             overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth);
-            //left edge line
-            overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Left, lineWidth, 1);
-            //right edge line
-            overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 1);
+            if (!isDashed)
+            {
+                //left edge line
+                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Left, lineWidth, 1);
+                //right edge line
+                overlayBuffer.DrawCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 1);
+            }
+            else
+            {
+                //left edge line
+                overlayBuffer.DrawDashedCurve(color, color, 0, 0, edgeSegment.m_Left, lineWidth, 2, 0.4f);
+                //right edge line
+                overlayBuffer.DrawDashedCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 2, 0.4f);
+            }
             //middle edge cut line
             overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth);
         }

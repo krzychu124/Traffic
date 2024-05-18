@@ -1,11 +1,14 @@
 ﻿using System.Collections.Generic;
 using Colossal;
 using Colossal.Mathematics;
+using Game.Common;
 using Game.Debug;
 using Game.Net;
 using Game.Tools;
+using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Components.PrioritySigns;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -20,8 +23,10 @@ namespace Traffic.Debug
     {
         private GizmosSystem _gizmosSystem;
         private EntityQuery _query;
+        private EntityQuery _query2;
 
         private Option _connectorOption;
+        private Option _prioritiesOption;
         private Option _connectionsOption;
         private Option _tempOnlyOption;
 
@@ -34,37 +39,61 @@ namespace Traffic.Debug
             _gizmosSystem = World.GetOrCreateSystemManaged<GizmosSystem>();
             _query = GetEntityQuery(new EntityQueryDesc()
             {
+                All = new [] {ComponentType.ReadOnly<EditLaneConnections>()},
                 Any = new[] { ComponentType.ReadOnly<Connector>(), ComponentType.ReadOnly<Connection>(), ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<ModifiedIntersection>(), ComponentType.ReadOnly<ModifiedConnections>(),  ComponentType.ReadOnly<GeneratedConnection>(), ComponentType.Exclude<Hidden>(),  }
+            });
+            _query2 = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new[] { ComponentType.ReadOnly<LaneHandle>(), },
+                None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
 
             _connectorOption = AddOption("Connectors", false);
             _connectionsOption = AddOption("Connections", false);
+            _prioritiesOption = AddOption("Priorities", false);
             _tempOnlyOption = AddOption("Temp Only", false);
-            RequireForUpdate(_query);
+            RequireAnyForUpdate(_query, _query2);
         }
 
         protected override void OnUpdate() {
             base.OnUpdate();
 
-            GizmoJob jobData = new GizmoJob()
+            JobHandle jobHandle = Dependency;
+            if (!_query.IsEmptyIgnoreFilter)
             {
-                connectorOption = _connectorOption.enabled,
-                connectionsOption = _connectionsOption.enabled,
-                tempOnlyOption = _tempOnlyOption.enabled,
-                entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
-                connectorType = SystemAPI.GetComponentTypeHandle<Connector>(true),
-                editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
-                modifiedIntersectionType = SystemAPI.GetComponentTypeHandle<ModifiedIntersection>(true),
-                modifiedConnectionsType = SystemAPI.GetComponentTypeHandle<ModifiedConnections>(true),
-                connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
-                generatedConnectionType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
-                tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
-                nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                tempData = SystemAPI.GetComponentLookup<Temp>(true),
-                gizmoBatcher = _gizmosSystem.GetGizmosBatcher(out JobHandle dependencies)
-            };
-            JobHandle jobHandle = jobData.ScheduleParallel(_query, JobHandle.CombineDependencies(Dependency, dependencies));
-            _gizmosSystem.AddGizmosBatcherWriter(jobHandle);
+                GizmoJob jobData = new GizmoJob()
+                {
+                    connectorOption = _connectorOption.enabled,
+                    connectionsOption = _connectionsOption.enabled,
+                    tempOnlyOption = _tempOnlyOption.enabled,
+                    entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                    connectorType = SystemAPI.GetComponentTypeHandle<Connector>(true),
+                    editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                    modifiedIntersectionType = SystemAPI.GetComponentTypeHandle<ModifiedIntersection>(true),
+                    modifiedConnectionsType = SystemAPI.GetComponentTypeHandle<ModifiedConnections>(true),
+                    connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
+                    generatedConnectionType = SystemAPI.GetBufferTypeHandle<GeneratedConnection>(true),
+                    tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                    nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                    tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                    gizmoBatcher = _gizmosSystem.GetGizmosBatcher(out JobHandle dependencies)
+                };
+                jobHandle = jobData.ScheduleParallel(_query, JobHandle.CombineDependencies(Dependency, dependencies));
+                _gizmosSystem.AddGizmosBatcherWriter(jobHandle);
+            }
+            if (!_query2.IsEmptyIgnoreFilter)
+            {
+                jobHandle = new GizmoJob2()
+                {
+                    entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                    laneHandleType = SystemAPI.GetComponentTypeHandle<LaneHandle>(true),
+                    highlightedType = SystemAPI.GetComponentTypeHandle<Highlighted>(true),
+                    connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
+                    laneHandlesOption = _prioritiesOption.enabled,
+                    gizmoBatcher = _gizmosSystem.GetGizmosBatcher(out JobHandle dependencies)
+                }.Schedule(_query2, JobHandle.CombineDependencies(jobHandle, dependencies));
+                _gizmosSystem.AddGizmosBatcherWriter(jobHandle);
+            }
             Dependency = jobHandle;
         }
 
@@ -124,6 +153,47 @@ namespace Traffic.Debug
             Disabled,
             Enabled
         }
+        
+        private struct GizmoJob2 : IJobChunk
+        {
+            [ReadOnly] public EntityTypeHandle entityTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<LaneHandle> laneHandleType;
+            [ReadOnly] public ComponentTypeHandle<Highlighted> highlightedType;
+            [ReadOnly] public BufferTypeHandle<Connection> connectionType;
+            [ReadOnly] public bool laneHandlesOption;
+            
+            public GizmoBatcher gizmoBatcher;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
+                NativeArray<LaneHandle> handles = chunk.GetNativeArray(ref laneHandleType);
+                BufferAccessor<Connection> connectionsAccessor = chunk.GetBufferAccessor(ref connectionType);
+
+                bool hasConnections = chunk.Has(ref connectionType);
+                bool isHighlighted = chunk.Has(ref highlightedType);
+                
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    LaneHandle handle = handles[i];
+                    gizmoBatcher.DrawBezier(handle.curve, isHighlighted ? Color.green : Color.cyan);
+
+                    if (hasConnections)
+                    {
+                        DynamicBuffer<Connection> connections = connectionsAccessor[i];
+
+                        if (laneHandlesOption)
+                        {
+                            for (var j = 0; j < connections.Length; j++)
+                            {
+                                Connection connection = connections[j];
+                                gizmoBatcher.DrawBezier(connection.curve, isHighlighted ? Color.green : Color.blue);
+                            }
+                        }
+                    }
+                }
+            }
+        } 
 
         private struct GizmoJob : IJobChunk
         {

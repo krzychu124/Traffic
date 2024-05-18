@@ -7,6 +7,7 @@ using Game.Prefabs;
 using Game.Tools;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Components.PrioritySigns;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -23,6 +24,7 @@ namespace Traffic.Tools
         private IconCommandSystem _iconCommandSystem;
         private ToolSystem _toolSystem;
         private BulldozeToolSystem _bulldozeToolSystem;
+        private PriorityToolSystem _priorityToolSystem;
         private CityConfigurationSystem _cityConfigurationSystem;
         private Entity _tightCurveErrorPrefab;
 
@@ -32,11 +34,12 @@ namespace Traffic.Tools
             _iconCommandSystem = World.GetOrCreateSystemManaged<IconCommandSystem>();
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _bulldozeToolSystem = World.GetOrCreateSystemManaged<BulldozeToolSystem>();
+            _priorityToolSystem = World.GetOrCreateSystemManaged<PriorityToolSystem>();
             _cityConfigurationSystem = World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             _tempQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<Temp>()},
-                Any = new []{ ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<ModifiedLaneConnections>()},
+                Any = new []{ ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<ModifiedLaneConnections>(), ComponentType.ReadOnly<LanePriority>()},
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
             _toolErrorPrefabQuery = GetEntityQuery(ComponentType.ReadOnly<NotificationIconData>(), ComponentType.ReadOnly<ToolErrorData>());
@@ -78,7 +81,10 @@ namespace Traffic.Tools
                     entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                     editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
                     tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                    edgeType = SystemAPI.GetComponentTypeHandle<Edge>(true),
+                    toolActionBlockedType = SystemAPI.GetComponentTypeHandle<ToolActionBlocked>(true),
                     modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
+                    lanePriorityTypeHandle = SystemAPI.GetBufferTypeHandle<LanePriority>(true),
                     tempData = SystemAPI.GetComponentLookup<Temp>(true),
                     upgradedData = SystemAPI.GetComponentLookup<Upgraded>(true),
                     deletedData = SystemAPI.GetComponentLookup<Deleted>(true),
@@ -91,9 +97,11 @@ namespace Traffic.Tools
                     curveData = SystemAPI.GetComponentLookup<Curve>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
                     connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                    lanePriorityBuffer = SystemAPI.GetBufferLookup<LanePriority>(true),
                     subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
                     tightCurvePrefabEntity = _tightCurveErrorPrefab,
                     leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
+                    priorityToolActive = _toolSystem.activeTool == _priorityToolSystem,
                     commandBuffer = _modificationBarrier.CreateCommandBuffer(),
                     iconCommandBuffer = _iconCommandSystem.CreateCommandBuffer(),
                 };

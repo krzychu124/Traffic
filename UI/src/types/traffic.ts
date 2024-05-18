@@ -12,7 +12,11 @@ export class UIBindingConstants
 	public static SET_VISIBILITY: string = `setVisibility`;
 	public static TOGGLE_TOOL: string = `toggleTool`;
 	public static KEY_BINDINGS: string = `keybindings`;
+	public static TOOL_MODE: string = `toolMode`;
+	public static CURRENT_TOOL_MODE: string = `currentToolMode`;
+	public static OVERLAY_MODE: string = `overlayMode`;
 	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
+	public static PRIORITIES_TOOL: string = `Priorities Tool`;
 	public static SET_ACTION_OVERLAY_PREVIEW: string = `setActionOverlayPreview`;
 	public static SELECTED_INTERSECTION: string = `selectedIntersection`;
 	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
@@ -26,11 +30,16 @@ export class UIKeys
 	public static TRAFFIC_MOD: string = `Traffic.UI.Tooltip.MainButton`;
 	public static SHORTCUT: string = `Traffic.UI.Tooltip.Shortcut`;
 	public static LANE_CONNECTOR_TOOL: string = `Traffic.UI.Tools[LaneConnector].Title`;
+	public static PRIORITIES_TOOL: string = `Traffic.UI.Tools[Priorities].Title`;
 	public static SELECT_INTERSECTION: string = `Traffic.UI.Tools[LaneConnector].SelectIntersectionMessage`;
 	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections]`;
 	public static REMOVE_U_TURNS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUturns]`;
 	public static REMOVE_UNSAFE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe]`;
 	public static RESET_TO_VANILLA: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla]`;
+	public static PRIORITY_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Priority]`;
+	public static YIELD_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Yield]`;
+	public static STOP_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Stop]`;
+	public static RESET_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Reset]`;
 	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Title`;
 	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Message`;
 	public static REMOVE_U_TURNS_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Title`;
@@ -39,14 +48,25 @@ export class UIKeys
 	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message`;
 	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title`;
 	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message`;
+	public static PRIORITY_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Priority].Tooltip.Message`;
+	public static YIELD_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Yield].Tooltip.Message`;
+	public static STOP_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Stop].Tooltip.Message`;
+	public static RESET_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Reset].Tooltip.Message`;
+	public static TOGGLE_DISPLAY_MODE_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleDisplayMode].Tooltip.Message`;
 }
 export interface ModKeyBinds
 {
 	laneConnectorTool: WidgetIdentifier;
+	prioritiesTool: WidgetIdentifier;
 	removeAllConnections: WidgetIdentifier;
 	removeUTurns: WidgetIdentifier;
 	removeUnsafe: WidgetIdentifier;
 	resetDefaults: WidgetIdentifier;
+	toggleDisplayMode: WidgetIdentifier;
+	usePriority: WidgetIdentifier;
+	useYield: WidgetIdentifier;
+	useStop: WidgetIdentifier;
+	useReset: WidgetIdentifier;
 }
 export enum TempFlags {
 	Create = 1,
@@ -74,6 +94,22 @@ export enum ActionOverlayPreview {
 	RemoveUTurns = 2,
 	RemoveUnsafe = 3,
 	ResetToVanilla = 4
+}
+export enum PriorityToolSetMode {
+	None = 0,
+	Yield = 1,
+	Stop = 2,
+	Priority = 3,
+	Reset = 4
+}
+export enum ModTool {
+	None = 0,
+	LaneConnector = 1,
+	Priorities = 2
+}
+export enum OverlayMode {
+	LaneGroup = 0,
+	Lane = 1
 }
 export interface float3
 {

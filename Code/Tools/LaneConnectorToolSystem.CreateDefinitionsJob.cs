@@ -291,6 +291,8 @@ namespace Traffic.Tools
                 }
 
                 Logger.DebugTool($"Copying connections: {tempLaneConnections.Length}");
+                
+                //todo use Copyfrom
                 DynamicBuffer<TempLaneConnection> laneConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
                 laneConnections.ResizeUninitialized(tempLaneConnections.Length);
                 for (var i = 0; i < laneConnections.Length; i++)

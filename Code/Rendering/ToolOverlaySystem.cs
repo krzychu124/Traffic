@@ -1,4 +1,6 @@
-﻿using Game;
+﻿using System;
+using Colossal.Mathematics;
+using Game;
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
@@ -7,11 +9,15 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Components.PrioritySigns;
 using Traffic.Tools;
+using Traffic.UISystems;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 using Edge = Game.Net.Edge;
 
@@ -25,11 +31,13 @@ namespace Traffic.Rendering
         private ToolSystem _toolSystem;
         private OverlayRenderSystem _overlayRenderSystem;
         private LaneConnectorToolSystem _laneConnectorToolSystem;
+        private PriorityToolSystem _priorityToolSystem;
         private ConnectorColorSet _colorSet;
         private EntityQuery _connectorsQuery;
         private EntityQuery _connectionsQuery;
         private EntityQuery _editIntersectionQuery;
         private EntityQuery _toolFeedbackQuery;
+        private EntityQuery _laneHandlesQuery;
         private ToolOverlayParameterData _defaultOverlayParams;
 #if DEBUG_GIZMO
         // private EntityQuery _modifiedConnectionsQuery;
@@ -40,6 +48,7 @@ namespace Traffic.Rendering
             base.OnCreate();
             _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
             _laneConnectorToolSystem = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
+            _priorityToolSystem = World.GetOrCreateSystemManaged<PriorityToolSystem>();
             _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
 #if DEBUG_GIZMO
             // _laneConnectorDebugSystem = World.GetExistingSystemManaged<LaneConnectorDebugSystem>();
@@ -58,6 +67,11 @@ namespace Traffic.Rendering
             {
                 All = new []{ ComponentType.ReadOnly<Connection>() },
                 None = new []{ ComponentType.ReadOnly<Deleted>(), ComponentType.ReadOnly<CustomLaneConnection>(), },
+            });
+            _laneHandlesQuery = GetEntityQuery(new EntityQueryDesc()
+            {
+                All = new []{ ComponentType.ReadOnly<LaneHandle>() },
+                None = new []{ ComponentType.ReadOnly<Deleted>(), },
             });
             _editIntersectionQuery = GetEntityQuery(new EntityQueryDesc()
             {
@@ -94,7 +108,8 @@ namespace Traffic.Rendering
 
         protected override void OnUpdate() {
             JobHandle jobHandle = default;
-            if (_toolSystem.activeTool == _laneConnectorToolSystem)
+
+            if (_toolSystem.activeTool == _laneConnectorToolSystem || _toolSystem.activeTool == _priorityToolSystem)
             {
                 ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
                 if (!_editIntersectionQuery.IsEmptyIgnoreFilter)
@@ -104,6 +119,7 @@ namespace Traffic.Rendering
                         editIntersectionTypeHandle = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
                         tempComponentTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
                         toolActionBlockedComponentTypeHandle = SystemAPI.GetComponentTypeHandle<ToolActionBlocked>(true),
+                        editPrioritiesTypeHandle = SystemAPI.GetComponentTypeHandle<EditPriorities>(true),
                         connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                         edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                         nodeData = SystemAPI.GetComponentLookup<Node>(true),
@@ -115,74 +131,100 @@ namespace Traffic.Rendering
                     }.Schedule(_editIntersectionQuery, JobHandle.CombineDependencies(Dependency, overlayRenderJobHandle));
                     _overlayRenderSystem.AddBufferWriter(jobHandle);
                 }
-                
-                if (_laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default)
+
+                if (_toolSystem.activeTool == _priorityToolSystem)
                 {
-                    ActionOverlayData actionOverlayData = SystemAPI.GetSingleton<ActionOverlayData>();
-                    if (!(_laneConnectorToolSystem.UIDisabled && actionOverlayData.mode == 0))
+                    if (!_laneHandlesQuery.IsEmptyIgnoreFilter && _priorityToolSystem.ToolState == PriorityToolSystem.State.ChangePriority)
                     {
-                        NativeArray<ArchetypeChunk> chunks = _connectionsQuery.ToArchetypeChunkArray(Allocator.TempJob);
-                        ConnectionsOverlayJob connectionsOverlayJob = new ConnectionsOverlayJob
+                        NativeArray<ArchetypeChunk> chunks = _laneHandlesQuery.ToArchetypeChunkArray(Allocator.TempJob);
+                        jobHandle = new PriorityOverlaysJob()
                         {
                             chunks = chunks,
-                            connectorsData = SystemAPI.GetComponentLookup<Connector>(true),
-                            nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                            connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
-                            state = _laneConnectorToolSystem.ToolState,
-                            modifier = _laneConnectorToolSystem.ToolModifiers,
-                            actionOverlayData = actionOverlayData,
-                            controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle3),
-                            colorSet = _colorSet,
-                            connectionWidth = overlayParameters.laneConnectorLineWidth,
-                            overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle3)
-                        };
-                        JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle3, overlayRenderJobHandle3));
-                        jobHandle = connectionsOverlayJob.Schedule(deps3);
+                            state = _priorityToolSystem.ToolState,
+                            setMode = _priorityToolSystem.ToolSetMode,
+                            overlayMode = _priorityToolSystem.ToolOverlayMode,
+                            entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                            laneHandleTypeHandle = SystemAPI.GetComponentTypeHandle<LaneHandle>(true),
+                            laneHandleData = SystemAPI.GetComponentLookup<LaneHandle>(true),
+                            connectionBufferData = SystemAPI.GetBufferLookup<Connection>(true),
+                            controlPoints = _priorityToolSystem.GetControlPoints(out JobHandle controlPointsHandle),
+                            overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayHandle)
+                        }.Schedule(JobHandle.CombineDependencies(jobHandle, controlPointsHandle, overlayHandle));
                         _overlayRenderSystem.AddBufferWriter(jobHandle);
                         chunks.Dispose(jobHandle);
                     }
-                }
-                
-                if (!_connectorsQuery.IsEmptyIgnoreFilter)
+                } 
+                else if (_toolSystem.activeTool == _laneConnectorToolSystem)
                 {
-                    ConnectorsOverlayJob connectorsOverlayJob = new ConnectorsOverlayJob
+
+                    if (_laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default)
                     {
-                        entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
-                        connectorDataChunks = _connectorsQuery.ToArchetypeChunkListAsync(Allocator.TempJob, out JobHandle connectorsChunkJobHandle),
-                        connectorData = SystemAPI.GetComponentLookup<Connector>(true),
-                        connectorType = SystemAPI.GetComponentTypeHandle<Connector>(true),
-                        state = _laneConnectorToolSystem.ToolState,
-                        modifier = _laneConnectorToolSystem.ToolModifiers,
-                        colorSet = _colorSet,
-                        connectorSize = overlayParameters.laneConnectorSize,
-                        controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle2),
-                        overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle2)
-                    };
-                    JobHandle deps2 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle2, overlayRenderJobHandle2));
-                    jobHandle = connectorsOverlayJob.Schedule(JobHandle.CombineDependencies(deps2, connectorsChunkJobHandle));
-                    connectorsOverlayJob.connectorDataChunks.Dispose(jobHandle);
-                    _overlayRenderSystem.AddBufferWriter(jobHandle);
+                        ActionOverlayData actionOverlayData = SystemAPI.GetSingleton<ActionOverlayData>();
+                        if (!(_laneConnectorToolSystem.UIDisabled && actionOverlayData.mode == 0))
+                        {
+                            NativeArray<ArchetypeChunk> chunks = _connectionsQuery.ToArchetypeChunkArray(Allocator.TempJob);
+                            ConnectionsOverlayJob connectionsOverlayJob = new ConnectionsOverlayJob
+                            {
+                                chunks = chunks,
+                                connectorsData = SystemAPI.GetComponentLookup<Connector>(true),
+                                nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                                connectionType = SystemAPI.GetBufferTypeHandle<Connection>(true),
+                                state = _laneConnectorToolSystem.ToolState,
+                                modifier = _laneConnectorToolSystem.ToolModifiers,
+                                actionOverlayData = actionOverlayData,
+                                controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle3),
+                                colorSet = _colorSet,
+                                connectionWidth = overlayParameters.laneConnectorLineWidth,
+                                overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle3)
+                            };
+                            JobHandle deps3 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle3, overlayRenderJobHandle3));
+                            jobHandle = connectionsOverlayJob.Schedule(deps3);
+                            _overlayRenderSystem.AddBufferWriter(jobHandle);
+                            chunks.Dispose(jobHandle);
+                        }
+                    }
+
+                    if (!_connectorsQuery.IsEmptyIgnoreFilter)
+                    {
+                        ConnectorsOverlayJob connectorsOverlayJob = new ConnectorsOverlayJob
+                        {
+                            entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                            connectorDataChunks = _connectorsQuery.ToArchetypeChunkListAsync(Allocator.TempJob, out JobHandle connectorsChunkJobHandle),
+                            connectorData = SystemAPI.GetComponentLookup<Connector>(true),
+                            connectorType = SystemAPI.GetComponentTypeHandle<Connector>(true),
+                            state = _laneConnectorToolSystem.ToolState,
+                            modifier = _laneConnectorToolSystem.ToolModifiers,
+                            colorSet = _colorSet,
+                            connectorSize = overlayParameters.laneConnectorSize,
+                            controlPoints = _laneConnectorToolSystem.GetControlPoints(out JobHandle controlPointsJobHandle2),
+                            overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle2)
+                        };
+                        JobHandle deps2 = JobHandle.CombineDependencies(jobHandle, JobHandle.CombineDependencies(controlPointsJobHandle2, overlayRenderJobHandle2));
+                        jobHandle = connectorsOverlayJob.Schedule(JobHandle.CombineDependencies(deps2, connectorsChunkJobHandle));
+                        connectorsOverlayJob.connectorDataChunks.Dispose(jobHandle);
+                        _overlayRenderSystem.AddBufferWriter(jobHandle);
+                    }
+
+                    /* TODO DEBUG TempGeneratedConnection
+                    if (!_modifiedConnectionsQuery.IsEmptyIgnoreFilter && _laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default && !_laneConnectorDebugSystem.GizmoEnabled)
+                    {
+                        ModifiedConnectionsOverlayJob modifiedConnectionsOverlayJob = new ModifiedConnectionsOverlayJob()
+                        {
+                            connectionDefinitionDataTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
+                            tempConnectionsDataTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
+                            state = _laneConnectorToolSystem.ToolState,
+                            modifier = _laneConnectorToolSystem.ToolModifiers,
+                            colorSet = _colorSet,
+                            overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle4)
+                        };
+                        JobHandle deps4 = JobHandle.CombineDependencies(jobHandle, overlayRenderJobHandle4);
+                        jobHandle = modifiedConnectionsOverlayJob.Schedule(_modifiedConnectionsQuery, deps4);
+                        _overlayRenderSystem.AddBufferWriter(jobHandle);
+                    }*/
+
                 }
-
-                /* TODO DEBUG TempGeneratedConnection
-                if (!_modifiedConnectionsQuery.IsEmptyIgnoreFilter && _laneConnectorToolSystem.ToolState > LaneConnectorToolSystem.State.Default && !_laneConnectorDebugSystem.GizmoEnabled)
-                {
-                    ModifiedConnectionsOverlayJob modifiedConnectionsOverlayJob = new ModifiedConnectionsOverlayJob()
-                    {
-                        connectionDefinitionDataTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
-                        tempConnectionsDataTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
-                        state = _laneConnectorToolSystem.ToolState,
-                        modifier = _laneConnectorToolSystem.ToolModifiers,
-                        colorSet = _colorSet,
-                        overlayBuffer = _overlayRenderSystem.GetBuffer(out JobHandle overlayRenderJobHandle4)
-                    };
-                    JobHandle deps4 = JobHandle.CombineDependencies(jobHandle, overlayRenderJobHandle4);
-                    jobHandle = modifiedConnectionsOverlayJob.Schedule(_modifiedConnectionsQuery, deps4);
-                    _overlayRenderSystem.AddBufferWriter(jobHandle);
-                }*/
-
             }
-            
+
             if (!_toolFeedbackQuery.IsEmptyIgnoreFilter)
             {
                 ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
@@ -258,6 +300,125 @@ namespace Traffic.Rendering
             public Color outlineTargetMixedColor;
             public Color fillTwoWayColor;
             public Color outlineTwoWayColor;
+        }
+
+        private struct PriorityOverlaysJob : IJob
+        {
+            [ReadOnly] public NativeArray<ArchetypeChunk> chunks;
+            [ReadOnly] public EntityTypeHandle entityTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<LaneHandle> laneHandleTypeHandle;
+            [ReadOnly] public PriorityToolSystem.State state;
+            [ReadOnly] public ModUISystem.PriorityToolSetMode setMode;
+            [ReadOnly] public ModUISystem.OverlayMode overlayMode;
+            [ReadOnly] public NativeList<ControlPoint> controlPoints;
+            [ReadOnly] public ComponentLookup<LaneHandle> laneHandleData;
+            [ReadOnly] public BufferLookup<Connection> connectionBufferData;
+            public OverlayRenderSystem.Buffer overlayBuffer;
+
+            public void Execute()
+            {
+                if (state != PriorityToolSystem.State.ChangePriority)
+                {
+                    return;
+                }
+
+                NativeList<ValueTuple<Entity, LaneHandle>> hoveredHandles = new NativeList<ValueTuple<Entity, LaneHandle>>(4, Allocator.Temp);
+                ControlPoint controlPoint = controlPoints.Length > 0 ? controlPoints[0] : new ControlPoint();
+                LaneHandle laneHandle = default;
+                bool isHovering = controlPoint.m_OriginalEntity != Entity.Null && laneHandleData.TryGetComponent(controlPoint.m_OriginalEntity, out laneHandle);
+                int laneGroup = isHovering && overlayMode == ModUISystem.OverlayMode.LaneGroup ? laneHandle.handleGroup : -1;
+                
+                for (var i = 0; i < chunks.Length; i++)
+                {
+                    ArchetypeChunk chunk = chunks[i];
+                    NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
+                    NativeArray<LaneHandle> laneHandles = chunk.GetNativeArray(ref laneHandleTypeHandle);
+                    
+                    for (var j = 0; j < laneHandles.Length; j++)
+                    {
+                        if (entities[j].Equals(controlPoint.m_OriginalEntity))
+                        {
+                            hoveredHandles.Add(new ValueTuple<Entity, LaneHandle>(entities[j], laneHandles[j]));
+                            continue;
+                        }
+                        LaneHandle handle = laneHandles[j];
+
+                        if (overlayMode == ModUISystem.OverlayMode.LaneGroup &&
+                            isHovering &&
+                            laneGroup == handle.handleGroup &&
+                            handle.edge == laneHandle.edge)
+                        {
+                            hoveredHandles.Add(new ValueTuple<Entity, LaneHandle>(entities[j], laneHandles[j]));
+                            continue;
+                        }
+                        Color color = GetPriorityColor(handle.originalPriority) * (isHovering ? new Color(1,1,1, 0.5f) : Color.white);
+                        bool isDiffPriority = handle.priority != handle.originalPriority;
+                        OverlayRenderingHelpers.DrawEdgeHalfOutline(handle.laneSegment, ref overlayBuffer, color, isHovering ? 0.1f : 0.14f, isDashed: isDiffPriority);
+                        if (isDiffPriority)
+                        {
+                            color = GetPriorityColor(handle.priority) * (isHovering ? new Color(1, 1, 1, 0.5f) : Color.white);
+                            var middleCurve = MathUtils.Cut(handle.curve, new float2(0, handle.laneSegment.middleLength / handle.length));
+                            overlayBuffer.DrawCurve(color, color, 0f, 0, middleCurve, 0.2f);
+                        }
+                    }
+                }
+                
+                if (!isHovering || hoveredHandles.IsEmpty)
+                {
+                    return;
+                }
+
+
+                Color colorHover = new Color(1,1,1,0);
+                Color colorOutline = new Color(0f, 0.83f, 1f, 1f);
+                switch (setMode)
+                {
+                    case ModUISystem.PriorityToolSetMode.None:
+                    case ModUISystem.PriorityToolSetMode.Reset:
+                        colorOutline = Color.white;
+                        break;
+                    case ModUISystem.PriorityToolSetMode.Yield:
+                        colorOutline = GetPriorityColor(PriorityType.Yield);
+                        break;
+                    case ModUISystem.PriorityToolSetMode.Stop:
+                        colorOutline = GetPriorityColor(PriorityType.Stop);
+                        break;
+                    case ModUISystem.PriorityToolSetMode.Priority:
+                        colorOutline = GetPriorityColor(PriorityType.RightOfWay);
+                        break;
+                }
+                
+                foreach (ValueTuple<Entity, LaneHandle> hoveredHandle in hoveredHandles)
+                {
+                    OverlayRenderingHelpers.DrawEdgeHalfOutline(hoveredHandle.Item2.laneSegment, ref overlayBuffer, colorOutline, 0.2f, hoveredHandle.Item2.priority != hoveredHandle.Item2.originalPriority);
+                    if (connectionBufferData.HasBuffer(hoveredHandle.Item1))
+                    {
+                        DynamicBuffer<Connection> connections = connectionBufferData[hoveredHandle.Item1];
+                        for (var i = 0; i < connections.Length; i++)
+                        {
+                            overlayBuffer.DrawCurve(colorOutline, colorHover, 0.2f, 0, connections[i].curve, 2.8f, new float2(0.5f));
+                        }
+                    }
+                }
+                
+                hoveredHandles.Dispose();
+            }
+
+            private Color GetPriorityColor(PriorityType type)
+            {
+                switch (type)
+                {
+                    case PriorityType.RightOfWay:
+                        return new Color(0.2f, 0.8f, 0.21f);;
+                    case PriorityType.Yield:
+                        return new Color(1f, 0.56f, 0.01f); 
+                    case PriorityType.Stop:
+                        return new Color(0.82f, 0.25f, 0.16f);
+                    case PriorityType.Default:
+                    default:
+                        return new Color(0f, 0.83f, 1f, 1f);
+                }
+            }
         }
     }
 }

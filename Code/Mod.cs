@@ -1,4 +1,4 @@
-﻿// #if DEBUG
+// #if DEBUG
 //   #define LOCALIZATION_EXPORT
 // #endif
 
@@ -20,6 +20,7 @@ namespace Traffic
     using Traffic.Systems;
     using Traffic.Systems.DataMigration;
     using Traffic.Systems.ModCompatibility;
+    using Traffic.Systems.PrioritySigns;
     using Traffic.Tools;
     using Traffic.UISystems;
     using Traffic.Utils;
@@ -68,28 +69,32 @@ namespace Traffic
 #endif
             updateSystem.UpdateAfter<ToolOverlaySystem, AreaRenderSystem>(SystemUpdatePhase.Rendering);
 
-            VanillaSystemHelpers.ModifyLaneSystemUpdateRequirements(updateSystem.World.GetOrCreateSystemManaged<LaneSystem>());
+            // VanillaSystemHelpers.ModifyLaneSystemUpdateRequirements(updateSystem.World.GetOrCreateSystemManaged<LaneSystem>());
+            updateSystem.World.GetOrCreateSystemManaged<LaneSystem>().Enabled = false;
             updateSystem.UpdateBefore<TrafficLaneSystem, LaneSystem>(SystemUpdatePhase.Modification4);
             updateSystem.UpdateBefore<SyncCustomLaneConnectionsSystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
+            updateSystem.UpdateBefore<SyncCustomPrioritiesSystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
             
             /*data migration - requires NetCompositions to work correctly - not possible to run in SystemUpdatePhase.Deserialize */
             updateSystem.UpdateBefore<TrafficDataMigrationSystem, SyncCustomLaneConnectionsSystem>(SystemUpdatePhase.Modification4);
             
             updateSystem.UpdateAt<ModificationDataSyncSystem>(SystemUpdatePhase.Modification4B);
             updateSystem.UpdateAt<GenerateLaneConnectionsSystem>(SystemUpdatePhase.Modification3);
+            updateSystem.UpdateAt<GenerateEdgePrioritiesSystem>(SystemUpdatePhase.Modification3);
 
             updateSystem.UpdateAt<ModRaycastSystem>(SystemUpdatePhase.Raycast);
             updateSystem.UpdateAfter<Traffic.Tools.ValidationSystem, Game.Tools.ValidationSystem>(SystemUpdatePhase.ModificationEnd);
 
-            // updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
+            updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateBefore<ApplyLaneConnectionsSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
+            updateSystem.UpdateBefore<ApplyPrioritiesSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
+            updateSystem.UpdateAt<GenerateHandles>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
 
             updateSystem.UpdateBefore<PreDeserialize<ModDefaultsSystem>>(SystemUpdatePhase.Deserialize);
-
 #if DEBUG
             updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);
 #endif
@@ -101,6 +106,7 @@ namespace Traffic
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
             GameManager.instance.RegisterUpdater(ListEnabledMods);
+            // NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
 
 #if LOCALIZATION_EXPORT
             Localization.LocalizationExport(this, Settings);

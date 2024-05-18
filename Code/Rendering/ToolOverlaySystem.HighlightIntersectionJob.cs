@@ -1,6 +1,7 @@
 using Game.Net;
 using Game.Rendering;
 using Game.Tools;
+using Traffic.CommonData;
 using Traffic.Components;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -20,6 +21,7 @@ namespace Traffic.Rendering
             [ReadOnly] public ComponentTypeHandle<EditIntersection> editIntersectionTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempComponentTypeHandle;
             [ReadOnly] public ComponentTypeHandle<ToolActionBlocked> toolActionBlockedComponentTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<EditPriorities> editPrioritiesTypeHandle;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
             [ReadOnly] public ComponentLookup<Node> nodeData;
@@ -34,6 +36,8 @@ namespace Traffic.Rendering
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionTypeHandle);
                 bool hasTemp = chunk.Has(ref tempComponentTypeHandle);
                 bool hasBlocked = chunk.Has(ref toolActionBlockedComponentTypeHandle);
+                bool hasEditPriorities = chunk.Has(ref editPrioritiesTypeHandle);
+                
                 for (int i = 0; i < editIntersections.Length; i++)
                 {
                     EditIntersection intersection = editIntersections[i];
@@ -49,7 +53,7 @@ namespace Traffic.Rendering
                             ref overlayBuffer,
                             hasBlocked ? Color.red : (hasTemp ? Color.white : new Color(0f, 0.83f, 1f, 1f)),
                             lineWidth,
-                            !hasTemp ? 2f : 0f
+                            !hasTemp && !hasEditPriorities ? 2f : 0f
                         );
                     }
                 }

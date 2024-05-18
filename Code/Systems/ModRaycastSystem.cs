@@ -1,10 +1,12 @@
-﻿using Colossal.Mathematics;
+﻿using Colossal.Collections;
+using Colossal.Mathematics;
 using Game;
 using Game.Common;
 using Game.Simulation;
 using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components.LaneConnections;
+using Traffic.Components.PrioritySigns;
 using Traffic.Helpers;
 using Unity.Burst;
 using Unity.Collections;
@@ -64,27 +66,61 @@ namespace Traffic.Systems
             }
             
             NativeList<Entity> entities = new NativeList<Entity>(Allocator.TempJob);
-            RaycastJobs.FindConnectionNodeFromTreeJob job = new RaycastJobs.FindConnectionNodeFromTreeJob()
+
+            if ((input.typeMask & TypeMask.Lanes) != 0)
             {
-                input = input,
-                entityList = entities,
-                searchTree = _searchSystem.GetSearchTree(true, out JobHandle dependencies)
-            };
-            
-            JobHandle jobHandle2 = job.Schedule(JobHandle.CombineDependencies(Dependency, jobHandle, dependencies));
-            _searchSystem.AddSearchTreeReader(jobHandle2);
-            jobHandle2.Complete();
+                RaycastJobs.FindLaneHandleFromTreeJob laneHandleJob = new RaycastJobs.FindLaneHandleFromTreeJob()
+                {
+                    expandFovTan = input.fovTan,
+                    input = input,
+                    entityList = entities,
+                    searchTree = _searchSystem.GetLaneHandleSearchTree(true, out JobHandle laneHandleSearchDependency)
+                };
+                JobHandle jobHandle2 = laneHandleJob.Schedule(JobHandle.CombineDependencies(Dependency, jobHandle, laneHandleSearchDependency));
+                _searchSystem.AddLaneHandleSearchTreeReader(jobHandle2);
+                jobHandle2.Complete();
+            }
+            else
+            {
+
+                RaycastJobs.FindConnectionNodeFromTreeJob job = new RaycastJobs.FindConnectionNodeFromTreeJob()
+                {
+                    input = input,
+                    entityList = entities,
+                    searchTree = _searchSystem.GetSearchTree(true, out JobHandle dependencies)
+                };
+                JobHandle jobHandle3 = job.Schedule(JobHandle.CombineDependencies(Dependency, jobHandle, dependencies));
+                _searchSystem.AddSearchTreeReader(jobHandle3);
+                jobHandle3.Complete();
+            }
             //TODO change to accumulator to get best match instead overwriting results
             NativeReference<CustomRaycastResult> customRes = new NativeReference<CustomRaycastResult>(Allocator.TempJob);
-            RaycastJobs.RaycastLaneConnectionSubObjects raycastLaneConnectionSubObjects = new RaycastJobs.RaycastLaneConnectionSubObjects()
+            NativeAccumulator<RaycastResult> accumulator = new NativeAccumulator<RaycastResult>(Allocator.TempJob);
+            if ((input.typeMask & TypeMask.Lanes) != 0)
             {
-                connectorData = SystemAPI.GetComponentLookup<Connector>(true),
-                entities = entities.AsReadOnly(),
-                input = input,
-                result = customRes
-            };
-            JobHandle jobHandle3 = raycastLaneConnectionSubObjects.Schedule(entities, 1, Dependency);
-            jobHandle3.Complete();
+                RaycastJobs.RaycastLaneHandles raycastLaneHandles = new RaycastJobs.RaycastLaneHandles()
+                {
+                    fovTan = input.fovTan,
+                    laneHandleData = SystemAPI.GetComponentLookup<LaneHandle>(true),
+                    input = input,
+                    entities = entities.AsReadOnly(),
+                    results = accumulator.AsParallelWriter(),
+                };
+                JobHandle jobHandleLaneHandle =  raycastLaneHandles.Schedule(entities, 1, Dependency);
+                jobHandleLaneHandle.Complete();
+            }
+            else
+            {
+                RaycastJobs.RaycastLaneConnectionSubObjects raycastLaneConnectionSubObjects = new RaycastJobs.RaycastLaneConnectionSubObjects()
+                {
+                    connectorData = SystemAPI.GetComponentLookup<Connector>(true),
+                    entities = entities.AsReadOnly(),
+                    input = input,
+                    result = customRes
+                };
+                JobHandle jobHandle4 = raycastLaneConnectionSubObjects.Schedule(entities, 1, Dependency);
+                jobHandle4.Complete();
+            }
             if ((input.typeMask & TypeMask.Terrain) != 0 && _terrainResult.Value.m_Owner != Entity.Null)
             {
                 _result.Value = new CustomRaycastResult
@@ -97,8 +133,18 @@ namespace Traffic.Systems
             {
                 _result.Value = customRes.Value;
             }
+            if (accumulator.Length > 0 && accumulator.GetResult().m_Owner != Entity.Null)
+            {
+                var result = accumulator.GetResult();
+                _result.Value = new CustomRaycastResult()
+                {
+                    hit = result.m_Hit,
+                    owner = result.m_Owner
+                };
+            }
             entities.Dispose();
             customRes.Dispose();
+            accumulator.Dispose();
         }
 
         public void SetInput(CustomRaycastInput input) {

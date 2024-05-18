@@ -79,7 +79,7 @@ namespace Traffic.UISystems
                                 break;
                             }
                             FeedbackMessageType messageType = feedbackInfos[j].type;
-                            bool isError = messageType >= FeedbackMessageType.ErrorHasRoundabout;
+                            bool isError = messageType >= FeedbackMessageType.ErrorLaneConnectorNotSupported;
                             StringTooltip tooltip = _feedbackTooltips[usedTooltips];
                             tooltip.icon = "coui://ui-mods/traffic-images/traffic_icon.svg";
                             tooltip.value = _feedbackStringBuilder[messageType];

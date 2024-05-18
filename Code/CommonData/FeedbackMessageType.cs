@@ -4,7 +4,11 @@
     {
         WarnResetForbiddenTurnUpgrades,
         WarnForbiddenTurnApply,
-        ErrorHasRoundabout,
+        WarnResetPrioritiesTrafficLightsApply,
+        ErrorLaneConnectorNotSupported,
+        ErrorPrioritiesNotSupported,
+        ErrorPrioritiesRemoveTrafficLights,
         ErrorApplyRoundabout,
+        ErrorHasRoundabout,
     }
 }

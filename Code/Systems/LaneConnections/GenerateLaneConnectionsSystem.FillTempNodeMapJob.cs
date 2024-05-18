@@ -12,7 +12,7 @@ namespace Traffic.Systems.LaneConnections
 #if WITH_BURST
         [BurstCompile]
 #endif
-        private struct FillTempNodeMapJob : IJobChunk
+        internal struct FillTempNodeMapJob : IJobChunk
         {
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;

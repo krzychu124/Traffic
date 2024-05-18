@@ -16,6 +16,7 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Components.PrioritySigns;
 using Traffic.Systems;
 using Traffic.UISystems;
 using Unity.Burst;
@@ -178,12 +179,12 @@ namespace Traffic.Tools
             _soundQuery = GetEntityQuery(ComponentType.ReadOnly<ToolUXSoundSettingsData>());
             _raycastHelpersQuery = GetEntityQuery(new EntityQueryDesc
             {
-                Any = new[] { ComponentType.ReadOnly<Connection>(), ComponentType.ReadOnly<Connector>(), ComponentType.ReadOnly<EditIntersection>(), },
+                Any = new[] { ComponentType.ReadOnly<Connection>(), ComponentType.ReadOnly<Connector>(), ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<EditLaneConnections>() },
                 None = new[] { ComponentType.ReadOnly<Deleted>() }
             });
             _editIntersectionQuery = GetEntityQuery(new EntityQueryDesc()
             {
-                All = new [] { ComponentType.ReadOnly<EditIntersection>(), },
+                All = new [] { ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<EditLaneConnections>() },
                 None = new[] { ComponentType.ReadOnly<Deleted>() }
             });
             _toolFeedbackQuery = GetEntityQuery(new EntityQueryDesc()
@@ -252,6 +253,7 @@ namespace Traffic.Tools
 
         protected override void OnStartRunning() {
             base.OnStartRunning();
+            Logger.Info($"Starting {nameof(LaneConnectorToolSystem)}");
             _mainCamera = Camera.main;
             _controlPoints.Clear();
             _nodeElevation.Clear();
@@ -272,6 +274,7 @@ namespace Traffic.Tools
 
         protected override void OnStopRunning() {
             base.OnStopRunning();
+            Logger.Info($"Stopping {nameof(LaneConnectorToolSystem)}");
             _mainCamera = null;
             _selectedNode = Entity.Null;
             _nodeElevation.value = 0f;
@@ -347,6 +350,7 @@ namespace Traffic.Tools
                 CustomRaycastInput input;
                 float posHitRadius = math.lerp(0.8f, 1.7f, math.clamp((overlayParameters.laneConnectorSize - 0.5f) / 1.5f, 0, 1f));
                 input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
+                input.fovTan = math.tan(math.radians(_mainCamera.fieldOfView) * 0.5f);
                 input.offset = new float3(posHitRadius, 0, posHitRadius);
                 input.heightOverride = 0;
                 input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
@@ -804,6 +808,10 @@ namespace Traffic.Tools
                         EntityManager.GetBuffer<LaneConnection>(entity).Clear();
                     }
                     EntityManager.DestroyEntity(connections);
+                    if (!EntityManager.HasComponent<EditLaneConnections>(editingIntersection))
+                    {
+                        EntityManager.AddComponent<EditLaneConnections>(editingIntersection);
+                    }
                     EntityManager.AddComponent<Updated>(editingIntersection);
                     entities.Dispose();
                     connectors.Dispose();

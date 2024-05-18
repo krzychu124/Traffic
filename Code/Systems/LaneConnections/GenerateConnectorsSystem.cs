@@ -32,7 +32,7 @@ namespace Traffic.Systems.LaneConnections
             base.OnCreate();
             
             _modificationBarrier = base.World.GetOrCreateSystemManaged<ModificationBarrier5>();
-            _definitionQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<Updated>(), ComponentType.Exclude<Temp>(), ComponentType.Exclude<Deleted>());
+            _definitionQuery = GetEntityQuery(ComponentType.ReadOnly<EditIntersection>(), ComponentType.ReadOnly<EditLaneConnections>(), ComponentType.ReadOnly<Updated>(), ComponentType.Exclude<Temp>(), ComponentType.Exclude<Deleted>());
             _connectorsQuery = GetEntityQuery(ComponentType.ReadOnly<Connector>(), ComponentType.Exclude<Deleted>());
             
             RequireForUpdate(_definitionQuery);

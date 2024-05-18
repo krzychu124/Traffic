@@ -2,6 +2,7 @@
 using Game.Common;
 using Game.Net;
 using Game.Prefabs;
+using Traffic.CommonData;
 using Traffic.Components;
 using Unity.Burst;
 using Unity.Collections;
@@ -32,6 +33,7 @@ namespace Traffic.Tools
             {
                 Entity selectedNode = commandBuffer.CreateEntity();
                 commandBuffer.AddComponent(selectedNode, new EditIntersection() { node = node });
+                commandBuffer.AddComponent<EditLaneConnections>(selectedNode);
                 commandBuffer.AddComponent<Updated>(selectedNode);
                 nodeElevation.value = 0f;
                 if (elevationData.HasComponent(node))

@@ -18,8 +18,8 @@ namespace Traffic
 {
     [FileLocation("Traffic")]
     [SettingsUITabOrder(GeneralTab, KeybindingsTab)]
-    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
-    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
+    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
+    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
     public partial class ModSettings : ModSetting
     {
         internal const string SETTINGS_ASSET_NAME = "Traffic General Settings";
@@ -29,6 +29,7 @@ namespace Traffic
         internal const string KeybindingsTab = "Keybindings";  
         internal const string MainSection = "General";
         internal const string LaneConnectorSection = "LaneConnections";
+        internal const string PrioritiesSection = "Priorities";
         internal const string OverlaysSection = "Overlays";
         internal const string AboutSection = "About";
 

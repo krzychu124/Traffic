@@ -36,9 +36,11 @@ namespace Traffic
 
                     { _setting.GetOptionGroupLocaleID(ModSettings.MainSection), "General" },
                     { _setting.GetOptionGroupLocaleID(ModSettings.LaneConnectorSection), "Lane Connector" },
+                    {_setting.GetOptionGroupLocaleID(ModSettings.PrioritiesSection), "Priorities"},
                     { _setting.GetOptionGroupLocaleID(ModSettings.OverlaysSection), "Overlay Style" },
                     { _setting.GetOptionGroupLocaleID(ModSettings.AboutSection), "About" },
                     { _setting.GetOptionGroupLocaleID(ModSettings.ToolsSection), "Tools" },
+                    {_setting.GetOptionGroupLocaleID(ModSettings.PriorityToolSection), "Priorities Tool Active"},
                     { _setting.GetOptionGroupLocaleID(ModSettings.SelectedNodeSection), "Selected Node or Intersection" },
                     { _setting.GetOptionGroupLocaleID(ModSettings.OtherSection), "Other" },
 
@@ -47,10 +49,15 @@ namespace Traffic
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ApplyTool), "Apply Tool" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.CancelTool), "Cancel Tool" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ToggleLaneConnectorTool), "Toggle Lane Connector Tool" },
+                    { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.TogglePrioritiesTool), "Toggle Priorities Tool"},
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveAllConnections), "Remove Intersection Lane Connections" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUTurns), "Remove U-Turns" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUnsafe), "Remove Unsafe Lane Connections" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ResetIntersectionToDefaults), "Reset selected intersection to defaults" },
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesPriority), "Use Priority Action"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesYield), "Use Yield Action"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesStop), "Use Stop Action"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesReset), "Use Reset Action"},
 
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.UseVanillaToolActions)), "Use Vanilla Tool bindings" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.UseVanillaToolActions)), "When checked, the mod tool bindings will mimic vanilla key bindings" },
@@ -60,6 +67,9 @@ namespace Traffic
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.CancelToolAction)), "Keybinding used for canceling the tool action, e.g.: click to reset intersection selection (default: Right Mouse Button)" },
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.LaneConnectorToolAction)), "Toggle Lane Connector Tool" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.LaneConnectorToolAction)), "Keybinding used for toggling the Lane Connector tool" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesToolAction)), "Toggle Priorities Tool" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesToolAction)), "Keybinding used for toggling the Priorities tool" },
+                    
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.RemoveIntersectionConnections)), "Remove Intersection Lane Connections" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.RemoveIntersectionConnections)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.RemoveUTurnConnections)), "Remove U-Turn Lane Connections" },
@@ -68,6 +78,17 @@ namespace Traffic
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.RemoveUnsafeConnections)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetIntersectionToDefaults)), "Reset selected intersection to defaults" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.ResetIntersectionToDefaults)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
+                    
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesToggleDisplayModeAction)), "Toggle Display Mode" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesToggleDisplayModeAction)), "Keybinding used for toggling between Priority tool display modes (Lane Group ⇆ Lane)" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesUsePriorityAction)), "Use Priority Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesUsePriorityAction)), "" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesUseYieldAction)), "Use Yield Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesUseYieldAction)), "" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesUseStopAction)), "Use Stop Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesUseStopAction)), "" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.PrioritiesUseResetAction)), "Use Reset Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.PrioritiesUseResetAction)), "" },
 #if GAMEPAD_SUPPORT
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Toggle Lane Connector Tool (Gamepad)" },
                     {_setting.GetOptionDescLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Keybinding used for toggling the Lane Connector tool using gamepad controller" },
@@ -99,6 +120,10 @@ namespace Traffic
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetLaneConnections)), "Reset Lane Connections" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.ResetLaneConnections)), $"While in-game, it will remove all custom lane connections" },
                     { _setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetLaneConnections)), "Are you sure you want to remove all custom lane connections?" },
+
+                    // {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetPriorities)), "Reset Priority settings" },
+                    // {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetPriorities)), $"While in-game, it will remove all custom priority settings" },
+                    // {_setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetPriorities)), "Are you sure you want to remove all custom priority settings?" },
 
                     //Overlays
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.FeedbackOutlineWidth)), "Feedback outline width" },
@@ -135,9 +160,12 @@ namespace Traffic
                     /* general feedback */
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetForbiddenTurnUpgrades)), "[Traffic] Entering Lane Connection modification mode will remove Forbidden maneuvers from connected roads" },
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnForbiddenTurnApply)), "[Traffic] Applying Forbidden maneuver upgrade will reset Lane connections at a nearby intersection" },
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply)), "[Traffic] Applying Traffic Lights upgrade will reset Priority settings at the selected intersection"},
 
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorHasRoundabout)), "[Traffic] Modifying lane connections at a selected intersection is not supported" },
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorApplyRoundabout)), "[Traffic] Roundabout upgrade cannot be used at an intersection with non-standard lane connections" },
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorPrioritiesNotSupported)), "[Traffic] Modifying priority settings at a selected intersection is not supported"},
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorPrioritiesRemoveTrafficLights)), "[Traffic] Remove traffic lights to modify priority settings at a selected intersection"},
 
                     /*In-game UI*/
                     {
@@ -162,7 +190,15 @@ namespace Traffic
                     },
                     { UIKeys.RESET_TO_VANILLA_TOOLTIP_TITLE, "Reset to Vanilla" },
                     { UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE, "Resets lane connections on the selected intersection to vanilla configuration" },
-
+                    { UIKeys.PRIORITY_ACTION, "Priority"},
+                    { UIKeys.YIELD_ACTION, "Yield"},
+                    { UIKeys.STOP_ACTION, "Stop"},
+                    { UIKeys.RESET_ACTION, "Reset to default"},  
+                    { UIKeys.PRIORITY_ACTION_TOOLTIP, "Highest priority, but may still give way to trams"},
+                    { UIKeys.YIELD_ACTION_TOOLTIP, "Give way to other traffic coming from roads with higher priority"},
+                    { UIKeys.STOP_ACTION_TOOLTIP, "Stop at stop line and give way other traffic coming from roads with higher priority"},
+                    { UIKeys.RESET_ACTION_TOOLTIP, "Resets selected lane or lane group to vanilla default settings"},
+                    { UIKeys.TOGGLE_DISPLAY_MODE_TOOLTIP, "Toggle between display modes"},
 #if GAMEPAD_SUPPORT
                     /* Gamepad Hints*/
                     { _setting.GetBindingKeyHintLocaleID(ModSettings.KeyBindAction.ToggleLaneConnectorTool), "Traffic's Lane Connector" }

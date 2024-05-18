@@ -47,9 +47,10 @@ namespace Traffic.Rendering
                     for (int j = 0; j < feedbackInfos.Length; j++)
                     {
                         ToolFeedbackInfo toolFeedbackInfo = feedbackInfos[j];
-                        if (toolFeedbackInfo.container != Entity.Null && toolFeedbackInfo.type < FeedbackMessageType.ErrorHasRoundabout)
+                        if (toolFeedbackInfo.container != Entity.Null && toolFeedbackInfo.type < FeedbackMessageType.ErrorLaneConnectorNotSupported)
                         {
-                            if (toolFeedbackInfo.type == FeedbackMessageType.WarnForbiddenTurnApply && nodeChunkData.Length > 0)
+                            if ((toolFeedbackInfo.type == FeedbackMessageType.WarnForbiddenTurnApply || toolFeedbackInfo.type == FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply) &&
+                                nodeChunkData.Length > 0)
                             {
                                 OverlayRenderingHelpers.DrawNodeOutline(
                                     entities[i],

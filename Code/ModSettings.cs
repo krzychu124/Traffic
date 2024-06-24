@@ -13,11 +13,14 @@ using UnityEngine.Device;
 namespace Traffic
 {
     [FileLocation("Traffic")]
-    [SettingsUISection("Traffic", MainSection)]
+    [SettingsUITabOrder(GeneralTab, KeybindingsTab)]
     [SettingsUIGroupOrder(MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
     [SettingsUIShowGroupName( MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
-    public class ModSettings : ModSetting
+    public partial class ModSettings : ModSetting
     {
+        internal static ModSettings Instance { get; private set; }
+        internal const string GeneralTab = "General";  
+        internal const string KeybindingsTab = "Keybindings";  
         internal const string MainSection = "General";  
         internal const string LaneConnectorSection = "LaneConnections";
         internal const string OverlaysSection = "Overlays";
@@ -98,6 +101,7 @@ namespace Traffic
 
         public ModSettings(IMod mod) : base(mod)
         {
+            Instance = this;
             SetDefaults();
         }
         
@@ -119,5 +123,7 @@ namespace Traffic
             });
             base.Apply();
         }
+
+        public static string GetHintActionLocaleID(string hintName) => "Common.ACTION[" + hintName + "]";
     }
 }

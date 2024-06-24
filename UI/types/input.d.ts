@@ -1,5 +1,6 @@
 declare module "cs2/input" {
   import React$1 from 'react';
+  import { CSSProperties, ReactNode } from 'react';
   
   /**
    * Special focus key that disables the focus of the component.
@@ -120,7 +121,7 @@ declare module "cs2/input" {
   }
   export export class MultiChildFocusController extends FocusControllerBase {
   	private readonly activation;
-  	private readonly children;
+  	readonly children: Map<UniqueFocusKey, FocusController>;
   	private _focusedChildKey;
   	onRefocus: RefocusCallback | null;
   	constructor(focusKey: UniqueFocusKey | null, activation: FocusActivation);
@@ -367,7 +368,10 @@ declare module "cs2/input" {
   export export const NavigationScope: ({ focusKey, debugName, focused, direction, activation, children, onChange, onRefocus, allowFocusExit, }: React$1.PropsWithChildren<NavigationScopeProps>) => JSX.Element;
   export export function refocusClosestKeyIfNoFocus(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
   export export function refocusClosestKey(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
-  export export const SelectableFocusBoundary: ({ children }: React$1.PropsWithChildren) => JSX.Element;
+  export interface SelectableFocusBoundaryProps {
+  	onSelectedStateChanged?: (selected: boolean) => void;
+  }
+  export export const SelectableFocusBoundary: ({ onSelectedStateChanged, children }: React$1.PropsWithChildren<SelectableFocusBoundaryProps>) => JSX.Element;
   export interface ValueBinding<T> {
   	readonly value: T;
   	subscribe(listener?: BindingListener<T>): ValueSubscription<T>;
@@ -386,6 +390,10 @@ declare module "cs2/input" {
   export interface ValueSubscription<T> extends Subscription {
   	readonly value: T;
   	setChangeListener(listener: BindingListener<T>): void;
+  }
+  export interface ControlPath {
+  	name: string;
+  	displayName?: string;
   }
   export enum GamepadType {
   	Xbox = 0,
@@ -437,6 +445,7 @@ declare module "cs2/input" {
   	"Toggle Snapping": Action;
   	"Capture Keyframe": Action;
   	"Reset Property": Action;
+  	"Toggle Property": Action;
   	"Previous Tutorial Phase": Action;
   	"Continue Tutorial": Action;
   	"Focus Tutorial List": Action;
@@ -472,6 +481,7 @@ declare module "cs2/input" {
   	"Save Options": Action;
   	"Switch User": Action;
   	"Unset Binding": Action;
+  	"Reset Binding": Action;
   	"Switch Savegame Location": Action1D;
   	"Debug UI": Action;
   	"Debug Prefab Tool": Action;
@@ -490,7 +500,7 @@ declare module "cs2/input" {
   	hover?: UISound | string | null;
   	focus?: UISound | string | null;
   }
-  export interface ButtonProps extends React$1.ButtonHTMLAttributes<HTMLButtonElement> {
+  export interface ButtonProps extends React$1.ButtonHTMLAttributes<HTMLButtonElement | HTMLDivElement> {
   	focusKey?: FocusKey;
   	debugName?: string;
   	selected?: boolean;
@@ -498,22 +508,34 @@ declare module "cs2/input" {
   	sounds?: ButtonSounds | null;
   	selectAction?: InputAction;
   	selectSound?: UISound | string | null;
+  	tooltipLabel?: React$1.ReactNode;
   	/** When the button is clicked or the SELECT button on a gamepad is pressed */
   	onSelect?: () => void;
+  	as?: "button" | "div";
+  }
+  export enum ShortInputPathOption {
+  	FallbackToLong = 1,
+  	FallbackToControl = 2
   }
   export interface InputActionHintsProps extends ClassProps {
   	disabled?: boolean;
   	specifiedActions?: string[];
   	labels?: boolean;
+  	buttonAs?: ButtonProps["as"];
   }
   export export const InputActionHints: React$1.FC<InputActionHintsProps>;
-  export interface ControlIconProps {
-  	path: string;
-  	modifier?: boolean;
+  export interface ControlIconProps extends ClassProps {
+  	binding: ControlPath;
+  	group: string;
+  	modifier: boolean;
+  	shortName?: ShortInputPathOption;
+  	style?: React$1.CSSProperties;
+  	iconClassName?: string;
+  	buttonClassName?: string;
   }
   export export const ControlIcon: React$1.FC<ControlIconProps>;
   export export const ActionHintLayout: ({ children, className, ...props }: ButtonProps) => JSX.Element;
-  export export function useInputControlIcon(path: string): string | null;
+  export export function useInputControlIcon(binding: ControlPath, group: string): string | null;
   export export function useGamepadType(): GamepadType;
   export enum GamepadButton$1 {
   	buttonSouth = 0,
@@ -623,6 +645,7 @@ declare module "cs2/input" {
   	private stack;
   	private onStackChanged;
   	private _child;
+  	private _udpateHandle;
   	constructor(stack: InputStack, onStackChanged: () => void);
   	attachChild(controller: InputController): void;
   	detachChild(controller: InputController): void;

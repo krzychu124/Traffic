@@ -246,12 +246,14 @@ namespace Traffic.Systems
             public NativeParallelHashMap<LaneKey, Entity> m_OldLanes;
             public NativeParallelHashMap<LaneKey, Entity> m_OriginalLanes;
             public NativeParallelHashMap<Entity, Unity.Mathematics.Random> m_SelectedSpawnables;
+            public NativeList<Entity> m_Updates;
 
             public LaneBuffer(Allocator allocator)
             {
                 m_OldLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
                 m_OriginalLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
                 m_SelectedSpawnables = new NativeParallelHashMap<Entity, Unity.Mathematics.Random>(10, allocator);
+				m_Updates = new NativeList<Entity>(32, allocator);
             }
 
             public void Clear()
@@ -266,6 +268,7 @@ namespace Traffic.Systems
                 m_OldLanes.Dispose();
                 m_OriginalLanes.Dispose();
                 m_SelectedSpawnables.Dispose();
+				m_Updates.Dispose();
             }
         }
 
@@ -286,6 +289,7 @@ namespace Traffic.Systems
         private EntityQuery m_BuildingSettingsQuery;
         private ComponentTypeSet m_AppliedTypes;
         private ComponentTypeSet m_DeletedTempTypes;
+        private ComponentTypeSet m_TempOwnerTypes;
         // private NativeArray<ushort> _heights;
         protected override void OnCreate() {
             base.OnCreate();
@@ -319,6 +323,7 @@ namespace Traffic.Systems
             m_BuildingSettingsQuery = GetEntityQuery(ComponentType.ReadOnly<BuildingConfigurationData>());
             m_AppliedTypes = new ComponentTypeSet(ComponentType.ReadWrite<Applied>(), ComponentType.ReadWrite<Created>(), ComponentType.ReadWrite<Updated>());
             m_DeletedTempTypes = new ComponentTypeSet(ComponentType.ReadWrite<Deleted>(), ComponentType.ReadWrite<Temp>());
+            m_TempOwnerTypes = new ComponentTypeSet(ComponentType.ReadWrite<Temp>(), ComponentType.ReadWrite<Owner>());
             RequireForUpdate(m_OwnerQuery);
             // Logger.DebugLaneSystem("Traffic_LaneSystem Created!");
             // _heights = new NativeArray<ushort>(4, Allocator.Persistent);
@@ -417,6 +422,7 @@ namespace Traffic.Systems
                 m_DefaultTheme = m_CityConfigurationSystem.defaultTheme,
                 m_AppliedTypes = m_AppliedTypes,
                 m_DeletedTempTypes = m_DeletedTempTypes,
+                m_TempOwnerTypes = m_TempOwnerTypes,
                 m_TerrainHeightData = m_TerrainSystem.GetHeightData(),
                 m_BuildingConfigurationData = m_BuildingSettingsQuery.GetSingleton<BuildingConfigurationData>(),
                 m_CommandBuffer = m_ModificationBarrier.CreateCommandBuffer().AsParallelWriter(),
@@ -705,7 +711,10 @@ namespace Traffic.Systems
             
             [ReadOnly]
             public ComponentTypeSet m_DeletedTempTypes;
-            
+
+            [ReadOnly]
+            public ComponentTypeSet m_TempOwnerTypes;
+
             [ReadOnly]
             public TerrainHeightData m_TerrainHeightData;
             
@@ -870,11 +879,11 @@ namespace Traffic.Systems
                         if (!flag)
                         {
                             Entity entity2 = entity;
-                            if ((ownerTemp2.m_Flags & (TempFlags.Delete | TempFlags.Select)) != 0 && ownerTemp2.m_Original != Entity.Null)
+							if ((ownerTemp2.m_Flags & (TempFlags.Delete | TempFlags.Select | TempFlags.Duplicate)) != 0 || ownerTemp2.m_Original != Entity.Null)
                             {
                                 entity2 = ownerTemp2.m_Original;
                             }
-                            bool flag5 = (ownerTemp2.m_Flags & (TempFlags.Delete | TempFlags.Select)) != 0;
+							bool flag5 = (ownerTemp2.m_Flags & (TempFlags.Delete | TempFlags.Select | TempFlags.Duplicate)) != 0;
                             if (m_InstalledUpgrades.TryGetBuffer(entity2, out DynamicBuffer<InstalledUpgrade> bufferData) && bufferData.Length != 0)
                             {
                                 ClearAreaHelpers.FillClearAreas(bufferData, Entity.Null, m_TransformData, m_AreaClearData, m_PrefabRefData, m_PrefabObjectGeometryData, m_SubAreas, m_AreaNodes, m_AreaTriangles,
@@ -1418,6 +1427,7 @@ namespace Traffic.Systems
                     tempEdgeTargets.Dispose();
                     tempModifiedLaneEnds.Dispose();
                 // }
+                UpdateLanes(chunkIndex, laneBuffer.m_Updates);
                 laneBuffer.Dispose();
             }
 
@@ -2139,7 +2149,10 @@ namespace Traffic.Systems
                 }
             }
 
-            private void RemoveUnusedOldLanes(int jobIndex, DynamicBuffer<SubLane> lanes, NativeParallelHashMap<LaneKey, Entity> laneBuffer) {
+            private unsafe void RemoveUnusedOldLanes(int jobIndex, DynamicBuffer<SubLane> lanes, NativeParallelHashMap<LaneKey, Entity> laneBuffer)
+            {
+                Entity* data = stackalloc Entity[lanes.Length];
+                StackList<Entity> stackList = new Span<Entity>(data, lanes.Length);
                 for (int i = 0; i < lanes.Length; i++)
                 {
                     Entity subLane = lanes[i].m_SubLane;
@@ -2157,12 +2170,25 @@ namespace Traffic.Systems
                         LaneKey key = new LaneKey(m_LaneData[subLane], m_PrefabRefData[subLane].m_Prefab, laneFlags);
                         if (laneBuffer.TryGetValue(key, out Entity _))
                         {
-                            m_CommandBuffer.RemoveComponent(jobIndex, subLane, in m_AppliedTypes);
-                            m_CommandBuffer.AddComponent(jobIndex, subLane, default(Deleted));
+							stackList.AddNoResize(subLane);
                             laneBuffer.Remove(key);
                         }
                     }
                 }
+				if (stackList.Length != 0)
+				{
+					m_CommandBuffer.RemoveComponent(jobIndex, stackList.AsArray(), in m_AppliedTypes);
+					m_CommandBuffer.AddComponent<Deleted>(jobIndex, stackList.AsArray());
+				}
+			}
+
+			private void UpdateLanes(int jobIndex, NativeList<Entity> laneBuffer)
+			{
+				if (laneBuffer.Length != 0)
+				{
+					m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, laneBuffer.AsArray());
+					m_CommandBuffer.AddComponent<Updated>(jobIndex, laneBuffer.AsArray());
+				}
             }
 
             /*private void CreateEdgeConnectionLanes(int jobIndex, ref int edgeLaneIndex, ref int connectionIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, NativeList<ConnectPosition> sourceBuffer,
@@ -3325,7 +3351,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -3491,6 +3517,10 @@ namespace Traffic.Systems
                     middleConnection.m_ConnectPosition.m_LaneData.m_Flags &= ~(LaneFlags.Slave | LaneFlags.Master);
                 }
                 PedestrianLane component5 = default(PedestrianLane);
+                if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Pedestrian) != 0)
+                {
+                    component5.m_Flags |= PedestrianLaneFlags.SideConnection;
+                }
                 UtilityLane component6 = default(UtilityLane);
                 if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Utility) != 0 && m_PrefabRefData.TryGetComponent(middleConnection.m_ConnectPosition.m_Owner, out PrefabRef componentData) &&
                     m_PrefabNetData.TryGetComponent(componentData.m_Prefab, out NetData componentData2) && m_PrefabGeometryData.TryGetComponent(componentData.m_Prefab, out NetGeometryData componentData3) &&
@@ -3518,7 +3548,14 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData4);
+                        }
                     }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -3534,8 +3571,7 @@ namespace Traffic.Systems
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -3545,8 +3581,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Master) != 0)
                     {
@@ -3610,10 +3645,15 @@ namespace Traffic.Systems
                         component10.m_Flags |= (SlaveLaneFlags)(middleConnection.m_IsSource ? 4096 : 2048);
                         m_CommandBuffer.SetComponent(jobIndex, e, component10);
                     }
-                    m_CommandBuffer.AddComponent(jobIndex, e, component);
                     if (isTemp)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, e, temp);
+                        m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                        m_CommandBuffer.SetComponent(jobIndex, e, component);
+                        m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                    }
+                    else
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, e, component);
                     }
                 }
             }
@@ -3629,7 +3669,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -3872,6 +3912,10 @@ namespace Traffic.Systems
                     connectPosition.m_LaneData.m_Flags &= ~(LaneFlags.Slave | LaneFlags.Master);
                 }
                 PedestrianLane component5 = default(PedestrianLane);
+                if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Pedestrian) != 0)
+                {
+                    component5.m_Flags |= PedestrianLaneFlags.SideConnection;
+                }
                 UtilityLane component6 = default(UtilityLane);
                 if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Utility) != 0 && m_PrefabRefData.TryGetComponent(connectPosition.m_Owner, out PrefabRef componentData) &&
                     m_PrefabNetData.TryGetComponent(componentData.m_Prefab, out NetData componentData2) && m_PrefabGeometryData.TryGetComponent(componentData.m_Prefab, out NetGeometryData componentData3) &&
@@ -3900,7 +3944,14 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, curve2);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData4);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData4);
+                        }
                     }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -3916,8 +3967,7 @@ namespace Traffic.Systems
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -3927,8 +3977,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Master) != 0)
                     {
@@ -3992,10 +4041,15 @@ namespace Traffic.Systems
                         component10.m_Flags |= (SlaveLaneFlags)(isSource ? 4096 : 2048);
                         m_CommandBuffer.SetComponent(jobIndex, e, component10);
                     }
-                    m_CommandBuffer.AddComponent(jobIndex, e, component);
                     if (isTemp)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, e, temp);
+                        m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                        m_CommandBuffer.SetComponent(jobIndex, e, component);
+                        m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                    }
+                    else
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, e, component);
                     }
                 }
             }*/
@@ -4036,7 +4090,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -4188,9 +4242,9 @@ namespace Traffic.Systems
                     }
                     if ((laneFlags & LaneFlags.Road) == 0)
                     {
-                        component6.m_Flags |= TrackLaneFlags.FullMatch;
+                        component6.m_Flags |= TrackLaneFlags.Exclusive;
                     }
-                    if (((prefabCompositionData.m_Flags.m_Left | prefabCompositionData.m_Flags.m_Right) & CompositionFlags.Side.PrimaryStop) != 0)
+                    if (((prefabCompositionData.m_Flags.m_Left | prefabCompositionData.m_Flags.m_Right) & (CompositionFlags.Side.PrimaryStop | CompositionFlags.Side.SecondaryStop)) != 0)
                     {
                         component6.m_Flags |= TrackLaneFlags.Station;
                     }
@@ -4299,7 +4353,14 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, curveData);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData);
+                        }
                     }
                     if (flag3)
                     {
@@ -4330,8 +4391,7 @@ namespace Traffic.Systems
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -4341,8 +4401,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                     if ((laneFlags & LaneFlags.Master) != 0)
                     {
@@ -4357,7 +4416,10 @@ namespace Traffic.Systems
                         component10.m_MinIndex = prefabCompositionLaneData.m_Index;
                         component10.m_MaxIndex = prefabCompositionLaneData.m_Index;
                         component10.m_SubIndex = prefabCompositionLaneData.m_Index;
-                        component10.m_Flags |= SlaveLaneFlags.AllowChange;
+                        if (!disallowLaneChange.HasComponent(owner))
+                        {
+                           component10.m_Flags |= SlaveLaneFlags.AllowChange;
+                        }
                         if ((laneFlags & LaneFlags.DisconnectedStart) != 0)
                         {
                             component10.m_Flags |= SlaveLaneFlags.StartingLane;
@@ -4435,10 +4497,15 @@ namespace Traffic.Systems
                     }
                     m_CommandBuffer.SetComponent(jobIndex, e, component12);
                 }
-                m_CommandBuffer.AddComponent(jobIndex, e, component);
                 if (isTemp)
                 {
-                    m_CommandBuffer.AddComponent(jobIndex, e, temp);
+                    m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                    m_CommandBuffer.SetComponent(jobIndex, e, component);
+                    m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                }
+                else
+                {
+                    m_CommandBuffer.AddComponent(jobIndex, e, component);
                 }
             }*/
 
@@ -4455,7 +4522,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -4572,7 +4639,7 @@ namespace Traffic.Systems
                     }
                     if ((netLaneData.m_Flags & LaneFlags.Road) == 0)
                     {
-                        component5.m_Flags |= TrackLaneFlags.FullMatch;
+                        component5.m_Flags |= TrackLaneFlags.Exclusive;
                     }
                 }
                 ParkingLane component6 = default(ParkingLane);
@@ -4622,7 +4689,14 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, curveData);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData2);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData2);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData2);
+                        }
                     }
                     if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -4654,8 +4728,7 @@ namespace Traffic.Systems
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -4665,8 +4738,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                     return;
                 }
@@ -4703,26 +4775,30 @@ namespace Traffic.Systems
                 {
                     m_CommandBuffer.RemoveComponent<SecondaryLane>(jobIndex, e);
                 }
-                m_CommandBuffer.AddComponent(jobIndex, e, component);
+                if (isTemp)
+                {
+                    m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                    m_CommandBuffer.SetComponent(jobIndex, e, component);
+                    m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                    if (original != Entity.Null)
+                    {
+                        if (m_OverriddenData.HasComponent(original))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, e, default(Overridden));
+                        }
+                        if (m_CutRanges.TryGetBuffer(original, out DynamicBuffer<CutRange> bufferData))
+                        {
+                            m_CommandBuffer.AddBuffer<CutRange>(jobIndex, e).CopyFrom(bufferData);
+                        }
+                    }
+                }
+                else
+                {
+                    m_CommandBuffer.AddComponent(jobIndex, e, component);
+                }
                 if (math.any(@bool))
                 {
                     m_CommandBuffer.AddComponent(jobIndex, e, new Elevation(elevation));
-                }
-                if (!isTemp)
-                {
-                    return;
-                }
-                m_CommandBuffer.AddComponent(jobIndex, e, temp);
-                if (original != Entity.Null)
-                {
-                    if (m_OverriddenData.HasComponent(original))
-                    {
-                        m_CommandBuffer.AddComponent(jobIndex, e, default(Overridden));
-                    }
-                    if (m_CutRanges.TryGetBuffer(original, out DynamicBuffer<CutRange> bufferData))
-                    {
-                        m_CommandBuffer.AddBuffer<CutRange>(jobIndex, e).CopyFrom(bufferData);
-                    }
                 }
             }*/
 
@@ -6150,6 +6226,7 @@ namespace Traffic.Systems
                     connectPosition.m_Tangent += connectPosition2.m_Tangent;
                 }
                 connectPosition.m_Position /= (float)sourceBuffer.Length;
+                connectPosition.m_Tangent.y = 0f;
                 connectPosition.m_Tangent = math.normalizesafe(connectPosition.m_Tangent);
                 TrackLaneData trackLaneData = m_TrackLaneData[connectPosition.m_LaneData.m_Lane];
                 NetCompositionData netCompositionData = m_PrefabCompositionData[connectPosition.m_NodeComposition];
@@ -6167,6 +6244,7 @@ namespace Traffic.Systems
                         continue;
                     }
                     connectPosition3.m_Position /= (float)(j - num3);
+                    connectPosition3.m_Tangent.y = 0f;
                     connectPosition3.m_Tangent = math.normalizesafe(connectPosition3.m_Tangent);
                     if (!connectPosition3.m_Owner.Equals(connectPosition.m_Owner))
                     {
@@ -6181,6 +6259,7 @@ namespace Traffic.Systems
                     num3 = j;
                 }
                 connectPosition3.m_Position /= (float)(targetBuffer.Length - num3);
+                connectPosition3.m_Tangent.y = 0f;
                 connectPosition3.m_Tangent = math.normalizesafe(connectPosition3.m_Tangent);
                 if (!connectPosition3.m_Owner.Equals(connectPosition.m_Owner))
                 {
@@ -6274,6 +6353,8 @@ namespace Traffic.Systems
                 if (m_TrackLaneData.TryGetComponent(prefabRef.m_Prefab, out TrackLaneData componentData))
                 {
                     float distance = math.max(1f, math.distance(sourcePosition.m_Position, targetPosition.m_Position));
+                    sourcePosition.m_Tangent.y = 0f;
+                    targetPosition.m_Tangent.y = 0f;
                     if (NetUtils.CalculateCurviness(sourcePosition.m_Tangent, -targetPosition.m_Tangent, distance) > componentData.m_MaxCurviness)
                     {
                         return false;
@@ -6417,7 +6498,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -6786,6 +6867,10 @@ namespace Traffic.Systems
                             curviness = NetUtils.CalculateCurviness(curve, m_NetLaneData[prefabRef.m_Prefab].m_Width);
                         }
                         component6.m_Curviness = curviness;
+                        if (component6.m_Curviness > 1E-06f && m_TrackLaneData.TryGetComponent(prefabRef.m_Prefab, out TrackLaneData componentData))
+                        {
+                            component6.m_Curviness = math.min(component6.m_Curviness, componentData.m_MaxCurviness);
+                        }
                         if ((sourcePosition.m_LaneData.m_Flags & targetPosition.m_LaneData.m_Flags & LaneFlags.Twoway) != 0)
                         {
                             bool num5 = sourcePosition.m_IsEnd == ((sourcePosition.m_LaneData.m_Flags & LaneFlags.Invert) == 0);
@@ -6819,7 +6904,7 @@ namespace Traffic.Systems
                             component6.m_Flags |= TrackLaneFlags.LevelCrossing;
                             hasTrafficLights = true;
                         }
-                        if (((netCompositionData.m_Flags.m_Left | netCompositionData.m_Flags.m_Right | netCompositionData2.m_Flags.m_Left | netCompositionData2.m_Flags.m_Right) & CompositionFlags.Side.PrimaryStop) != 0)
+						if (((netCompositionData.m_Flags.m_Left | netCompositionData.m_Flags.m_Right | netCompositionData2.m_Flags.m_Left | netCompositionData2.m_Flags.m_Right) & (CompositionFlags.Side.PrimaryStop | CompositionFlags.Side.SecondaryStop)) != 0)
                         {
                             component6.m_Flags |= TrackLaneFlags.Station;
                         }
@@ -6948,10 +7033,10 @@ namespace Traffic.Systems
                         ReplaceTempOwner(ref laneKey2, targetPosition.m_Owner);
                         GetOriginalLane(laneBuffer, laneKey2, ref temp);
                     }
-                    PseudoRandomSeed componentData = default(PseudoRandomSeed);
-                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData))
+                    PseudoRandomSeed componentData2 = default(PseudoRandomSeed);
+                    if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0 && !m_PseudoRandomSeedData.TryGetComponent(temp.m_Original, out componentData2))
                     {
-                        componentData = new PseudoRandomSeed(ref outRandom);
+                        componentData2 = new PseudoRandomSeed(ref outRandom);
                     }
                     if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                     {
@@ -6960,7 +7045,14 @@ namespace Traffic.Systems
                         m_CommandBuffer.SetComponent(jobIndex, item, curve);
                         if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                         {
-                            m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                            if (!m_PseudoRandomSeedData.HasComponent(item))
+                            {
+                                m_CommandBuffer.AddComponent(jobIndex, item, componentData2);
+                            }
+                            else
+                            {
+                                m_CommandBuffer.SetComponent(jobIndex, item, componentData2);
+                            }
                         }
                         if ((laneFlags & LaneFlags.Road) != 0)
                         {
@@ -6980,8 +7072,7 @@ namespace Traffic.Systems
                         }
                         if (isTemp)
                         {
-                            m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                            m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                            laneBuffer.m_Updates.Add(in item);
                             m_CommandBuffer.SetComponent(jobIndex, item, temp);
                         }
                         else if (m_TempData.HasComponent(item))
@@ -6991,8 +7082,7 @@ namespace Traffic.Systems
                         }
                         else
                         {
-                            m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                            m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                            laneBuffer.m_Updates.Add(in item);
                         }
                         if ((laneFlags & LaneFlags.Master) != 0)
                         {
@@ -7042,7 +7132,7 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, e, curve);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.SetComponent(jobIndex, e, componentData);
+                        m_CommandBuffer.SetComponent(jobIndex, e, componentData2);
                     }
                     if ((laneFlags & LaneFlags.Road) != 0)
                     {
@@ -7083,14 +7173,19 @@ namespace Traffic.Systems
                         }
                         m_CommandBuffer.SetComponent(jobIndex, e, component10);
                     }
-                    m_CommandBuffer.AddComponent(jobIndex, e, component);
+                    if (isTemp)
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                        m_CommandBuffer.SetComponent(jobIndex, e, component);
+                        m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                    }
+                    else
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, e, component);
+                    }
                     if (hasTrafficLights)
                     {
                         m_CommandBuffer.AddComponent(jobIndex, e, default(LaneSignal));
-                    }
-                    if (isTemp)
-                    {
-                        m_CommandBuffer.AddComponent(jobIndex, e, temp);
                     }
                 }
                 return true;
@@ -7274,7 +7369,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -7371,12 +7466,18 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData);
+                        }
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -7386,8 +7487,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                 }
                 else
@@ -7401,10 +7501,15 @@ namespace Traffic.Systems
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, componentData);
                     }
-                    m_CommandBuffer.AddComponent(jobIndex, e, component);
                     if (isTemp)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, e, temp);
+                        m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                        m_CommandBuffer.SetComponent(jobIndex, e, component);
+                        m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                    }
+                    else
+                    {
+                        m_CommandBuffer.AddComponent(jobIndex, e, component);
                     }
                 }
             }
@@ -7776,7 +7881,7 @@ namespace Traffic.Systems
                 if (isTemp)
                 {
                     temp.m_Flags = (ownerTemp.m_Flags & (TempFlags.Create | TempFlags.Delete | TempFlags.Select | TempFlags.Modify | TempFlags.Hidden));
-                    if ((ownerTemp.m_Flags & (TempFlags.Replace | TempFlags.Upgrade)) != 0)
+                    if ((ownerTemp.m_Flags & TempFlags.Replace) != 0)
                     {
                         temp.m_Flags |= TempFlags.Modify;
                     }
@@ -7903,7 +8008,11 @@ namespace Traffic.Systems
                     {
                         component5.m_Bezier = NetUtils.StraightCurve(sourcePosition.m_Position, targetPosition.m_Position);
                     }
-                    if (!isSideConnection)
+                    if (isSideConnection)
+                    {
+                        component3.m_Flags |= PedestrianLaneFlags.SideConnection;
+                    }
+                    else
                     {
                         component3.m_Flags |= PedestrianLaneFlags.AllowMiddle;
                         ModifyCurveHeight(ref component5.m_Bezier, sourcePosition.m_BaseHeight, targetPosition.m_BaseHeight, startCompositionData, endCompositionData);
@@ -7939,7 +8048,14 @@ namespace Traffic.Systems
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
-                        m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        if (!m_PseudoRandomSeedData.HasComponent(item))
+                        {
+                            m_CommandBuffer.AddComponent(jobIndex, item, componentData);
+                        }
+                        else
+                        {
+                            m_CommandBuffer.SetComponent(jobIndex, item, componentData);
+                        }
                     }
                     if (hasSignals)
                     {
@@ -7978,8 +8094,7 @@ namespace Traffic.Systems
                     }
                     if (isTemp)
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                         m_CommandBuffer.SetComponent(jobIndex, item, temp);
                     }
                     else if (m_TempData.HasComponent(item))
@@ -7989,8 +8104,7 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, item);
-                        m_CommandBuffer.AddComponent(jobIndex, item, default(Updated));
+                        laneBuffer.m_Updates.Add(in item);
                     }
                     return;
                 }
@@ -8005,7 +8119,16 @@ namespace Traffic.Systems
                 {
                     m_CommandBuffer.SetComponent(jobIndex, e, componentData);
                 }
-                m_CommandBuffer.AddComponent(jobIndex, e, component);
+                if (isTemp)
+                {
+                    m_CommandBuffer.AddComponent(jobIndex, e, in m_TempOwnerTypes);
+                    m_CommandBuffer.SetComponent(jobIndex, e, component);
+                    m_CommandBuffer.SetComponent(jobIndex, e, temp);
+                }
+                else
+                {
+                    m_CommandBuffer.AddComponent(jobIndex, e, component);
+                }
                 if (hasSignals)
                 {
                     m_CommandBuffer.AddComponent(jobIndex, e, default(LaneSignal));
@@ -8029,10 +8152,6 @@ namespace Traffic.Systems
                         };
                         dynamicBuffer2.Add(elem);
                     }
-                }
-                if (isTemp)
-                {
-                    m_CommandBuffer.AddComponent(jobIndex, e, temp);
                 }
             }
         }

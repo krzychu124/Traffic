@@ -130,7 +130,10 @@ namespace Traffic.Tools
 
         public Tooltip tooltip => _tooltip.value;
         public bool UIDisabled => (m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) != 0;
+        public bool Underground { get; set; }
 
+        public override bool allowUnderground => true;
+        
         public override PrefabBase GetPrefab() {
             return null;
         }
@@ -190,6 +193,26 @@ namespace Traffic.Tools
             _tooltip.Dispose();
             base.OnDestroy();
         }
+        
+        public override void SetUnderground(bool isUnderground)
+        {
+            Underground = isUnderground;
+        }
+
+        public override void ElevationUp()
+        {
+            Underground = false;
+        }
+
+        public override void ElevationDown()
+        {
+            Underground = true;
+        }
+
+        public override void ElevationScroll()
+        {
+            Underground = !Underground;
+        }
 
         public void OnKeyPressed(EventModifiers modifiers, KeyCode code) {
             if (modifiers == EventModifiers.Control && code == KeyCode.R)
@@ -225,6 +248,7 @@ namespace Traffic.Tools
             _tooltip.value = Tooltip.None;
             _state = State.Default;
             ToolMode = Mode.Default;
+            requireUnderground = false;
             
             _applyAction.shouldBeEnabled = true;
             _secondaryApplyAction.shouldBeEnabled = true;
@@ -369,7 +393,14 @@ namespace Traffic.Tools
                 _modRaycastSystem.SetInput(input);
             }
             
-            m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
+            if (Underground)
+            {
+                m_ToolRaycastSystem.collisionMask = CollisionMask.Underground;
+            }
+            else
+            {
+                m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
+            }
             m_ToolRaycastSystem.typeMask = (TypeMask.Net);
             m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
             m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.TrainTrack | Layer.TramTrack | Layer.SubwayTrack | Layer.PublicTransportRoad;
@@ -418,6 +449,18 @@ namespace Traffic.Tools
             {
                 return inputDeps;
             }
+
+            bool prevRequireUnderground = requireUnderground;
+            requireUnderground = Underground;
+            if (prevRequireUnderground != Underground)
+            {
+                applyMode = ApplyMode.Clear;
+                _state = State.Default;
+                _lastControlPoint = default;
+                _controlPoints.Clear();
+                return UpdateDefinitions(inputDeps: SelectIntersectionNode(inputDeps, Entity.Null));
+            }
+            
             if (ToolMode == Mode.ApplyPreviewModifications)
             {
                 ToolMode = Mode.Default;
@@ -713,7 +756,6 @@ namespace Traffic.Tools
                 case State.SelectingSourceConnector:
                     applyMode = ApplyMode.Clear;
                     _state = State.Default;
-                    CleanupIntersectionHelpers();
                     return SelectIntersectionNode(inputHandle, Entity.Null);
                 case State.SelectingTargetConnector:
                     applyMode = ApplyMode.Clear;
@@ -732,9 +774,6 @@ namespace Traffic.Tools
             return inputDeps;
         }
 
-        /// <summary>
-        /// TODO FIX ME - double check when it's updated
-        /// </summary>
         private JobHandle UpdateDefinitions(JobHandle inputDeps, bool updateEditIntersection = false) {
             JobHandle jobHandle = DestroyDefinitions(_definitionQuery, _toolOutputBarrier, inputDeps);
             Entity editingIntersection = Entity.Null;
@@ -842,7 +881,8 @@ namespace Traffic.Tools
             Logger.DebugTool($"[Resetting Node Lane Connections {UnityEngine.Time.frameCount}] at {_selectedNode}");
             applyMode = ApplyMode.Clear;
             _lastControlPoint = default;
-            _controlPoints.Clear();
+            _controlPoints.Clear();               
+            _state = State.SelectingSourceConnector;
             if (EntityManager.HasBuffer<ModifiedLaneConnections>(_selectedNode))
             {
                 _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
@@ -929,6 +969,7 @@ namespace Traffic.Tools
                 {
                     _lastControlPoint = default;
                     _controlPoints.Clear();
+                    _state = State.SelectingSourceConnector;
                     
                     Logger.DebugTool($"ApplyPreviewedAction: Scheduling apply connections for {data.mode} on {data.entity}");
                     JobHandle job = new ApplyLaneConnectionsActionJob()

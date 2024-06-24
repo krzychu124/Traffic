@@ -39,12 +39,16 @@ namespace Traffic
 
         private static bool? _isTLEEnabled;
 
-        private ModSettings _modSettings;
+        internal ModSettings Settings { get; private set; }
         private const string SETTINGS_ASSET_NAME = "Traffic General Settings";
 
         public void OnLoad(UpdateSystem updateSystem)
         {
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
+            Settings = new ModSettings(this);
+            Settings.RegisterInOptionsUI();
+            Settings.RegisterKeyBindings();
+            
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateBefore<PreDeserialize<ModUISystem>>(SystemUpdatePhase.Deserialize);
             
@@ -86,12 +90,10 @@ namespace Traffic
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
 
-            _modSettings = new ModSettings(this);
-            _modSettings.RegisterInOptionsUI();
-            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, _modSettings, new ModSettings(this));
-            if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(_modSettings.GetSettingsLocaleID()))
+            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, Settings, new ModSettings(this));
+            if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(Settings.GetSettingsLocaleID()))
             {
-                GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(_modSettings));
+                GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(Settings));
             }
             GameManager.instance.RegisterUpdater(ListEnabledMods);
         }
@@ -99,8 +101,8 @@ namespace Traffic
         public void OnDispose()
         {
             Logger.Info(nameof(OnDispose));
-            _modSettings?.UnregisterInOptionsUI();
-            _modSettings = null;
+            Settings?.UnregisterInOptionsUI();
+            Settings = null;
         }
 
         private static void TLECompatibilityFix()

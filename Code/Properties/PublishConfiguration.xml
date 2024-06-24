@@ -87,22 +87,20 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.1.7.3" />
+  <ModVersion Value="0.1.8" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.1.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.1.7.3
+  <ChangeLog>## v.0.1.8
 
-Fixed multiple bugs in lane connection persistence logic, old data will be automatically migrated. If unrecoverable configuration errors are detected, lane connections at the intersection **will be reset** and added to the migration summary for easier manual lane connection recreation, if needed.
+_Compatibility fix for CS II v. 1.1.5f1_
 
-- improved lane connection settings persistence when applying road upgrades,
-- improved the mod stability when modifying intersection connections causing the game crash in rare cases, 
-- extended lane configuration data with more information,
-- automatic data migration tool with UI for displaying migration results,
-- increased the click detection radius on **Lane Connectors**, increasing connector size in the options will also increase detection radius,
-- fixed minor custom lane connection preview if they are going to be deleted - should now display vanilla, instead of nothing</ChangeLog>
+- **Underground mode**  for **Lane Connector** tool,
+- Reset selected node when switching between under and on/overground mode
+- Fixed incomplete reset tool state to "select source connector" after activating any action from toolbox UI 
+- Configurable keybinding for toggling Lane Connector tool</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
 </Publish>

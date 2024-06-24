@@ -1,7 +1,8 @@
-import { ReactElement, PropsWithChildren } from "react";
+import { ReactElement, PropsWithChildren, ReactNode } from "react";
 import { TempFlags } from "types/traffic";
 import { Number2, TooltipProps } from "cs2/ui";
 import { getModule } from "cs2/modding";
+import { ControlPath } from "cs2/input";
 
 export const TempFlagsStr: Record<number, string> = {
   0: "0",
@@ -48,6 +49,12 @@ export const simpleBoundingRectComparer = (a?: DOMRect, b?: DOMRect) => a?.x ===
 interface DescriptionTooltipProps extends Omit<TooltipProps, 'tooltip'> {
   title: string | null;
   description: string | null;
+  content?: ReactNode | string | null;
+}
+
+interface LocalizedInputPathProps {
+  group: string;
+  binding: ControlPath, modifiers: ControlPath[], short: any, gamepadType: any, keyboardLayout: any, layoutMap: any;
 }
 
 export class VanillaComponentsResolver {
@@ -58,11 +65,17 @@ export class VanillaComponentsResolver {
   public get DescriptionTooltip(): (props: PropsWithChildren<DescriptionTooltipProps>) => ReactElement {
     return this._descriptionTooltip
   }
+  
+  public get LocalizedInputPath(): (props: LocalizedInputPathProps) => ReactElement {
+    return this._localizedInputPath;
+  }
 
   private static _instance: VanillaComponentsResolver = new VanillaComponentsResolver();
   private readonly _descriptionTooltip: (props: PropsWithChildren<DescriptionTooltipProps>) => ReactElement;
+  private readonly _localizedInputPath: (props: any) => ReactElement;
 
   private constructor() {
     this._descriptionTooltip = getModule("game-ui/common/tooltip/description-tooltip/description-tooltip.tsx", "DescriptionTooltip");
+    this._localizedInputPath = getModule("game-ui/common/localization/localized-input-path.tsx", "LocalizedInputPath");
   }
 }

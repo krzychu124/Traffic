@@ -1,10 +1,8 @@
-﻿## v.0.1.7.3
+﻿## v.0.1.8
 
-Fixed multiple bugs in lane connection persistence logic, old data will be automatically migrated. If unrecoverable configuration errors are detected, lane connections at the intersection **will be reset** and added to the migration summary for easier manual lane connection recreation, if needed.
+_Compatibility fix for CS II v. 1.1.5f1_
 
-- improved lane connection settings persistence when applying road upgrades,
-- improved the mod stability when modifying intersection connections causing the game crash in rare cases, 
-- extended lane configuration data with more information,
-- automatic data migration tool with UI for displaying migration results,
-- increased the click detection radius on **Lane Connectors**, increasing connector size in the options will also increase detection radius,
-- fixed minor custom lane connection preview if they are going to be deleted - should now display vanilla, instead of nothing 
+- **Underground mode**  for **Lane Connector** tool,
+- Reset selected node when switching between under and on/overground mode
+- Fixed incomplete reset tool state to "select source connector" after activating any action from toolbox UI 
+- Configurable keybinding for toggling Lane Connector tool

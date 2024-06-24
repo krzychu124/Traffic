@@ -1,29 +1,34 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Colossal.Serialization.Entities;
 using Colossal.UI.Binding;
 using Game;
 using Game.Common;
+using Game.Input;
 using Game.Rendering;
 using Game.Serialization;
+using Game.Settings;
+using Game.Tools;
 using Game.UI;
 using Traffic.CommonData;
 using Traffic.Debug;
-using Traffic.Helpers;
 using Traffic.Tools;
 using Unity.Entities;
-using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Traffic.UISystems
 {
     public partial class ModUISystem : UISystemBase, IPreDeserialize
     {
-        private InGameKeyListener _keyListener;
         private EntityQuery _actionOverlayQuery;
         private GetterValueBinding<List<Entity>> _affectedIntersectionsBinding;
         private SelectedIntersectionData _selectedIntersectionData;
+        private ModKeyBinds _keyBindings;
         private List<Entity> _affectedIntersections;
         private CameraUpdateSystem _cameraUpdateSystem;
+        private ToolSystem _toolSystem;
+        private DefaultToolSystem _defaultTool;
+        private LaneConnectorToolSystem _laneConnectorTool;
+        private ProxyAction _toggleLaneConnectorToolAction;
 
         public override GameMode gameMode
         {
@@ -37,8 +42,17 @@ namespace Traffic.UISystems
             _actionOverlayQuery = GetEntityQuery(ComponentType.ReadOnly<ActionOverlayData>(), ComponentType.Exclude<Deleted>());
             _selectedIntersectionData = new SelectedIntersectionData();
             _cameraUpdateSystem = World.GetOrCreateSystemManaged<CameraUpdateSystem>();
+            _toolSystem = World.GetOrCreateSystemManaged<ToolSystem>();
+            _defaultTool = World.GetOrCreateSystemManaged<DefaultToolSystem>();
+            _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
+
+            //keybindings
+            _toggleLaneConnectorToolAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ToggleLaneConnectorTool);
+
+            //ui bindings
             AddUpdateBinding(new GetterValueBinding<SelectedIntersectionData>(Mod.MOD_NAME, UIBindingConstants.SELECTED_INTERSECTION, () => SelectedIntersection));
             AddUpdateBinding(new GetterValueBinding<bool>(Mod.MOD_NAME, UIBindingConstants.LOADING_ERRORS_PRESENT, () => HasLoadingErrors));
+            AddUpdateBinding(new GetterValueBinding<ModKeyBinds>(Mod.MOD_NAME, UIBindingConstants.KEY_BINDINGS, () => CurrentKeyBindings));
             AddBinding(_affectedIntersectionsBinding = new GetterValueBinding<List<Entity>>(Mod.MOD_NAME, UIBindingConstants.ERROR_AFFECTED_INTERSECTIONS, () => AffectedIntersections, new ListWriter<Entity>()));
             AddBinding(new TriggerBinding<ActionOverlayPreview>(Mod.MOD_NAME, UIBindingConstants.SET_ACTION_OVERLAY_PREVIEW, SetActionOverlayPreviewState, new EnumReader<ActionOverlayPreview>()));
             AddBinding(new TriggerBinding(Mod.MOD_NAME, UIBindingConstants.APPLY_TOOL_ACTION_PREVIEW, ApplyActionOverlayPreview));
@@ -46,6 +60,7 @@ namespace Traffic.UISystems
             AddBinding(new TriggerBinding<Entity>(Mod.MOD_NAME, UIBindingConstants.NAVIGATE_TO_ENTITY, NavigateToEntity));
             AddBinding(new TriggerBinding<int>(Mod.MOD_NAME, UIBindingConstants.REMOVE_ENTITY_FROM_LIST, RemoveEntityFromList));
             EntityManager.CreateSingleton<ActionOverlayData>();
+            ModSettings.Instance.onSettingsApplied += ModSettingsApplied;
         }
 
         public SelectedIntersectionData SelectedIntersection
@@ -70,12 +85,35 @@ namespace Traffic.UISystems
             get { return _affectedIntersections; }
         }
 
+        private ModKeyBinds CurrentKeyBindings
+        {
+            get { return _keyBindings; }
+        }
+
+        protected override void OnUpdate()
+        {
+            base.OnUpdate();
+            if (_toggleLaneConnectorToolAction.WasPerformedThisFrame())
+            {
+                _toolSystem.activeTool = _toolSystem.activeTool == _laneConnectorTool ? _defaultTool : _laneConnectorTool;
+            }
+        }
+
+        private void ModSettingsApplied(Setting setting)
+        {
+            Logger.Info($"Mod settings has been applied ({UnityEngine.Time.frameCount})");
+            _keyBindings = new ModKeyBinds();
+            if (setting is ModSettings ms)
+            {
+                _keyBindings.UpdateStrings(ms.GetActions());
+            }
+        }
+
         public void ApplyActionOverlayPreview()
         {
-            LaneConnectorToolSystem laneConnectorToolSystem = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
-            if (laneConnectorToolSystem.Enabled)
+            if (_laneConnectorTool.Enabled)
             {
-                laneConnectorToolSystem.ToolMode = LaneConnectorToolSystem.Mode.ApplyPreviewModifications;
+                _laneConnectorTool.ToolMode = LaneConnectorToolSystem.Mode.ApplyPreviewModifications;
             }
         }
 
@@ -90,8 +128,18 @@ namespace Traffic.UISystems
 
         private void ToggleTool(bool enable)
         {
-            LaneConnectorToolSystem laneConnectorToolSystem = World.GetExistingSystemManaged<LaneConnectorToolSystem>();
-            laneConnectorToolSystem.ToggleTool(enable);
+            if (enable && _toolSystem.activeTool != _laneConnectorTool)
+            {
+                _toolSystem.selected = Entity.Null;
+                _toolSystem.activeTool = _laneConnectorTool;
+                _toggleLaneConnectorToolAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
+            } 
+            else if (!enable && _toolSystem.activeTool == _laneConnectorTool)
+            {
+                _toolSystem.selected = Entity.Null;
+                _toolSystem.activeTool = _defaultTool;
+                _toggleLaneConnectorToolAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
+            }
         }
 
         private void NavigateToEntity(Entity entity)
@@ -110,7 +158,7 @@ namespace Traffic.UISystems
             {
                 _affectedIntersections.Clear();
                 _affectedIntersectionsBinding?.TriggerUpdate();
-            } 
+            }
             else if (_affectedIntersections.Count > entityIndex)
             {
                 _affectedIntersections.RemoveAt(entityIndex);
@@ -128,11 +176,12 @@ namespace Traffic.UISystems
 
         protected override void OnGamePreload(Purpose purpose, GameMode mode)
         {
-            if ((mode == GameMode.Game || mode == GameMode.Editor) && !_keyListener)
+            bool isGameOrEditor = mode == GameMode.Game || mode == GameMode.Editor;
+            _toggleLaneConnectorToolAction.shouldBeEnabled = isGameOrEditor;
+            Logger.Info($"OnGamePreload: {purpose} | {mode}");
+            if (isGameOrEditor)
             {
-                _keyListener = new GameObject("Traffic-keyListener").AddComponent<InGameKeyListener>();
-                // _keyListener.keyHitEvent += World.GetExistingSystemManaged<PriorityToolSystem>().OnKeyPressed;
-                _keyListener.keyHitEvent += World.GetExistingSystemManaged<LaneConnectorToolSystem>().OnKeyPressed;
+                ModSettingsApplied(ModSettings.Instance);
             }
         }
 
@@ -147,14 +196,7 @@ namespace Traffic.UISystems
         protected override void OnDestroy()
         {
             base.OnDestroy();
-            if (_keyListener)
-            {
-                // _keyListener.keyHitEvent -= World.GetExistingSystemManaged<PriorityToolSystem>().OnKeyPressed;
-                _keyListener.keyHitEvent -= World.GetExistingSystemManaged<LaneConnectorToolSystem>().OnKeyPressed;
-                Object.Destroy(_keyListener.gameObject);
-                _keyListener = null;
-            }
-            // Cleanup singleton data
+            ModSettings.Instance.onSettingsApplied -= ModSettingsApplied;
             if (SystemAPI.TryGetSingletonEntity<ActionOverlayData>(out Entity actionOverlayEntity))
             {
                 EntityManager.DestroyEntity(actionOverlayEntity);
@@ -167,7 +209,7 @@ namespace Traffic.UISystems
 
             public void Write(IJsonWriter writer)
             {
-                writer.TypeBegin(nameof(SelectedIntersectionData));
+                writer.TypeBegin(GetType().FullName);
                 writer.PropertyName(nameof(entity));
                 writer.Write(entity);
                 writer.TypeEnd();
@@ -181,6 +223,45 @@ namespace Traffic.UISystems
             RemoveUTurns = 2,
             RemoveUnsafe = 3,
             ResetToVanilla = 4,
+        }
+
+        public class ModKeyBinds : IJsonWritable
+        {
+            //TODO Gamepad support (pass multiple or choose based on current input type)
+            public ProxyBinding laneConnectorTool;
+            public ProxyBinding resetDefaults;
+
+            public void Write(IJsonWriter writer)
+            {
+                writer.TypeBegin(GetType().FullName);
+                writer.PropertyName(nameof(laneConnectorTool));
+                writer.Write(laneConnectorTool);
+                writer.PropertyName(nameof(resetDefaults));
+                writer.Write(resetDefaults);
+                writer.TypeEnd();
+            }
+
+            public void UpdateStrings(IEnumerable<ProxyAction> keybinds)
+            {
+                foreach (ProxyAction proxyAction in keybinds)
+                {
+                    Logger.Info($"ProxyAction: {proxyAction.name}, {proxyAction.displayName}, {proxyAction.displayPriority}");
+                    switch (proxyAction.name)
+                    {
+                        case ModSettings.KeyBindAction.ToggleLaneConnectorTool:
+                            //TODO Gamepad support - hints
+                            // proxyAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
+                            laneConnectorTool = proxyAction.bindings.FirstOrDefault();
+                            break;
+                        case ModSettings.KeyBindAction.ResetIntersectionToDefaults:
+                            resetDefaults = proxyAction.bindings.FirstOrDefault();
+                            break;
+                        default:
+                            Logger.Warning($"Not supported mod keybind action: {proxyAction.name}");
+                            break;
+                    }
+                }
+            }
         }
 
         public void PreDeserialize(Context context)

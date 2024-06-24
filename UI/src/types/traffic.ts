@@ -3,6 +3,7 @@
 //     the code is regenerated.
 
 import { Entity } from 'cs2/utils';
+import { WidgetIdentifier } from 'cs2/bindings';
 
 export class UIBindingConstants
 {
@@ -10,10 +11,11 @@ export class UIBindingConstants
 	public static IS_DEBUG: string = `isDebugEnabled`;
 	public static SET_VISIBILITY: string = `setVisibility`;
 	public static TOGGLE_TOOL: string = `toggleTool`;
+	public static KEY_BINDINGS: string = `keybindings`;
+	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
 	public static SET_ACTION_OVERLAY_PREVIEW: string = `setActionOverlayPreview`;
 	public static SELECTED_INTERSECTION: string = `selectedIntersection`;
 	public static APPLY_TOOL_ACTION_PREVIEW: string = `applyToolActionPreview`;
-	public static LANE_CONNECTOR_TOOL: string = `Lane Connector Tool`;
 	public static LOADING_ERRORS_PRESENT: string = `loadingErrorsPresent`;
 	public static ERROR_AFFECTED_INTERSECTIONS: string = `errorAffectedIntersection`;
 	public static REMOVE_ENTITY_FROM_LIST: string = `removeEntityFromList`;
@@ -22,6 +24,7 @@ export class UIBindingConstants
 export class UIKeys
 {
 	public static TRAFFIC_MOD: string = `Traffic.UI.Tooltip.MainButton`;
+	public static SHORTCUT: string = `Traffic.UI.Tooltip.Shortcut`;
 	public static LANE_CONNECTION_TOOL: string = `Traffic.Tools.LaneConnector[Title]`;
 	public static SELECT_INTERSECTION: string = `Traffic.Tools.LaneConnector[SelectIntersectionMessage]`;
 	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections]`;
@@ -30,6 +33,14 @@ export class UIKeys
 	public static RESET_TO_VANILLA: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla]`;
 	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title`;
 	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message`;
+	public static KEY_TOGGLE_LANE_CONNECTOR_TOOL: string = `Traffic.Keybind.[ToggleLaneConnectorTool]`;
+	public static KEY_RESET_INTERSECTION_TO_DEFAULTS: string = `Traffic.Keybind.[ResetIntersectionToDefaults]`;
+	public static HINT_TOGGLE_LANE_CONNECTOR_TOOL: string = `Traffic.Hint.ToggleLaneConnectorTool`;
+}
+export interface ModKeyBinds
+{
+	laneConnectorTool: WidgetIdentifier;
+	resetDefaults: WidgetIdentifier;
 }
 export enum TempFlags {
 	Create = 1,
@@ -48,7 +59,8 @@ export enum TempFlags {
 	RemoveCost = 8192,
 	Optional = 16384,
 	Cancel = 32768,
-	SubDetail = 65536
+	SubDetail = 65536,
+	Duplicate = 131072
 }
 export enum ActionOverlayPreview {
 	None = 0,

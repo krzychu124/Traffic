@@ -11,11 +11,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.1.7.3</Version>
+        <Version>0.1.8</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.1.7.3</AssemblyVersion>
-        <FileVersion>0.1.7.3</FileVersion>
+        <AssemblyVersion>0.1.8</AssemblyVersion>
+        <FileVersion>0.1.8</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -58,6 +58,10 @@
         </Reference>
         <Reference Include="Colossal.Logging">
             <Private>false</Private>
+        </Reference>
+        <Reference Include="mscorlib">
+            <Private>false</Private>
+          <HintPath>$(CustomInstallationPath)\Cities2_Data\Managed\mscorlib.dll</HintPath>
         </Reference>
         <Reference Include="Unity.InputSystem">
             <Private>false</Private>

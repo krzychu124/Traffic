@@ -1,4 +1,4 @@
-﻿using System;
+﻿using Game.Input;
 using Game.Tools;
 using JetBrains.Annotations;
 using Reinforced.Typings.Ast.TypeNames;
@@ -23,9 +23,12 @@ namespace Traffic.Utils
                 config.RootNamespace("Traffic");
             });
             builder.AddImport("{ Entity }", "cs2/utils");
+            builder.AddImport("{ WidgetIdentifier }", "cs2/bindings");
             builder.Substitute(typeof(Entity), new RtSimpleTypeName("Entity"));
+            builder.Substitute(typeof(ProxyBinding), new RtSimpleTypeName("WidgetIdentifier"));
             builder.ExportAsClass<UIBindingConstants>().DontIncludeToNamespace().WithPublicFields();
             builder.ExportAsClass<Localization.UIKeys>().DontIncludeToNamespace().WithPublicFields();
+            builder.ExportAsInterface<ModUISystem.ModKeyBinds>().DontIncludeToNamespace().WithPublicFields().AutoI(false).OverrideNamespace("Traffic");;
             builder.ExportAsEnum<TempFlags>();
             builder.ExportAsEnum<ModUISystem.ActionOverlayPreview>();
             builder.ExportAsInterface<float3>()

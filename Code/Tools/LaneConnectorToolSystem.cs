@@ -45,8 +45,17 @@ namespace Traffic.Tools
 
         public enum State
         {
+            /// <summary>
+            /// Waiting of intersection selection
+            /// </summary>
             Default,
+            /// <summary>
+            /// Selected intersection, waiting for source lane connector selection
+            /// </summary>
             SelectingSourceConnector,
+            /// <summary>
+            /// Selected intersection, selected source lane connector, waiting for target lane connector selection
+            /// </summary>
             SelectingTargetConnector,
             // RemovingSourceConnections,
             // RemovingTargetConnections,
@@ -86,6 +95,10 @@ namespace Traffic.Tools
 
         private ProxyAction _applyAction;
         private ProxyAction _secondaryApplyAction;
+        private ProxyAction _removeAllConnectionsAction;
+        private ProxyAction _removeUTurnsAction;
+        private ProxyAction _removeUnsafeAction;
+        private ProxyAction _resetIntersectionToDefaultsAction;
         private ToolOutputBarrier _toolOutputBarrier;
         private AudioManager _audioManager;
         private NativeList<ControlPoint> _controlPoints;
@@ -106,7 +119,6 @@ namespace Traffic.Tools
         private EntityQuery _editIntersectionQuery;
         private EntityQuery _toolFeedbackQuery;
 
-        private InputAction _delAction;
         private Camera _mainCamera;
         private ComponentTypeSet _modifiedConnectionsTypeSet;
 
@@ -180,9 +192,12 @@ namespace Traffic.Tools
                 None = new []{ ComponentType.ReadOnly<Deleted>() },
             });
             // Actions
-            _delAction = new InputAction("LaneConnectorTool_Delete", InputActionType.Button, "<keyboard>/delete");
-            _applyAction = InputManager.instance.FindAction("Tool", "Apply");
-            _secondaryApplyAction = InputManager.instance.FindAction("Tool", "Secondary Apply");
+            _applyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ApplyTool);
+            _secondaryApplyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.CancelTool);
+            _removeAllConnectionsAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.RemoveAllConnections);
+            _removeUTurnsAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.RemoveUTurns);
+            _removeUnsafeAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.RemoveUnsafe);
+            _resetIntersectionToDefaultsAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ResetIntersectionToDefaults);
             Enabled = false;
         }
 
@@ -250,10 +265,8 @@ namespace Traffic.Tools
             ToolMode = Mode.Default;
             requireUnderground = false;
             
-            _applyAction.shouldBeEnabled = true;
-            _secondaryApplyAction.shouldBeEnabled = true;
+            ToggleToolActions(true);
             _modRaycastSystem.Enabled = true;
-            _delAction.Enable();
             _validationSystem.Enabled = false;
         }
 
@@ -264,10 +277,9 @@ namespace Traffic.Tools
             _nodeElevation.value = 0f;
             CleanupIntersectionHelpers();
             _modUISystem.SelectedIntersection = default;
-            _applyAction.shouldBeEnabled = false;
-            _secondaryApplyAction.shouldBeEnabled = false;
+
+            ToggleToolActions(false);
             _modRaycastSystem.Enabled = false;
-            _delAction.Disable();
             _validationSystem.Enabled = true;
         }
 
@@ -469,9 +481,9 @@ namespace Traffic.Tools
 
             if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
             {
-                if (_state == State.SelectingSourceConnector && Keyboard.current.deleteKey.wasPressedThisFrame)
+                if (CheckToolboxActions(inputDeps, out JobHandle resultHandle))
                 {
-                    return ResetNodeConnections(inputDeps);
+                    return resultHandle;
                 }
                 if (_secondaryApplyAction.WasPressedThisFrame())
                 {
@@ -877,6 +889,61 @@ namespace Traffic.Tools
             }
         }
 
+        private bool CheckToolboxActions(JobHandle inputDeps, out JobHandle jobHandle)
+        {
+            if (_state == State.Default)
+            {
+                jobHandle = new JobHandle();
+                return false;
+            }
+            
+            if (_resetIntersectionToDefaultsAction.WasPerformedThisFrame())
+            {
+                jobHandle = ResetNodeConnections(inputDeps);
+                return true;
+            }
+            if (_removeAllConnectionsAction.WasPerformedThisFrame())
+            {
+                SetActionOverlay(ModUISystem.ActionOverlayPreview.RemoveAllConnections);
+                jobHandle = ApplyPreviewedAction(inputDeps);
+                return true;
+            }
+            if (_removeUTurnsAction.WasPerformedThisFrame())
+            {
+                SetActionOverlay(ModUISystem.ActionOverlayPreview.RemoveUTurns);
+                jobHandle = ApplyPreviewedAction(inputDeps);
+                return true;
+            }
+            if (_removeUnsafeAction.WasPerformedThisFrame())
+            {
+                SetActionOverlay(ModUISystem.ActionOverlayPreview.RemoveUnsafe);
+                jobHandle = ApplyPreviewedAction(inputDeps);
+                return true;
+            }
+            
+            jobHandle =new JobHandle();
+            return false;
+        }
+
+        private void SetActionOverlay(ModUISystem.ActionOverlayPreview state)
+        {
+            bool isValid = _selectedNode != Entity.Null && EntityManager.Exists(_selectedNode);
+            ActionOverlayData actionOverlayData = SystemAPI.GetSingleton<ActionOverlayData>();
+            actionOverlayData.entity = state != ModUISystem.ActionOverlayPreview.None && isValid ? _selectedNode : Entity.Null;
+            actionOverlayData.mode = isValid ? state : ModUISystem.ActionOverlayPreview.None;
+            SystemAPI.SetSingleton(actionOverlayData);
+        }
+
+        private void ToggleToolActions(bool enable)
+        {
+            _applyAction.shouldBeEnabled = enable;
+            _secondaryApplyAction.shouldBeEnabled = enable;
+            _removeAllConnectionsAction.shouldBeEnabled = enable;
+            _removeUTurnsAction.shouldBeEnabled = enable;
+            _removeUnsafeAction.shouldBeEnabled = enable;
+            _resetIntersectionToDefaultsAction.shouldBeEnabled = enable;
+        }
+
         private JobHandle ResetNodeConnections(JobHandle handle) {
             Logger.DebugTool($"[Resetting Node Lane Connections {UnityEngine.Time.frameCount}] at {_selectedNode}");
             applyMode = ApplyMode.Clear;
@@ -962,6 +1029,7 @@ namespace Traffic.Tools
                         return inputDeps;
                     }
 
+                    SystemAPI.SetSingleton(new ActionOverlayData() {entity = Entity.Null, mode = ModUISystem.ActionOverlayPreview.None});
                     return ResetNodeConnections(inputDeps);
                 }
 
@@ -991,6 +1059,7 @@ namespace Traffic.Tools
                     _toolOutputBarrier.AddJobHandleForProducer(job);
                     _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
                     applyMode = ApplyMode.Clear;
+                    SystemAPI.SetSingleton(new ActionOverlayData() {entity = Entity.Null, mode = ModUISystem.ActionOverlayPreview.None});
                     return UpdateDefinitions(inputDeps);
                 }
             }

@@ -20,15 +20,14 @@ namespace Traffic
             public const string REMOVE_UNSAFE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUnsafe]";
             public const string RESET_TO_VANILLA = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla]";
             /*tooltips*/
-            public const string REMOVE_UNSAFE_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title";
-            public const string REMOVE_UNSAFE_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message";
-            
-            /*key bindings*/
-            public const string KEY_TOGGLE_LANE_CONNECTOR_TOOL = Mod.MOD_NAME+".Keybind.["+ ModSettings.KeyBindAction.ToggleLaneConnectorTool+"]";
-            public const string KEY_RESET_INTERSECTION_TO_DEFAULTS = Mod.MOD_NAME+".Keybind.["+ ModSettings.KeyBindAction.ResetIntersectionToDefaults+"]";
-            
-            /*gamepad hints*/
-            public const string HINT_TOGGLE_LANE_CONNECTOR_TOOL = Mod.MOD_NAME+".Hint."+ ModSettings.KeyBindAction.ToggleLaneConnectorTool;
+            public const string REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Title";
+            public const string REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Message";
+            public const string REMOVE_U_TURNS_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Title";
+            public const string REMOVE_U_TURNS_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Message";
+            public const string REMOVE_UNSAFE_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Title";
+            public const string REMOVE_UNSAFE_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Message";
+            public const string RESET_TO_VANILLA_TOOLTIP_TITLE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title";
+            public const string RESET_TO_VANILLA_TOOLTIP_MESSAGE = Mod.MOD_NAME+".Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message";
         }
         
 
@@ -52,22 +51,44 @@ namespace Traffic
                     {_setting.GetOptionGroupLocaleID(ModSettings.AboutSection), "About"},
                     {_setting.GetOptionGroupLocaleID(ModSettings.ToolsSection), "Tools"},
                     {_setting.GetOptionGroupLocaleID(ModSettings.SelectedNodeSection), "Selected Node or Intersection"},
+                    {_setting.GetOptionGroupLocaleID(ModSettings.OtherSection), "Other"},
                     {_setting.GetOptionTabLocaleID(ModSettings.GeneralTab), "General"},
-                    {_setting.GetOptionTabLocaleID(ModSettings.KeybindingsTab), "Keybindings"},
+                    {_setting.GetOptionTabLocaleID(ModSettings.KeybindingsTab), "Key Bindings"},
                      
                     //Keybindings
                     {_setting.GetBindingMapLocaleID(), "Traffic Mod"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ApplyTool), "Apply Tool"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.CancelTool), "Cancel Tool"},
                     {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ToggleLaneConnectorTool), "Toggle Lane Connector Tool"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveAllConnections), "Remove Intersection Lane Connections"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUTurns), "Remove U-Turns"},
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUnsafe), "Remove Unsafe Lane Connections"},
                     {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ResetIntersectionToDefaults), "Reset selected intersection to defaults"},
 
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.UseVanillaToolActions)), "Use Vanilla Tool bindings" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.UseVanillaToolActions)), "When checked, the mod tool bindings will mimic vanilla key bindings" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ApplyToolAction)), "Apply Tool Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ApplyToolAction)), "Keybinding used for applying the tool action, e.g.: click to select intersection (default: Left Mouse Button)" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.CancelToolAction)), "Cancel Tool Action" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.CancelToolAction)), "Keybinding used for canceling the tool action, e.g.: click to reset intersection selection (default: Right Mouse Button)" },
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.LaneConnectorToolAction)), "Toggle Lane Connector Tool" },
                     {_setting.GetOptionDescLocaleID(nameof(ModSettings.LaneConnectorToolAction)), "Keybinding used for toggling the Lane Connector tool" },
-                    // {_setting.GetOptionLabelLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Toggle Lane Connector Tool (Gamepad)" },
-                    // {_setting.GetOptionDescLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Keybinding used for toggling the Lane Connector tool using gamepad controller" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.RemoveIntersectionConnections)), "Remove Intersection Lane Connections" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.RemoveIntersectionConnections)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.RemoveUTurnConnections)), "Remove U-Turn Lane Connections" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.RemoveUTurnConnections)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.RemoveUnsafeConnections)), "Remove Unsafe Lane Connections" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.RemoveUnsafeConnections)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetIntersectionToDefaults)), "Reset selected intersection to defaults" },
                     {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetIntersectionToDefaults)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
-                    // {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetIntersectionToDefaultsGamepad)), "Reset selected intersection to defaults (Gamepad)" },
-                    // {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetIntersectionToDefaultsGamepad)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
+#if GAMEPAD_SUPPORT
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Toggle Lane Connector Tool (Gamepad)" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.LaneConnectorToolActionGamepad)), "Keybinding used for toggling the Lane Connector tool using gamepad controller" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetIntersectionToDefaultsGamepad)), "Reset selected intersection to defaults (Gamepad)" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetIntersectionToDefaultsGamepad)), "Keybinding is used when intersection is selected by Lane Connector Tool" },
+#endif
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetBindings)), "Reset bindings" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetBindings)), "Resets all bindings to the mod defaults" },
 
                     //About
                     {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ModVersion)), "Version" },
@@ -127,11 +148,19 @@ namespace Traffic
                     {UIKeys.REMOVE_U_TURNS, "Remove U-Turns"},
                     {UIKeys.REMOVE_UNSAFE, "Remove Unsafe"},
                     {UIKeys.RESET_TO_VANILLA, "Reset To Vanilla"},
+                    {UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE, "Remove Intersection Connections"},
+                    {UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE, "Removes lane connections that can be configured by the Lane Connector tool. It doesn't touch two-way lane connections, since they are not supported yet."},
+                    {UIKeys.REMOVE_U_TURNS_TOOLTIP_TITLE, "Remove U-Turns"},
+                    {UIKeys.REMOVE_U_TURNS_TOOLTIP_MESSAGE, "Removes U-Turns from the selected intersection, applies only to U-turns on the same segment"},
                     {UIKeys.REMOVE_UNSAFE_TOOLTIP_TITLE, "Unsafe lane"},
-                    {UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE, "Unsafe lane is a lane with a higher pathfinding penalty, meaning that lane connection has a lower selection priority when other options are available"},
+                    {UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE, "Removes Unsafe lane connections from the selected intersection.\nUnsafe lane is a lane with a higher pathfinding penalty, meaning that lane connection has a lower selection priority when other options are available"},
+                    {UIKeys.RESET_TO_VANILLA_TOOLTIP_TITLE, "Reset to Vanilla"},
+                    {UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE, "Resets lane connections on the selected intersection to vanilla configuration"},
                     
+#if !GAMEPAD_SUPPORT
                     /* Gamepad Hints*/
-                    // {ModSettings.GetHintActionLocaleID(UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL), "Traffic's Lane Connector"}
+                    {_setting.GetBindingKeyHintLocaleID(ModSettings.KeyBindAction.ToggleLaneConnectorTool), "Traffic's Lane Connector"}
+#endif
                 };
             }
             

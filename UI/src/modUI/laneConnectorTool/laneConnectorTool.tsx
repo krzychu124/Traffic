@@ -3,12 +3,13 @@ import classNames from "classnames";
 import { Panel, PanelSection, Button } from "cs2/ui";
 import { useValue, trigger } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
-import { selectedIntersection$ } from "bindings";
-import mod from "mod.json";
-import styles from 'modUI/laneConnectorTool/laneConnectorTool.module.scss';
-import { UIBindingConstants, ActionOverlayPreview, UIKeys } from "types/traffic";
+import { DescriptionTooltipWithKeyBind } from "modUI/descriptionTooltipWithKeyBind/descriptionTooltipWithKeyBind";
+import { selectedIntersection$, modKeyBindings$ } from "bindings";
+import { UIBindingConstants, ActionOverlayPreview, UIKeys, ModKeyBinds } from "types/traffic";
 import { useToolActions } from "modUI/laneConnectorTool/helpers/useToolActions";
 import { VanillaComponentsResolver } from "types/internal";
+import mod from "mod.json";
+import styles from 'modUI/laneConnectorTool/laneConnectorTool.module.scss';
 
 interface Props {
   isEditor?: boolean;
@@ -24,6 +25,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
   const {translate} = useLocalization();
   const {DescriptionTooltip} = VanillaComponentsResolver.instance;
   const positionStyle: Partial<CSSProperties> = useMemo(() => ({ top:`${(isEditor ? 800: 750)}rem`, left: `55rem` }), [isEditor]);
+  const keyBindings = useValue<ModKeyBinds>(modKeyBindings$);
 
   const {
     handleEnterButton,
@@ -51,28 +53,43 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
           )}
           {isSelected && (
             <>
-              <Button variant="flat"
-                      className={styles.actionButton}
-                      onMouseEnter={() => handleEnterButton(ActionOverlayPreview.RemoveAllConnections)}
-                      onMouseLeave={handleLeaveButton}
-                      onClick={confirmActivePreview}
-                      type="button"
+              <DescriptionTooltipWithKeyBind
+                title={translate(UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE, 'Remove Intersection Connections')}
+                description={translate(UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE)}
+                direction="right"
+                keyBind={keyBindings?.removeAllConnections}
               >
-                {translate(UIKeys.REMOVE_ALL_CONNECTIONS)}
-              </Button>
-              <Button variant="flat"
-                      className={styles.actionButton}
-                      onMouseEnter={() => handleEnterButton(ActionOverlayPreview.RemoveUTurns)}
-                      onMouseLeave={handleLeaveButton}
-                      onClick={confirmActivePreview}
-                      type="button"
+                <Button variant="flat"
+                        className={styles.actionButton}
+                        onMouseEnter={() => handleEnterButton(ActionOverlayPreview.RemoveAllConnections)}
+                        onMouseLeave={handleLeaveButton}
+                        onClick={confirmActivePreview}
+                        type="button"
+                >
+                  {translate(UIKeys.REMOVE_ALL_CONNECTIONS)}
+                </Button>
+              </DescriptionTooltipWithKeyBind>
+              <DescriptionTooltipWithKeyBind
+                title={translate(UIKeys.REMOVE_U_TURNS_TOOLTIP_TITLE, 'Remove U-Turns')}
+                description={translate(UIKeys.REMOVE_U_TURNS_TOOLTIP_MESSAGE)}
+                direction="right"
+                keyBind={keyBindings?.removeUTurns}
               >
-                {translate(UIKeys.REMOVE_U_TURNS)}
-              </Button>
-              <DescriptionTooltip
+                <Button variant="flat"
+                        className={styles.actionButton}
+                        onMouseEnter={() => handleEnterButton(ActionOverlayPreview.RemoveUTurns)}
+                        onMouseLeave={handleLeaveButton}
+                        onClick={confirmActivePreview}
+                        type="button"
+                >
+                  {translate(UIKeys.REMOVE_U_TURNS)}
+                </Button>
+              </DescriptionTooltipWithKeyBind>
+              <DescriptionTooltipWithKeyBind
                 title={translate(UIKeys.REMOVE_UNSAFE_TOOLTIP_TITLE, 'Unsafe Lane')}
                 description={translate(UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE)}
                 direction="right"
+                keyBind={keyBindings?.removeUnsafe}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -83,16 +100,23 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 >
                     {translate(UIKeys.REMOVE_UNSAFE)}
                 </Button>
-              </DescriptionTooltip>
-              <Button variant="flat"
-                      className={styles.actionButton}
-                      onMouseEnter={() => handleEnterButton(ActionOverlayPreview.ResetToVanilla)}
-                      onMouseLeave={handleLeaveButton}
-                      onClick={confirmActivePreview}
-                      type="button"
+              </DescriptionTooltipWithKeyBind>
+              <DescriptionTooltipWithKeyBind
+                title={translate(UIKeys.RESET_TO_VANILLA_TOOLTIP_TITLE, 'Reset to Vanilla')}
+                description={translate(UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE)}
+                direction="right"
+                keyBind={keyBindings?.resetDefaults}
               >
-                {translate(UIKeys.RESET_TO_VANILLA)}
-              </Button>
+                <Button variant="flat"
+                        className={styles.actionButton}
+                        onMouseEnter={() => handleEnterButton(ActionOverlayPreview.ResetToVanilla)}
+                        onMouseLeave={handleLeaveButton}
+                        onClick={confirmActivePreview}
+                        type="button"
+                >
+                  {translate(UIKeys.RESET_TO_VANILLA)}
+                </Button>
+              </DescriptionTooltipWithKeyBind>
             </>
           )}
           {!isSelected &&

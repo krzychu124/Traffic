@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Colossal.IO.AssetDatabase;
 using Game;
+using Game.Input;
 using Game.Modding;
 using Game.SceneFlow;
 using Game.Settings;
@@ -14,11 +17,13 @@ namespace Traffic
 {
     [FileLocation("Traffic")]
     [SettingsUITabOrder(GeneralTab, KeybindingsTab)]
-    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
-    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, OverlaysSection, AboutSection)]
+    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
+    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
     public partial class ModSettings : ModSetting
     {
         internal static ModSettings Instance { get; private set; }
+        private Dictionary<string, ProxyBinding.Watcher> _vanillaBindingWatchers;
+        
         internal const string GeneralTab = "General";  
         internal const string KeybindingsTab = "Keybindings";  
         internal const string MainSection = "General";  
@@ -102,6 +107,7 @@ namespace Traffic
         public ModSettings(IMod mod) : base(mod)
         {
             Instance = this;
+            _vanillaBindingWatchers = new Dictionary<string, ProxyBinding.Watcher>();
             SetDefaults();
         }
         
@@ -110,6 +116,7 @@ namespace Traffic
             ConnectorSize = 1f;
             ConnectionLaneWidth = 0.4f;
             FeedbackOutlineWidth = 0.3f;
+            UseVanillaToolActions = true;
         }
 
         public override void Apply()
@@ -124,6 +131,29 @@ namespace Traffic
             base.Apply();
         }
 
-        public static string GetHintActionLocaleID(string hintName) => "Common.ACTION[" + hintName + "]";
+        private ProxyBinding.Watcher MimicVanillaAction(ProxyAction vanillaAction, ProxyAction customAction, string actionGroup)
+        {
+            ProxyBinding customActionBinding = customAction.bindings.FirstOrDefault(b => b.group == actionGroup);
+            ProxyBinding vanillaActionBinding = vanillaAction.bindings.FirstOrDefault(b => b.group == actionGroup);
+            ProxyBinding.Watcher actionWatcher = new ProxyBinding.Watcher(vanillaActionBinding, binding => SetMimic(customActionBinding, binding));
+            SetMimic(customActionBinding, actionWatcher.binding);
+            return actionWatcher;
+        }
+
+        private void SetMimic(ProxyBinding mimic, ProxyBinding buildIn)
+        {
+            var newMimicBinding = mimic.Copy();
+            newMimicBinding.path = buildIn.path;
+            newMimicBinding.modifiers = buildIn.modifiers;
+            InputManager.instance.SetBinding(newMimicBinding, out _);
+        }
+
+        internal void ApplyLoadedSettings()
+        {
+            if (UseVanillaToolActions)
+            {
+                RegisterToolActionWatchers();
+            }
+        }
     }
 }

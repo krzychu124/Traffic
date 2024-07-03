@@ -47,6 +47,7 @@ namespace Traffic.UISystems
             _laneConnectorTool = World.GetOrCreateSystemManaged<LaneConnectorToolSystem>();
 
             //keybindings
+            _keyBindings = new ModKeyBinds();
             _toggleLaneConnectorToolAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ToggleLaneConnectorTool);
 
             //ui bindings
@@ -132,13 +133,11 @@ namespace Traffic.UISystems
             {
                 _toolSystem.selected = Entity.Null;
                 _toolSystem.activeTool = _laneConnectorTool;
-                _toggleLaneConnectorToolAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
             } 
             else if (!enable && _toolSystem.activeTool == _laneConnectorTool)
             {
                 _toolSystem.selected = Entity.Null;
                 _toolSystem.activeTool = _defaultTool;
-                _toggleLaneConnectorToolAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
             }
         }
 
@@ -229,6 +228,9 @@ namespace Traffic.UISystems
         {
             //TODO Gamepad support (pass multiple or choose based on current input type)
             public ProxyBinding laneConnectorTool;
+            public ProxyBinding removeAllConnections;
+            public ProxyBinding removeUTurns;
+            public ProxyBinding removeUnsafe;
             public ProxyBinding resetDefaults;
 
             public void Write(IJsonWriter writer)
@@ -236,6 +238,12 @@ namespace Traffic.UISystems
                 writer.TypeBegin(GetType().FullName);
                 writer.PropertyName(nameof(laneConnectorTool));
                 writer.Write(laneConnectorTool);
+                writer.PropertyName(nameof(removeAllConnections));
+                writer.Write(removeAllConnections);
+                writer.PropertyName(nameof(removeUTurns));
+                writer.Write(removeUTurns);
+                writer.PropertyName(nameof(removeUnsafe));
+                writer.Write(removeUnsafe);
                 writer.PropertyName(nameof(resetDefaults));
                 writer.Write(resetDefaults);
                 writer.TypeEnd();
@@ -245,19 +253,26 @@ namespace Traffic.UISystems
             {
                 foreach (ProxyAction proxyAction in keybinds)
                 {
-                    Logger.Info($"ProxyAction: {proxyAction.name}, {proxyAction.displayName}, {proxyAction.displayPriority}");
+                    Logger.Info($"ProxyAction: {proxyAction.name}, {proxyAction.displayOverride} ");
                     switch (proxyAction.name)
                     {
                         case ModSettings.KeyBindAction.ToggleLaneConnectorTool:
-                            //TODO Gamepad support - hints
-                            // proxyAction.SetDisplayProperties(Localization.UIKeys.HINT_TOGGLE_LANE_CONNECTOR_TOOL, 20);
                             laneConnectorTool = proxyAction.bindings.FirstOrDefault();
+                            break;
+                        case ModSettings.KeyBindAction.RemoveAllConnections:
+                            removeAllConnections = proxyAction.bindings.FirstOrDefault();
+                            break;
+                        case ModSettings.KeyBindAction.RemoveUTurns:
+                            removeUTurns = proxyAction.bindings.FirstOrDefault();
+                            break;
+                        case ModSettings.KeyBindAction.RemoveUnsafe:
+                            removeUnsafe = proxyAction.bindings.FirstOrDefault();
                             break;
                         case ModSettings.KeyBindAction.ResetIntersectionToDefaults:
                             resetDefaults = proxyAction.bindings.FirstOrDefault();
                             break;
                         default:
-                            Logger.Warning($"Not supported mod keybind action: {proxyAction.name}");
+                            Logger.Warning($"Not supported mod key binding action: {proxyAction.name}");
                             break;
                     }
                 }

@@ -2,14 +2,16 @@ import { VanillaComponentsResolver } from "types/internal";
 import { PropsWithChildren } from "react";
 import { useLocalization } from "cs2/l10n";
 import { UIKeys } from "types/traffic";
+import { BalloonDirection } from "cs2/ui";
 
 interface Props {
   title: string | null;
   description: string | null;
+  direction?: BalloonDirection;
   keyBind?: any;
 }
 
-export const DescriptionTooltipWithKeyBind = ({ title, description, keyBind, children }: PropsWithChildren<Props>) => {
+export const DescriptionTooltipWithKeyBind = ({ title, description, direction = "right", keyBind, children }: PropsWithChildren<Props>) => {
   const { DescriptionTooltip, LocalizedInputPath } = VanillaComponentsResolver.instance;
   const { translate } = useLocalization();
 
@@ -32,7 +34,7 @@ export const DescriptionTooltipWithKeyBind = ({ title, description, keyBind, chi
                             </strong>
                           </p>)
                         )}
-                        direction="right"
+                        direction={direction}
                         alignment="end"
     >
       <div>{children}</div>

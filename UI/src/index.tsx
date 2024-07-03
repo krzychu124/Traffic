@@ -3,8 +3,8 @@ import { DebugUiEditorButton } from "debugUi/debugUi";
 import { ModUI } from "modUI/modUI";
 
 const register: ModRegistrar = (moduleRegistry) => {
-    moduleRegistry.append('GameTopLeft', ModUI);
-    moduleRegistry.append('Editor', DebugUiEditorButton);
+  moduleRegistry.append('GameTopLeft', ModUI);
+  moduleRegistry.append('Editor', DebugUiEditorButton);
 }
 
 export default register;

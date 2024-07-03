@@ -56,9 +56,9 @@ namespace Traffic.Tools
                             }
                         }
                     }
+                    
+                    commandBuffer.AddComponent<Updated>(index, entity);
                 }
-                
-                commandBuffer.AddComponent<Updated>(index, entity);
             }
         }
     }

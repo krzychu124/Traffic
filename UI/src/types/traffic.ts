@@ -31,15 +31,21 @@ export class UIKeys
 	public static REMOVE_U_TURNS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUturns]`;
 	public static REMOVE_UNSAFE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe]`;
 	public static RESET_TO_VANILLA: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla]`;
-	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title`;
-	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message`;
-	public static KEY_TOGGLE_LANE_CONNECTOR_TOOL: string = `Traffic.Keybind.[ToggleLaneConnectorTool]`;
-	public static KEY_RESET_INTERSECTION_TO_DEFAULTS: string = `Traffic.Keybind.[ResetIntersectionToDefaults]`;
-	public static HINT_TOGGLE_LANE_CONNECTOR_TOOL: string = `Traffic.Hint.ToggleLaneConnectorTool`;
+	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Title`;
+	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Message`;
+	public static REMOVE_U_TURNS_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Title`;
+	public static REMOVE_U_TURNS_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Message`;
+	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Title`;
+	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Message`;
+	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title`;
+	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message`;
 }
 export interface ModKeyBinds
 {
 	laneConnectorTool: WidgetIdentifier;
+	removeAllConnections: WidgetIdentifier;
+	removeUTurns: WidgetIdentifier;
+	removeUnsafe: WidgetIdentifier;
 	resetDefaults: WidgetIdentifier;
 }
 export enum TempFlags {

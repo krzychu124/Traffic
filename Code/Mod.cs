@@ -46,8 +46,10 @@ namespace Traffic
         {
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
             Settings = new ModSettings(this);
-            Settings.RegisterInOptionsUI();
             Settings.RegisterKeyBindings();
+            Settings.RegisterInOptionsUI();
+            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, Settings, new ModSettings(this));
+            Settings.ApplyLoadedSettings();
             
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateBefore<PreDeserialize<ModUISystem>>(SystemUpdatePhase.Deserialize);
@@ -90,7 +92,6 @@ namespace Traffic
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
 
-            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, Settings, new ModSettings(this));
             if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(Settings.GetSettingsLocaleID()))
             {
                 GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(Settings));
@@ -128,7 +129,7 @@ namespace Traffic
 
         private static void ListEnabledMods()
         {
-            Logger.Info("\n======= Enabled Mods =======\n"+string.Join("\n\t",GameManager.instance.modManager.ListModsEnabled()) + "\n============================");
+            Logger.Info("\n======= Enabled Mods =======\n\t"+string.Join("\n\t",GameManager.instance.modManager.ListModsEnabled()) + "\n============================");
         }
     }
 #if DEBUG_TOOL

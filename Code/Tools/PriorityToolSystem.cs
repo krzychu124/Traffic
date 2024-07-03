@@ -99,14 +99,6 @@ namespace Traffic.Tools
 
                 var buffer = _overlayRenderSystem.GetBuffer(out JobHandle dependencies);
                 var deps = JobHandle.CombineDependencies(inputDeps, dependencies);
-                if (Mode == 0)
-                {
-                    _applyAction.SetDisplayProperties("Set Priority", 20);
-                }
-                else
-                {
-                    _applyAction.SetDisplayProperties("Apply Traffic Upgrade", 20);
-                }
 
                 bool isEdge = e != Entity.Null && EntityManager.HasComponent<Edge>(e);
                 if (isEdge)

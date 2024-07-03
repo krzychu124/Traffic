@@ -33,7 +33,7 @@ export const ModUI = () => {
       )}
       <DescriptionTooltipWithKeyBind title="Traffic"
                                      description={translate(UIKeys.TRAFFIC_MOD)}
-                                     keyBind={keyBindings.laneConnectorTool}
+                                     keyBind={keyBindings?.laneConnectorTool}
       >
         <Button
           src={trafficIcon}

@@ -41,7 +41,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
       className={classNames(styles.panel, {[styles.withIssues]: showLoadingErrorsButton})}
       style={positionStyle}
       header={(<>
-        <span className={styles.title}>{translate(UIKeys.LANE_CONNECTION_TOOL)}</span>
+        <span className={styles.title}>{translate(UIKeys.LANE_CONNECTOR_TOOL)}</span>
       </>)}
     >
       <div ref={panel}>
@@ -58,6 +58,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeAllConnections}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -74,6 +75,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_U_TURNS_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeUTurns}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -90,6 +92,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeUnsafe}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -106,6 +109,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.resetDefaults}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}

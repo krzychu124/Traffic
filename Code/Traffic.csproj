@@ -8,11 +8,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.1.9</Version>
+        <Version>0.1.10</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.1.9</AssemblyVersion>
-        <FileVersion>0.1.9</FileVersion>
+        <AssemblyVersion>0.1.10</AssemblyVersion>
+        <FileVersion>0.1.10</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -41,6 +41,9 @@
             <Private>false</Private>
         </Reference>
         <Reference Include="Colossal.Mathematics">
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="Colossal.PSI.Common">
             <Private>false</Private>
         </Reference>
         <Reference Include="Colossal.UI.Binding">
@@ -104,6 +107,54 @@
         <None Include="..\..\Keys.props" Link="Properties\Keys.props"/>
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props"/>
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets"/>
+        <None Update="Localization\TranslationSource.json">
+          <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\fr-FR.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\uk-UA.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\cs-CZ.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\es-ES.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\ru-RU.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\nl-NL.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\zh-HANS.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\ko-KR.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\id-ID.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\zh-HANT.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\pt-BR.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\pl-PL.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\it-IT.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\ja-JP.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Localization\de-DE.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
     
     <Target Name="BuildUI" AfterTargets="AfterBuild">
@@ -176,6 +227,18 @@
       </Compile>
       <Compile Update="Systems\ModCompatibility\TLEDataMigrationSystem.MigrateCustomLaneDirectionsJob.cs">
         <DependentUpon>TLEDataMigrationSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Localization.LocaleEN.cs">
+        <DependentUpon>Localization.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Localization.ModLocale.cs">
+        <DependentUpon>Localization.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Localization.UIKeys.cs">
+        <DependentUpon>Localization.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Localization.LocaleManager.cs">
+        <DependentUpon>Localization.cs</DependentUpon>
       </Compile>
     </ItemGroup>
 

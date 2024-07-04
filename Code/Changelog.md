@@ -1,7 +1,8 @@
-﻿## v.0.1.9
+﻿## v.0.1.10
 
-_Compatibility fix for CS II v. 1.1.6f1_
+_Multilanguage support - help us translate the mod_
 
-- Improved mod key bindings, 
-- Changeable default Apply and Cancel tool actions,
-- Key bindings for Lane Connector Toolbox actions
+- All vanilla languages,
+- Non-vanilla languages: Czech, Dutch, Indonesian, Ukrainian,
+- Language selector - use different mod language than used by the game interface,
+- **Traffic Lights Enhancement (BepinEx)** compatibility detection

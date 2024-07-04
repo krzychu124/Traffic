@@ -32,6 +32,16 @@ namespace Traffic
             _log.Info(message);
         }
         
+        [Conditional("DEBUG_LOCALE")]
+        public static void DebugLocale(string message) {
+            _log.Info(message);
+        }
+        
+        [Conditional("DEBUG")]
+        public static void DebugError(string message) {
+            _log.Error(message);
+        }
+        
         [Conditional("DEBUG_LANE_SYS")]
         public static void DebugLaneSystem(string message) {
             _log.Info(message);

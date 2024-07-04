@@ -23,15 +23,18 @@
   align-self: center;
 }
 
-.actionButton, .actionLoadingResultsButton {
-  pointer-events: auto;
+.actionButtonContainer {
   margin-bottom: 5rem;
-  background-color: #0f1013;
-  border-radius: 4rem;
 
   &:last-child {
     margin-bottom: 0;
   }
+}
+
+.actionButton, .actionLoadingResultsButton {
+  pointer-events: auto;
+  background-color: #0f1013;
+  border-radius: 4rem;
 
   &:hover {
     background-color: #1d1f25

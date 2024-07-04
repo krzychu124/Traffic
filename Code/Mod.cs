@@ -1,4 +1,7 @@
-﻿
+﻿// #if DEBUG
+//   #define LOCALIZATION_EXPORT
+// #endif
+
 namespace Traffic
 {
     using System;
@@ -40,17 +43,23 @@ namespace Traffic
         private static bool? _isTLEEnabled;
 
         internal ModSettings Settings { get; private set; }
-        private const string SETTINGS_ASSET_NAME = "Traffic General Settings";
 
         public void OnLoad(UpdateSystem updateSystem)
         {
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
-            Settings = new ModSettings(this);
+            TrySearchingForIncompatibleTLEOnBepinEx();
+            Settings = new ModSettings(this, false);
             Settings.RegisterKeyBindings();
             Settings.RegisterInOptionsUI();
-            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(SETTINGS_ASSET_NAME, Settings, new ModSettings(this));
+            Colossal.IO.AssetDatabase.AssetDatabase.global.LoadSettings(ModSettings.SETTINGS_ASSET_NAME, Settings, new ModSettings(this, true));
+            if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(Settings.GetSettingsLocaleID()))
+            {
+                var source = new Localization.LocaleEN(Settings);
+                GameManager.instance.localizationManager.AddSource("en-US", source);
+                Localization.LoadLocales(this, source.ReadEntries(null, null).Count());
+            }
             Settings.ApplyLoadedSettings();
-            
+
             updateSystem.UpdateAt<ModUISystem>(SystemUpdatePhase.UIUpdate);
             updateSystem.UpdateBefore<PreDeserialize<ModUISystem>>(SystemUpdatePhase.Deserialize);
             
@@ -91,18 +100,18 @@ namespace Traffic
 #endif
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
-
-            if (!GameManager.instance.localizationManager.activeDictionary.ContainsID(Settings.GetSettingsLocaleID()))
-            {
-                GameManager.instance.localizationManager.AddSource("en-US", new Localization.LocaleEN(Settings));
-            }
             GameManager.instance.RegisterUpdater(ListEnabledMods);
+
+#if LOCALIZATION_EXPORT
+            Localization.LocalizationExport(this, Settings);
+#endif
         }
 
         public void OnDispose()
         {
             Logger.Info(nameof(OnDispose));
             Settings?.UnregisterInOptionsUI();
+            Settings?.Unload();
             Settings = null;
         }
 
@@ -124,6 +133,40 @@ namespace Traffic
                     UnityEngine.Debug.LogError($"**Traffic** mod exception!\nSomething went wrong while fixing compatibility with **Traffic Lights Enhancement** mod");
                     Logger.Error($"{e.Message}\n{e.StackTrace}\nInnerException:\n{e.InnerException?.Message}");
                 }
+            }
+        }
+
+        private static void TrySearchingForIncompatibleTLEOnBepinEx()
+        {
+            try
+            {
+                Type type = Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement", false);
+                Type type2 = Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem", false);
+                if (type != null || type2 != null)
+                {
+                    string path = System.IO.Directory.GetParent((type ?? type2).Assembly.Location)?.Parent?.FullName ?? string.Empty;
+                    string id = "Traffic_Compatibility_Detector";
+                    Game.PSI.NotificationSystem.Push(id, 
+                        "Traffic Mod Compatibility Report", 
+                        "Detected incompatible Traffic Lights Enhancement Mod!\nClick for more details.",
+                        progressState: Colossal.PSI.Common.ProgressState.Failed,
+                        onClicked: () => {
+                            Game.UI.MessageDialogWithDetails dialog = new(
+                                "Traffic Mod Compatibility Report",
+                                "**Traffic** mod compatibility detector found incompatible version of **Traffic Lights Enhancement** mod",
+                                $"Please remove **Traffic Lights Enhancement** from \n{path.Replace("\\", "\\\\")}\n\n" +
+                                "If you want to continue using that mod, subscribe the latest version from the **PDX Mods** platform.\n" +
+                                "If you don't have any other mods running on **BepinEx**, consider removing this plugin as well.",
+                                copyButton: true,
+                                Game.UI.Localization.LocalizedString.Id("Common.OK"));
+                            GameManager.instance.userInterface.appBindings.ShowMessageDialog(dialog, _ => Game.PSI.NotificationSystem.Pop(id));
+                        }
+                    );
+                }
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogException(e);
             }
         }
 

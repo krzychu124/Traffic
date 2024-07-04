@@ -4416,12 +4416,7 @@ namespace Traffic.Systems
                         component10.m_MinIndex = prefabCompositionLaneData.m_Index;
                         component10.m_MaxIndex = prefabCompositionLaneData.m_Index;
                         component10.m_SubIndex = prefabCompositionLaneData.m_Index;
-                        //NON-STOCK
-                        if (!disallowLaneChange.HasComponent(owner))
-                        {
-                           component10.m_Flags |= SlaveLaneFlags.AllowChange;
-                        }
-                        //NON-STOCK-END
+                        component10.m_Flags |= SlaveLaneFlags.AllowChange;
                         if ((laneFlags & LaneFlags.DisconnectedStart) != 0)
                         {
                             component10.m_Flags |= SlaveLaneFlags.StartingLane;

@@ -981,7 +981,7 @@ namespace Traffic.Tools
             
             EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<ModifiedLaneConnections, Node>()
-                .WithNone<Deleted>()
+                .WithNone<Deleted, Temp>()
                 .Build(EntityManager);
             if (!query.IsEmptyIgnoreFilter)
             {

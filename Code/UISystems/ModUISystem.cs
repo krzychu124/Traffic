@@ -253,9 +253,11 @@ namespace Traffic.UISystems
             {
                 foreach (ProxyAction proxyAction in keybinds)
                 {
-                    Logger.Info($"ProxyAction: {proxyAction.name}, {proxyAction.displayOverride} ");
                     switch (proxyAction.name)
                     {
+                        case ModSettings.KeyBindAction.ApplyTool:
+                        case ModSettings.KeyBindAction.CancelTool:
+                            break;
                         case ModSettings.KeyBindAction.ToggleLaneConnectorTool:
                             laneConnectorTool = proxyAction.bindings.FirstOrDefault();
                             break;
@@ -272,7 +274,7 @@ namespace Traffic.UISystems
                             resetDefaults = proxyAction.bindings.FirstOrDefault();
                             break;
                         default:
-                            Logger.Warning($"Not supported mod key binding action: {proxyAction.name}");
+                            Logger.DebugError($"Not supported mod key binding action: {proxyAction.name}");
                             break;
                     }
                 }

@@ -14,6 +14,18 @@ namespace Traffic.Utils
             // get original system's EntityQuery
             FieldInfo queryField = typeof(LaneSystem).GetField("m_OwnerQuery", BindingFlags.Instance | BindingFlags.NonPublic);
             EntityQuery originalQuery = (EntityQuery)queryField.GetValue(laneSystem);
+            if (originalQuery.GetHashCode() == 0)
+            {
+                Logger.Warning("LaneSystem was not initialized!");
+                string id = "Traffic_mod_initialization";
+                Game.PSI.NotificationSystem.Push(id,
+                    "Traffic Mod Initialization",
+                    "Something went wrong. Please contact mod author.",
+                    progressState: Colossal.PSI.Common.ProgressState.Warning,
+                    onClicked: () => Game.PSI.NotificationSystem.Pop(id)
+                );
+                return;
+            }
             EntityQueryDesc originalQueryDesc = originalQuery.GetEntityQueryDesc();
             // add ModifiedLaneConnections to force vanilla skip all entities with the buffer component
             originalQueryDesc.None = originalQueryDesc.None.Append(ComponentType.ReadOnly<ModifiedLaneConnections>()).ToArray();

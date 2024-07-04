@@ -41,7 +41,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
       className={classNames(styles.panel, {[styles.withIssues]: showLoadingErrorsButton})}
       style={positionStyle}
       header={(<>
-        <span className={styles.title}>{translate(UIKeys.LANE_CONNECTION_TOOL)}</span>
+        <span className={styles.title}>{translate(UIKeys.LANE_CONNECTOR_TOOL)}</span>
       </>)}
     >
       <div ref={panel}>

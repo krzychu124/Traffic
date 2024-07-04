@@ -25,20 +25,20 @@ export class UIKeys
 {
 	public static TRAFFIC_MOD: string = `Traffic.UI.Tooltip.MainButton`;
 	public static SHORTCUT: string = `Traffic.UI.Tooltip.Shortcut`;
-	public static LANE_CONNECTION_TOOL: string = `Traffic.Tools.LaneConnector[Title]`;
-	public static SELECT_INTERSECTION: string = `Traffic.Tools.LaneConnector[SelectIntersectionMessage]`;
-	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections]`;
-	public static REMOVE_U_TURNS: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUturns]`;
-	public static REMOVE_UNSAFE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe]`;
-	public static RESET_TO_VANILLA: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla]`;
-	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Title`;
-	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveAllConnections].Tooltip.Message`;
-	public static REMOVE_U_TURNS_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Title`;
-	public static REMOVE_U_TURNS_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUTurns].Tooltip.Message`;
-	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Title`;
-	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[RemoveUnsafe].Tooltip.Message`;
-	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Title`;
-	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.Tools.LaneConnector.Toolbox[ResetToVanilla].Tooltip.Message`;
+	public static LANE_CONNECTOR_TOOL: string = `Traffic.UI.Tools[LaneConnector].Title`;
+	public static SELECT_INTERSECTION: string = `Traffic.UI.Tools[LaneConnector].SelectIntersectionMessage`;
+	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections]`;
+	public static REMOVE_U_TURNS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUturns]`;
+	public static REMOVE_UNSAFE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe]`;
+	public static RESET_TO_VANILLA: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla]`;
+	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Title`;
+	public static REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Message`;
+	public static REMOVE_U_TURNS_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Title`;
+	public static REMOVE_U_TURNS_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message`;
+	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title`;
+	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message`;
+	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title`;
+	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message`;
 }
 export interface ModKeyBinds
 {

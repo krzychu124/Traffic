@@ -3,6 +3,7 @@ const MOD = require("./mod.json");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const { CSSPresencePlugin } = require("./tools/css-presence");
 const TerserPlugin = require("terser-webpack-plugin");
+const CopyPlugin = require("copy-webpack-plugin");
 const gray = (text) => `\x1b[90m${text}\x1b[0m`;
 
 const CSII_USERDATAPATH = process.env.CSII_USERDATAPATH;
@@ -72,7 +73,7 @@ module.exports = {
         test: /\.(png|jpe?g|gif|svg)$/i,
         type: "asset/resource",
         generator: {
-          filename: "images/[name][ext][query]",
+          filename: "traffic-images/[name][ext][query]",
         },
       },
     ],
@@ -106,6 +107,11 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin(),
+    new CopyPlugin({
+      patterns: [
+        {from: 'src/images/crowdin-icon-white.svg', to: 'traffic-images/'},
+      ],
+    }),
     new CSSPresencePlugin(),
     {
       apply(compiler) {

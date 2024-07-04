@@ -46,9 +46,9 @@ namespace Traffic.UISystems
             _posTooltip = new StringTooltip() { path = "laneConnectorToolPosition", color = TooltipColor.Warning, };
             _posTooltip2 = new StringTooltip() { path = "laneConnectorToolPosition2", color = TooltipColor.Warning, };
 #endif
-            _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Mod.MOD_NAME}.Tools.Tooltip.LaneConnector[{t:G}]");
-            _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Mod.MOD_NAME}.Tools.Tooltip.LaneConnector[{t:G}]");
-            _feedbackStringBuilder = CachedLocalizedStringBuilder<FeedbackMessageType>.Id((FeedbackMessageType m) => $"{Mod.MOD_NAME}.Tools.Tooltip.FeedbackMessage[{m:G}]");
+            _tooltipStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.Tooltip>.Id((LaneConnectorToolSystem.Tooltip t) => $"{Localization.GetToolTooltipLocaleID("LaneConnector", $"{t:G}")}");
+            _modifierStringBuilder = CachedLocalizedStringBuilder<LaneConnectorToolSystem.StateModifier>.Id((LaneConnectorToolSystem.StateModifier t) => $"{Localization.GetToolTooltipLocaleID("LaneConnector", $"{t:G}")}");
+            _feedbackStringBuilder = CachedLocalizedStringBuilder<FeedbackMessageType>.Id((FeedbackMessageType m) => $"{Localization.GetToolTooltipLocaleID("FeedbackMessage", $"{m:G}")}");
             _errorQuery = GetEntityQuery(new EntityQueryDesc()
             {
                 All = new []{ComponentType.ReadOnly<ToolFeedbackInfo>()},
@@ -81,6 +81,7 @@ namespace Traffic.UISystems
                             FeedbackMessageType messageType = feedbackInfos[j].type;
                             bool isError = messageType >= FeedbackMessageType.ErrorHasRoundabout;
                             StringTooltip tooltip = _feedbackTooltips[usedTooltips];
+                            tooltip.icon = "coui://ui-mods/traffic-images/traffic_icon.svg";
                             tooltip.value = _feedbackStringBuilder[messageType];
                             tooltip.color = isError ? TooltipColor.Error : TooltipColor.Warning;
                             AddMouseTooltip(tooltip);

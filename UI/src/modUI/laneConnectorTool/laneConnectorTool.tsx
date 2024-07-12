@@ -58,6 +58,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_ALL_CONNECTIONS_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeAllConnections}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -74,6 +75,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_U_TURNS_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeUTurns}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -90,6 +92,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.REMOVE_UNSAFE_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.removeUnsafe}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}
@@ -106,6 +109,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
                 description={translate(UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE)}
                 direction="right"
                 keyBind={keyBindings?.resetDefaults}
+                className={styles.actionButtonContainer}
               >
                 <Button variant="flat"
                         className={styles.actionButton}

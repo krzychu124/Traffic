@@ -9,9 +9,10 @@ interface Props {
   description: string | null;
   direction?: BalloonDirection;
   keyBind?: any;
+  className?: string;
 }
 
-export const DescriptionTooltipWithKeyBind = ({ title, description, direction = "right", keyBind, children }: PropsWithChildren<Props>) => {
+export const DescriptionTooltipWithKeyBind = ({ title, description, direction = "right", keyBind, className, children }: PropsWithChildren<Props>) => {
   const { DescriptionTooltip, LocalizedInputPath } = VanillaComponentsResolver.instance;
   const { translate } = useLocalization();
 
@@ -37,7 +38,7 @@ export const DescriptionTooltipWithKeyBind = ({ title, description, direction = 
                         direction={direction}
                         alignment="end"
     >
-      <div>{children}</div>
+      <div className={className}>{children}</div>
     </DescriptionTooltip>
   )
 }

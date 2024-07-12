@@ -25,7 +25,7 @@ namespace Traffic
         {
             if (GameManager.instance.modManager.TryGetExecutableAsset(mod, out var asset))
             {
-                string directory = Path.Combine(Path.GetDirectoryName(asset.path) ?? "", "lang");
+                string directory = Path.Combine(Path.GetDirectoryName(asset.path) ?? "", "Localization");
                 if (Directory.Exists(directory))
                 {
                     foreach (string localeFile in Directory.EnumerateFiles(directory, "*.json"))
@@ -50,7 +50,7 @@ namespace Traffic
             {
                 var keyValuePairs = new Localization.LocaleEN(settings).Load(true);
                 var entries = System.Linq.Enumerable.ToDictionary(keyValuePairs, p => p.Key, p => p.Value);
-                string directory = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(asset.path), "lang");
+                string directory = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(asset.path), "Localization");
                 string filePath = System.IO.Path.Combine(directory, "TranslationSource.json");
                 if (!System.IO.Directory.Exists(directory))
                 {

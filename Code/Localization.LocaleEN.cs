@@ -199,6 +199,7 @@ namespace Traffic
                     { UIKeys.STOP_ACTION_TOOLTIP, "Stop at stop line and give way other traffic coming from roads with higher priority"},
                     { UIKeys.RESET_ACTION_TOOLTIP, "Resets selected lane or lane group to vanilla default settings"},
                     { UIKeys.TOGGLE_DISPLAY_MODE_TOOLTIP, "Toggle between display modes"},
+
 #if GAMEPAD_SUPPORT
                     /* Gamepad Hints*/
                     { _setting.GetBindingKeyHintLocaleID(ModSettings.KeyBindAction.ToggleLaneConnectorTool), "Traffic's Lane Connector" }

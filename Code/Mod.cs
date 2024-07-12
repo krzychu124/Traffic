@@ -1,4 +1,4 @@
-// #if DEBUG
+﻿// #if DEBUG
 //   #define LOCALIZATION_EXPORT
 // #endif
 

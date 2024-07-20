@@ -4,19 +4,19 @@ using Game.Settings;
 namespace Traffic
 {
     
-    [SettingsUIMouseAction(KeyBindAction.ApplyTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"}, interactions: new []{"UIButton"})]
-    [SettingsUIMouseAction(KeyBindAction.CancelTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"}, interactions: new []{"UIButton"})]
+    [SettingsUIMouseAction(KeyBindAction.ApplyTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"})]
+    [SettingsUIMouseAction(KeyBindAction.CancelTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"})]
     [SettingsUIKeyboardAction(KeyBindAction.ToggleLaneConnectorTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
     [SettingsUIKeyboardAction(KeyBindAction.TogglePrioritiesTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
-    [SettingsUIKeyboardAction(KeyBindAction.RemoveAllConnections, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
-    [SettingsUIKeyboardAction(KeyBindAction.RemoveUTurns, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
-    [SettingsUIKeyboardAction(KeyBindAction.RemoveUnsafe, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
-    [SettingsUIKeyboardAction(KeyBindAction.ResetIntersectionToDefaults, Usages.kMenuUsage, Usages.kToolUsage, "Traffic.Tool.SelectedIntersection")]
-    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesToggleDisplayMode, Usages.kMenuUsage, Usages.kToolUsage)]
-    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesPriority, Usages.kMenuUsage, Usages.kToolUsage)]
-    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesYield, Usages.kMenuUsage, Usages.kToolUsage)]
-    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesStop, Usages.kMenuUsage, Usages.kToolUsage)]
-    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesReset, Usages.kMenuUsage, Usages.kToolUsage)]
+    [SettingsUIKeyboardAction(KeyBindAction.RemoveAllConnections, Usages.kToolUsage, ModKeyUsages.LaneConnectorToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.RemoveUTurns, Usages.kToolUsage, ModKeyUsages.LaneConnectorToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.RemoveUnsafe, Usages.kToolUsage, ModKeyUsages.LaneConnectorToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.ResetIntersectionToDefaults, Usages.kToolUsage, ModKeyUsages.LaneConnectorToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesToggleDisplayMode, Usages.kToolUsage, ModKeyUsages.PrioritiesToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesPriority, Usages.kToolUsage, ModKeyUsages.PrioritiesToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesYield, Usages.kToolUsage, ModKeyUsages.PrioritiesToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesStop, Usages.kToolUsage, ModKeyUsages.PrioritiesToolActive)]
+    [SettingsUIKeyboardAction(KeyBindAction.PrioritiesReset, Usages.kToolUsage, ModKeyUsages.PrioritiesToolActive)]
 #if GAMEPAD_SUPPORT
     [SettingsUIGamepadAction(KeyBindAction.ToggleLaneConnectorTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
 #endif
@@ -160,6 +160,13 @@ namespace Traffic
             internal const string PrioritiesStop = "PrioritiesStop";
             internal const string PrioritiesReset = "PrioritiesReset";
             internal const string PrioritiesToggleDisplayMode = "PrioritiesToggleDisplayMode";
+        }
+
+        internal static class ModKeyUsages
+        {
+            internal const string PrioritiesToolActive = "Traffic.Tool.Priorities";
+            internal const string LaneConnectorToolActive = "Traffic.Tool.LaneConnector";
+            internal const string SelectedIntersection = "Traffic.Tool.SelectedIntersection";
         }
     }
 }

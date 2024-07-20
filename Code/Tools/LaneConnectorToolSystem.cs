@@ -267,9 +267,12 @@ namespace Traffic.Tools
             ToolMode = Mode.Default;
             requireUnderground = false;
             
-            ToggleToolActions(true);
             _modRaycastSystem.Enabled = true;
             _validationSystem.Enabled = false;
+            
+            //main actions
+            // _applyAction.shouldBeEnabled = true;
+            // _secondaryApplyAction.shouldBeEnabled = true;
         }
 
         protected override void OnStopRunning() {
@@ -281,7 +284,7 @@ namespace Traffic.Tools
             CleanupIntersectionHelpers();
             _modUISystem.SelectedIntersection = default;
 
-            ToggleToolActions(false);
+            UpdateToolActions(false);
             _modRaycastSystem.Enabled = false;
             _validationSystem.Enabled = true;
         }
@@ -483,6 +486,7 @@ namespace Traffic.Tools
                 return ApplyPreviewedAction(inputDeps);
             }
 
+            UpdateToolActions(true);
             if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
             {
                 if (CheckToolboxActions(inputDeps, out JobHandle resultHandle))
@@ -942,14 +946,14 @@ namespace Traffic.Tools
             SystemAPI.SetSingleton(actionOverlayData);
         }
 
-        private void ToggleToolActions(bool enable)
+        private void UpdateToolActions(bool enable)
         {
-            _applyAction.shouldBeEnabled = enable;
-            _secondaryApplyAction.shouldBeEnabled = enable;
-            _removeAllConnectionsAction.shouldBeEnabled = enable;
-            _removeUTurnsAction.shouldBeEnabled = enable;
-            _removeUnsafeAction.shouldBeEnabled = enable;
-            _resetIntersectionToDefaultsAction.shouldBeEnabled = enable;
+            //toolbox actions
+            bool toolboxActive = _state > State.Default && enable;
+            _removeAllConnectionsAction.shouldBeEnabled = toolboxActive;
+            _removeUTurnsAction.shouldBeEnabled = toolboxActive;
+            _removeUnsafeAction.shouldBeEnabled = toolboxActive;
+            _resetIntersectionToDefaultsAction.shouldBeEnabled = toolboxActive;
         }
 
         private JobHandle ResetNodeConnections(JobHandle handle) {

@@ -31,6 +31,8 @@ namespace Traffic.UISystems
         private PriorityToolSystem _priorityTool;
         private ProxyAction _toggleLaneConnectorToolAction;
         private ProxyAction _togglePrioritiesToolAction;
+        private ProxyAction _applyAction;
+        private ProxyAction _cancelAction;
 
         public override GameMode gameMode
         {
@@ -53,6 +55,8 @@ namespace Traffic.UISystems
             _keyBindings = new ModKeyBinds();
             _toggleLaneConnectorToolAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ToggleLaneConnectorTool);
             _togglePrioritiesToolAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.TogglePrioritiesTool);
+            _applyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ApplyTool);
+            _cancelAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.CancelTool);
 
             //ui bindings
             AddUpdateBinding(new GetterValueBinding<SelectedIntersectionData>(Mod.MOD_NAME, UIBindingConstants.SELECTED_INTERSECTION, () => SelectedIntersection));
@@ -242,6 +246,8 @@ namespace Traffic.UISystems
             bool isGameOrEditor = mode == GameMode.Game || mode == GameMode.Editor;
             _toggleLaneConnectorToolAction.shouldBeEnabled = isGameOrEditor;
             _togglePrioritiesToolAction.shouldBeEnabled = isGameOrEditor;
+            _applyAction.shouldBeEnabled = isGameOrEditor;
+            _cancelAction.shouldBeEnabled = isGameOrEditor;
             Logger.Info($"OnGamePreload: {purpose} | {mode}");
             if (isGameOrEditor)
             {

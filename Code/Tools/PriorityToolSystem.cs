@@ -8,7 +8,6 @@ using Game.Input;
 using Game.Net;
 using Game.Notifications;
 using Game.Prefabs;
-using Game.Rendering;
 using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
@@ -75,16 +74,14 @@ namespace Traffic.Tools
         private ProxyAction _useYieldAction;
         private ProxyAction _useStopAction;
         private ProxyAction _useResetAction;
-        public Entity HoveredEntity;
-        public float3 LastPos;
+        private ProxyAction _resetIntersectionToDefaultsAction;
         private AudioManager _audioManager;
         private ToolOutputBarrier _toolOutputBarrier;
-        private OverlayRenderSystem _overlayRenderSystem;
         private ModUISystem _modUISystem;
 
         private ModUISystem.PriorityToolSetMode _toolSetMode;
-        private bool _toolModeChanged;
         private ModUISystem.OverlayMode _overlayMode;
+        private bool _toolModeChanged;
         private bool _overlayModeChanged;
 
         private Entity _selectedNode;
@@ -92,7 +89,6 @@ namespace Traffic.Tools
         private ControlPoint _lastControlPoint;
         private EntityQuery _definitionQuery;
         private EntityQuery _soundQuery;
-        private EntityQuery _highlightedQuery;
         private EntityQuery _raycastHelpersQuery;
         private EntityQuery _toolFeedbackQuery;
 
@@ -118,7 +114,6 @@ namespace Traffic.Tools
             // Systems
             _audioManager = World.GetOrCreateSystemManaged<AudioManager>();
             _toolOutputBarrier = World.GetOrCreateSystemManaged<ToolOutputBarrier>();
-            _overlayRenderSystem = World.GetOrCreateSystemManaged<OverlayRenderSystem>();
             _modUISystem = World.GetOrCreateSystemManaged<ModUISystem>();
             _modRaycastSystem = World.GetOrCreateSystemManaged<ModRaycastSystem>();
 
@@ -135,7 +130,7 @@ namespace Traffic.Tools
                 All = new[] { ComponentType.ReadOnly<ToolFeedbackInfo>(), ComponentType.ReadOnly<ToolActionBlocked>() },
                 None = new[] { ComponentType.ReadOnly<Deleted>() },
             });
-            _highlightedQuery = SystemAPI.QueryBuilder().WithAll<Highlighted, LaneHandle>().WithNone<Deleted>().Build();
+            
             // Actions
             _applyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ApplyTool);
             _secondaryApplyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.CancelTool);
@@ -145,11 +140,8 @@ namespace Traffic.Tools
             _useYieldAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.PrioritiesYield);
             _useStopAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.PrioritiesStop);
             _useResetAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.PrioritiesReset);
-            _toggleDisplayModeAction.onInteraction += ActionPhaseChanged;
-            _usePriorityAction.onInteraction += ActionPhaseChanged;
-            _useYieldAction.onInteraction += ActionPhaseChanged;
-            _useStopAction.onInteraction += ActionPhaseChanged;
-            _useResetAction.onInteraction += ActionPhaseChanged;
+            _resetIntersectionToDefaultsAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ResetIntersectionToDefaults);
+            ManageActionListeners(enable: true);
             Enabled = false;
         }
 
@@ -176,8 +168,8 @@ namespace Traffic.Tools
 
         protected override void OnStartRunning()
         {
-            base.OnStartRunning();
             Logger.Info($"Starting {nameof(PriorityToolSystem)}");
+            base.OnStartRunning();
             _controlPoints.Clear();
             _mainCamera = Camera.main;
             _state = State.Default;
@@ -186,91 +178,24 @@ namespace Traffic.Tools
             _toolSetMode = ModUISystem.PriorityToolSetMode.Yield;
             _modUISystem.SelectedIntersection = default;
             _modRaycastSystem.Enabled = true;
-            UpdateActionState(true);
             ToolMode = Mode.Default;
         }
 
         protected override void OnStopRunning()
         {
-            base.OnStopRunning();
             Logger.Info($"Stopping {nameof(PriorityToolSystem)}");
+            base.OnStopRunning();
             _state = State.Default;
             _mainCamera = null;
-            HoveredEntity = Entity.Null;
-            LastPos = float3.zero;
             CleanupIntersectionHelpers();
             _modRaycastSystem.Enabled = false;
             UpdateActionState(false);
-        }
-
-        protected override void OnDestroy()
-        {
-            _toggleDisplayModeAction.onInteraction -= ActionPhaseChanged;
-            _usePriorityAction.onInteraction -= ActionPhaseChanged;
-            _useYieldAction.onInteraction -= ActionPhaseChanged;
-            _useStopAction.onInteraction -= ActionPhaseChanged;
-            _useResetAction.onInteraction -= ActionPhaseChanged;
-            base.OnDestroy();
         }
 
         public NativeList<ControlPoint> GetControlPoints(out JobHandle dependencies)
         {
             dependencies = base.Dependency;
             return _controlPoints;
-        }
-
-        public override void InitializeRaycast()
-        {
-            base.InitializeRaycast();
-
-            if (_mainCamera && _state > State.Default)
-            {
-                CustomRaycastInput input = new CustomRaycastInput();
-                input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
-                input.offset = new float3(0, 0, 1.5f);
-                input.typeMask = TypeMask.Lanes;
-                input.fovTan = math.tan(math.radians(_mainCamera.fieldOfView) * 0.5f);
-                _modRaycastSystem.SetInput(input);
-            }
-
-            m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
-            m_ToolRaycastSystem.typeMask = (TypeMask.Net);
-            m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
-            m_ToolRaycastSystem.netLayerMask = Layer.All;
-            m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
-            m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (m_FocusChanged)
-            {
-                return inputDeps;
-            }
-
-
-            if (ToolMode == Mode.ApplyPreviewModifications)
-            {
-                ToolMode = Mode.Default;
-                return ApplyPreviewedAction(inputDeps);
-            }
-
-            if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
-            {
-                if (_secondaryApplyAction.WasPressedThisFrame())
-                {
-                    return Cancel(inputDeps);
-                }
-
-                if (_applyAction.WasPressedThisFrame())
-                {
-                    return Apply(inputDeps);
-                }
-
-                return Update(inputDeps);
-            }
-
-            return Clear(inputDeps);
         }
 
         private bool IsApplyAllowed(bool useVanilla = true)
@@ -313,6 +238,62 @@ namespace Traffic.Tools
             return false;
         }
 
+        public override void InitializeRaycast()
+        {
+            base.InitializeRaycast();
+
+            if (_mainCamera && _state > State.Default)
+            {
+                CustomRaycastInput input = new CustomRaycastInput();
+                input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
+                input.offset = new float3(0, 0, 1.5f);
+                input.typeMask = TypeMask.Lanes;
+                input.fovTan = math.tan(math.radians(_mainCamera.fieldOfView) * 0.5f);
+                _modRaycastSystem.SetInput(input);
+            }
+
+            m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
+            m_ToolRaycastSystem.typeMask = (TypeMask.Net);
+            m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
+            m_ToolRaycastSystem.netLayerMask = Layer.All;
+            m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
+            m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
+        }
+
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
+            if (m_FocusChanged)
+            {
+                return inputDeps;
+            }
+
+            UpdateActionState(true);
+            if (ToolMode == Mode.ApplyPreviewModifications)
+            {
+                ToolMode = Mode.Default;
+                return ApplyPreviewedAction(inputDeps);
+            }
+
+            if ((m_ToolRaycastSystem.raycastFlags & (RaycastFlags.DebugDisable | RaycastFlags.UIDisable)) == 0)
+            {
+                if (CheckToolboxActions(inputDeps, out JobHandle resultHandle))
+                {
+                    return resultHandle;
+                }
+                if (_secondaryApplyAction.WasPressedThisFrame())
+                {
+                    return Cancel(inputDeps);
+                }
+                if (_applyAction.WasPressedThisFrame())
+                {
+                    return Apply(inputDeps);
+                }
+
+                return Update(inputDeps);
+            }
+
+            return Clear(inputDeps);
+        }
 
         private JobHandle Apply(JobHandle inputDeps)
         {
@@ -509,6 +490,86 @@ namespace Traffic.Tools
             _toolOutputBarrier.AddJobHandleForProducer(definitionJobHandle);
 
             return JobHandle.CombineDependencies(definitionJobHandle, jobHandle);
+        }
+
+        internal JobHandle ApplyPreviewedAction(JobHandle inputDeps)
+        {
+            ActionOverlayData data = SystemAPI.GetSingleton<ActionOverlayData>();
+            Logger.DebugTool($"ApplyPreviewedAction: {data.entity}, {data.mode}");
+            if (data.mode == ModUISystem.ActionOverlayPreview.ResetToVanilla &&
+                data.entity != Entity.Null &&
+                data.entity.Equals(_selectedNode) &&
+                !EntityManager.HasComponent<Deleted>(_selectedNode) &&
+                EntityManager.HasComponent<NodeGeometry>(data.entity))
+            {
+                return ResetNodePriorities(inputDeps);
+            }
+
+            return inputDeps;
+        }
+
+        private JobHandle ResetNodePriorities(JobHandle handle)
+        {
+            Logger.DebugTool($"[Resetting Node Priorities {UnityEngine.Time.frameCount}] at {_selectedNode}");
+            applyMode = ApplyMode.Clear;
+            _lastControlPoint = default;
+            _controlPoints.Clear();
+
+            if (EntityManager.HasBuffer<ConnectedEdge>(_selectedNode))
+            {
+                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
+                JobHandle removePrioritiesHandle = new RemoveNodeLanePrioritiesJob()
+                {
+                    node = _selectedNode,
+                    connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(),
+                    lanePriorityBuffer = SystemAPI.GetBufferLookup<LanePriority>(),
+                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                    modifiedPriorityData = SystemAPI.GetComponentLookup<ModifiedPriorities>(true),
+                    commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
+                }.Schedule(handle);
+                _toolOutputBarrier.AddJobHandleForProducer(removePrioritiesHandle);
+                return UpdateDefinitions(removePrioritiesHandle, true);
+            }
+
+            return handle;
+        }
+
+        private bool CheckToolboxActions(JobHandle inputDeps, out JobHandle jobHandle)
+        {
+            if (_state == State.Default)
+            {
+                jobHandle = new JobHandle();
+                return false;
+            }
+
+            if (_resetIntersectionToDefaultsAction.WasPerformedThisFrame())
+            {
+                jobHandle = ResetNodePriorities(inputDeps);
+                return true;
+            }
+            
+            jobHandle =new JobHandle();
+            return false;
+        }
+
+        private void ManageActionListeners(bool enable)
+        {
+            if (enable)
+            {
+                _toggleDisplayModeAction.onInteraction += ActionPhaseChanged;
+                _usePriorityAction.onInteraction += ActionPhaseChanged;
+                _useYieldAction.onInteraction += ActionPhaseChanged;
+                _useStopAction.onInteraction += ActionPhaseChanged;
+                _useResetAction.onInteraction += ActionPhaseChanged;
+            }
+            else
+            {
+                _toggleDisplayModeAction.onInteraction -= ActionPhaseChanged;
+                _usePriorityAction.onInteraction -= ActionPhaseChanged;
+                _useYieldAction.onInteraction -= ActionPhaseChanged;
+                _useStopAction.onInteraction -= ActionPhaseChanged;
+                _useResetAction.onInteraction -= ActionPhaseChanged;
+            }
         }
 
         private struct CreateDefinitionsJob : IJob
@@ -743,111 +804,95 @@ namespace Traffic.Tools
             }
         }
 
-        private void AddCustomPriorityToEdge(Entity e, RaycastHit rc)
+        private struct RemoveLanePrioritiesJob : IJobFor
         {
-            bool isNearEnd = IsNearEnd(e, EntityManager.GetComponentData<Curve>(e), rc.m_HitPosition, false);
-            if (!EntityManager.HasComponent<CustomPriority>(e))
-            {
-                CustomPriority priority = isNearEnd ? new CustomPriority() { left = PriorityType.Default, right = PriorityType.Yield } : new CustomPriority() { left = PriorityType.Yield, right = PriorityType.Default };
-                EntityManager.AddComponentData<CustomPriority>(e, priority);
-                Logger.Info($"Added custom priority to edge: {e} | {priority.left} {priority.right}");
-            }
-            else
-            {
-                CustomPriority customPriority = EntityManager.GetComponentData<CustomPriority>(e);
-                CustomPriority priority = isNearEnd
-                    ? new CustomPriority
-                    {
-                        left = customPriority.left,
-                        right = GetNextPriority(customPriority.right)
-                    }
-                    : new CustomPriority()
-                    {
-                        left = GetNextPriority(customPriority.left),
-                        right = customPriority.right,
-                    };
-                EntityManager.SetComponentData(e, priority);
-                Logger.Info($"Updated custom priority to edge: {e} | {priority.left} {priority.right}");
-            }
+            [ReadOnly] public ComponentLookup<Edge> edgeData;
+            [ReadOnly] public ComponentLookup<ModifiedPriorities> modifiedPriorityData;
+            [ReadOnly] public NativeArray<Entity> entities;
+            public EntityCommandBuffer.ParallelWriter commandBuffer;
 
-            if (!EntityManager.HasComponent<Updated>(e))
+
+            public void Execute(int index)
             {
-                EntityCommandBuffer entityCommandBuffer = _toolOutputBarrier.CreateCommandBuffer();
-                entityCommandBuffer.AddComponent<Updated>(e);
-                Edge edge = EntityManager.GetComponentData<Edge>(e);
-                if (!EntityManager.HasComponent<Updated>(edge.m_Start))
+                Entity entity = entities[index];
+                if (modifiedPriorityData.HasComponent(entity))
                 {
-                    entityCommandBuffer.AddComponent<Updated>(edge.m_Start);
+                    commandBuffer.RemoveComponent<ModifiedPriorities>(index, entity);
                 }
-                if (!EntityManager.HasComponent<Updated>(edge.m_End))
-                {
-                    entityCommandBuffer.AddComponent<Updated>(edge.m_End);
-                }
+                commandBuffer.RemoveComponent<LanePriority>(index, entity);
+                Edge e = edgeData[entity];
+                // update edge
+                commandBuffer.AddComponent<Updated>(index, entity);
+                // update nodes
+                commandBuffer.AddComponent<Updated>(index, e.m_Start);
+                commandBuffer.AddComponent<Updated>(index, e.m_End);
             }
         }
 
-        private void RemoveCustomPriorityFromEdge(Entity e, RaycastHit rc)
+        private struct RemoveNodeLanePrioritiesJob : IJob
         {
-            if (EntityManager.HasComponent<CustomPriority>(e))
+            [ReadOnly] public Entity node;
+            [ReadOnly] public ComponentLookup<Edge> edgeData;
+            [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeData;
+            [ReadOnly] public BufferLookup<LanePriority> lanePriorityBuffer;
+            [ReadOnly] public ComponentLookup<ModifiedPriorities> modifiedPriorityData;
+            public EntityCommandBuffer commandBuffer;
+
+            public void Execute()
             {
-                bool updated = false;
-                var priority = EntityManager.GetComponentData<CustomPriority>(e);
-                var oldPriority = priority;
-                bool isNearEnd = IsNearEnd(e, EntityManager.GetComponentData<Curve>(e), rc.m_HitPosition, false);
-                if (isNearEnd)
+                bool changed = false;
+                DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeData[node];
+                foreach (ConnectedEdge connectedEdge in connectedEdges)
                 {
-                    priority.right = PriorityType.Default;
-                }
-                else
-                {
-                    priority.left = PriorityType.Default;
-                }
-                EntityCommandBuffer entityCommandBuffer = _toolOutputBarrier.CreateCommandBuffer();
-                if (priority is { left: 0, right: 0 })
-                {
-                    entityCommandBuffer.RemoveComponent<CustomPriority>(e);
-                    updated = true;
-                }
-                else if (priority.left != oldPriority.left || priority.right != oldPriority.right)
-                {
-                    entityCommandBuffer.SetComponent(e, priority);
-                    updated = true;
-                }
-                Logger.Info($"Removed custom priority from edge: {e}");
-                if (EntityManager.HasBuffer<Game.Net.SubLane>(e))
-                {
-                    DynamicBuffer<Game.Net.SubLane> sub = EntityManager.GetBuffer<Game.Net.SubLane>(e);
-                    for (int i = 0; i < sub.Length; i++)
+                    Entity edgeEntity = connectedEdge.m_Edge;
+                    NativeList<LanePriority> priorities = default;
+                    if (lanePriorityBuffer.HasBuffer(edgeEntity))
                     {
-                        if (EntityManager.HasComponent<CustomPriority>(sub[i].m_SubLane))
+                        Edge e = edgeData[edgeEntity];
+                        bool isEnd = e.m_End == node;
+                        DynamicBuffer<LanePriority> lanePriorities = lanePriorityBuffer[edgeEntity];
+                        priorities = new NativeList<LanePriority>(lanePriorities.Length, Allocator.Temp);
+                        // collect priorities from other side of edge
+                        foreach (LanePriority lanePriority in lanePriorities)
                         {
-                            updated = true;
-                            entityCommandBuffer.RemoveComponent<CustomPriority>(sub[i].m_SubLane);
-                            Logger.Info($"Removed custom priority from sublane {sub[i].m_SubLane}[{i}]");
+                            if (isEnd == !lanePriority.isEnd)
+                            {
+                                priorities.Add(lanePriority);
+                            }
                         }
+
+                        // update edge
+                        commandBuffer.AddComponent<Updated>(edgeEntity);
+                        // update other node
+                        commandBuffer.AddComponent<Updated>(isEnd ? e.m_Start : e.m_End);
+                    }
+
+                    if (!priorities.IsCreated)
+                    {
+                        continue;
+                    }
+
+                    if (priorities.IsEmpty)
+                    {
+                        if (modifiedPriorityData.HasComponent(edgeEntity))
+                        {
+                            commandBuffer.RemoveComponent<ModifiedPriorities>(edgeEntity);
+                        }
+
+                        commandBuffer.RemoveComponent<LanePriority>(edgeEntity);
+                        changed = true;
+                    }
+                    else
+                    {
+                        DynamicBuffer<LanePriority> lanePriorities = commandBuffer.SetBuffer<LanePriority>(edgeEntity);
+                        lanePriorities.CopyFrom(priorities.AsArray());
+                        changed = true;
                     }
                 }
 
-                if (updated)
+                if (changed)
                 {
-                    if (!EntityManager.HasComponent<Updated>(e))
-                    {
-                        entityCommandBuffer.AddComponent<Updated>(e);
-                    }
-                    Edge edge = EntityManager.GetComponentData<Edge>(e);
-                    Logger.Info($"Updating: {e} || {priority.left} {priority.right}");
-                    if (!EntityManager.HasComponent<Updated>(edge.m_Start))
-                    {
-                        entityCommandBuffer.AddComponent<Updated>(edge.m_Start);
-                    }
-                    if (!EntityManager.HasComponent<Updated>(edge.m_End))
-                    {
-                        entityCommandBuffer.AddComponent<Updated>(edge.m_End);
-                    }
-                }
-                else
-                {
-                    Logger.Info($"Nothing changed: {e} | {oldPriority.left} {oldPriority.right} || {priority.left} {priority.right}");
+                    commandBuffer.AddComponent<Updated>(node);
                 }
             }
         }
@@ -942,23 +987,6 @@ namespace Traffic.Tools
             }
         }
 
-        private PriorityType GetNextPriority(PriorityType customPriority)
-        {
-            switch (customPriority)
-            {
-                case PriorityType.Default:
-                    return PriorityType.RightOfWay;
-                case PriorityType.RightOfWay:
-                    return PriorityType.Yield;
-                case PriorityType.Yield:
-                    return PriorityType.Stop;
-                case PriorityType.Stop:
-                    return PriorityType.Default;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(customPriority), customPriority, null);
-            }
-        }
-
         private UpgradeType GetNextUpgrade(UpgradeType type)
         {
             switch (type)
@@ -990,58 +1018,6 @@ namespace Traffic.Tools
             float curveBezierT;
             MathUtils.Distance(curve.m_Bezier.xz, position.xz, out curveBezierT);
             return curveBezierT > 0.5f;
-        }
-
-        private void CleanupIntersectionHelpers()
-        {
-            Logger.DebugTool("CleanupIntersectionHelpers!");
-            if (!_raycastHelpersQuery.IsEmptyIgnoreFilter)
-            {
-                Logger.DebugTool($"CleanupIntersectionHelpers! {_raycastHelpersQuery.CalculateEntityCount()}");
-                EntityManager.AddComponent<Deleted>(_raycastHelpersQuery);
-            }
-        }
-
-        internal JobHandle ApplyPreviewedAction(JobHandle inputDeps)
-        {
-            ActionOverlayData data = SystemAPI.GetSingleton<ActionOverlayData>();
-            Logger.DebugTool($"ApplyPreviewedAction: {data.entity}, {data.mode}");
-            if (data.mode == ModUISystem.ActionOverlayPreview.ResetToVanilla &&
-                data.entity != Entity.Null &&
-                data.entity.Equals(_selectedNode) &&
-                !EntityManager.HasComponent<Deleted>(_selectedNode) &&
-                EntityManager.HasComponent<NodeGeometry>(data.entity))
-            {
-                return ResetNodePriorities(inputDeps);
-            }
-
-            return inputDeps;
-        }
-
-        private JobHandle ResetNodePriorities(JobHandle handle)
-        {
-            Logger.DebugTool($"[Resetting Node Priorities {UnityEngine.Time.frameCount}] at {_selectedNode}");
-            applyMode = ApplyMode.Clear;
-            _lastControlPoint = default;
-            _controlPoints.Clear();
-
-            if (EntityManager.HasBuffer<ConnectedEdge>(_selectedNode))
-            {
-                _audioManager.PlayUISound(_soundQuery.GetSingleton<ToolUXSoundSettingsData>().m_BulldozeSound);
-                JobHandle removePrioritiesHandle = new RemoveNodeLanePrioritiesJob()
-                {
-                    node = _selectedNode,
-                    connectedEdgeData = SystemAPI.GetBufferLookup<ConnectedEdge>(),
-                    lanePriorityBuffer = SystemAPI.GetBufferLookup<LanePriority>(),
-                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-                    modifiedPriorityData = SystemAPI.GetComponentLookup<ModifiedPriorities>(true),
-                    commandBuffer = _toolOutputBarrier.CreateCommandBuffer(),
-                }.Schedule(handle);
-                _toolOutputBarrier.AddJobHandleForProducer(removePrioritiesHandle);
-                return UpdateDefinitions(removePrioritiesHandle, true);
-            }
-
-            return handle;
         }
 
         internal void ResetAllPriorities()
@@ -1083,111 +1059,31 @@ namespace Traffic.Tools
             }
         }
 
+        private void CleanupIntersectionHelpers()
+        {
+            Logger.DebugTool("CleanupIntersectionHelpers!");
+            if (!_raycastHelpersQuery.IsEmptyIgnoreFilter)
+            {
+                Logger.DebugTool($"CleanupIntersectionHelpers! {_raycastHelpersQuery.CalculateEntityCount()}");
+                EntityManager.AddComponent<Deleted>(_raycastHelpersQuery);
+            }
+        }
+
         private void UpdateActionState(bool shouldEnable)
-        {
-            //vanilla
-            _applyAction.shouldBeEnabled = shouldEnable;
-            _secondaryApplyAction.shouldBeEnabled = shouldEnable;
-            
-            //mod
-            _toggleDisplayModeAction.shouldBeEnabled = shouldEnable;
-            _usePriorityAction.shouldBeEnabled = shouldEnable;
-            _useYieldAction.shouldBeEnabled = shouldEnable;
-            _useStopAction.shouldBeEnabled = shouldEnable;
-            _useResetAction.shouldBeEnabled = shouldEnable;          
+        {            
+            //toolbox
+            bool toolboxActive = _state == State.ChangePriority && shouldEnable;
+            _toggleDisplayModeAction.shouldBeEnabled = toolboxActive;
+            _usePriorityAction.shouldBeEnabled = toolboxActive;
+            _useYieldAction.shouldBeEnabled = toolboxActive;
+            _useStopAction.shouldBeEnabled = toolboxActive;
+            _useResetAction.shouldBeEnabled = toolboxActive;
         }
 
-        private struct RemoveLanePrioritiesJob : IJobFor
+        protected override void OnDestroy()
         {
-            [ReadOnly] public ComponentLookup<Edge> edgeData;
-            [ReadOnly] public ComponentLookup<ModifiedPriorities> modifiedPriorityData;
-            [ReadOnly] public NativeArray<Entity> entities;
-            public EntityCommandBuffer.ParallelWriter commandBuffer;
-
-
-            public void Execute(int index)
-            {
-                Entity entity = entities[index];
-                if (modifiedPriorityData.HasComponent(entity))
-                {
-                    commandBuffer.RemoveComponent<ModifiedPriorities>(index, entity);
-                }
-                commandBuffer.RemoveComponent<LanePriority>(index, entity);
-                Edge e = edgeData[entity];
-                // update edge
-                commandBuffer.AddComponent<Updated>(index, entity);
-                // update nodes
-                commandBuffer.AddComponent<Updated>(index, e.m_Start);
-                commandBuffer.AddComponent<Updated>(index, e.m_End);
-            }
-        }
-
-        private struct RemoveNodeLanePrioritiesJob : IJob
-        {
-            [ReadOnly] public Entity node;
-            [ReadOnly] public ComponentLookup<Edge> edgeData;
-            [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeData;
-            [ReadOnly] public BufferLookup<LanePriority> lanePriorityBuffer;
-            [ReadOnly] public ComponentLookup<ModifiedPriorities> modifiedPriorityData;
-            public EntityCommandBuffer commandBuffer;
-
-            public void Execute()
-            {
-                bool changed = false;
-                DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgeData[node];
-                foreach (ConnectedEdge connectedEdge in connectedEdges)
-                {
-                    Entity edgeEntity = connectedEdge.m_Edge;
-                    NativeList<LanePriority> priorities = default;
-                    if (lanePriorityBuffer.HasBuffer(edgeEntity))
-                    {
-                        Edge e = edgeData[edgeEntity];
-                        bool isEnd = e.m_End == node;
-                        DynamicBuffer<LanePriority> lanePriorities = lanePriorityBuffer[edgeEntity];
-                        priorities = new NativeList<LanePriority>(lanePriorities.Length, Allocator.Temp);
-                        // collect priorities from other side of edge
-                        foreach (LanePriority lanePriority in lanePriorities)
-                        {
-                            if (isEnd == !lanePriority.isEnd)
-                            {
-                                priorities.Add(lanePriority);
-                            }
-                        }
-
-                        // update edge
-                        commandBuffer.AddComponent<Updated>(edgeEntity);
-                        // update other node
-                        commandBuffer.AddComponent<Updated>(isEnd ? e.m_Start : e.m_End);
-                    }
-
-                    if (!priorities.IsCreated)
-                    {
-                        continue;
-                    }
-
-                    if (priorities.IsEmpty)
-                    {
-                        if (modifiedPriorityData.HasComponent(edgeEntity))
-                        {
-                            commandBuffer.RemoveComponent<ModifiedPriorities>(edgeEntity);
-                        }
-
-                        commandBuffer.RemoveComponent<LanePriority>(edgeEntity);
-                        changed = true;
-                    }
-                    else
-                    {
-                        DynamicBuffer<LanePriority> lanePriorities = commandBuffer.SetBuffer<LanePriority>(edgeEntity);
-                        lanePriorities.CopyFrom(priorities.AsArray());
-                        changed = true;
-                    }
-                }
-
-                if (changed)
-                {
-                    commandBuffer.AddComponent<Updated>(node);
-                }
-            }
+            ManageActionListeners(enable: false);
+            base.OnDestroy();
         }
     }
 }

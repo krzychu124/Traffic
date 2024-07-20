@@ -18,8 +18,8 @@ namespace Traffic
 {
     [FileLocation("Traffic")]
     [SettingsUITabOrder(GeneralTab, KeybindingsTab)]
-    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
-    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, SelectedNodeSection, OtherSection)]
+    [SettingsUIGroupOrder(MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, PriorityToolSection, SelectedNodeSection, OtherSection)]
+    [SettingsUIShowGroupName( MainSection, LaneConnectorSection, PrioritiesSection, OverlaysSection, AboutSection, ToolsSection, PriorityToolSection, SelectedNodeSection, OtherSection)]
     public partial class ModSettings : ModSetting
     {
         internal const string SETTINGS_ASSET_NAME = "Traffic General Settings";
@@ -54,12 +54,24 @@ namespace Traffic
         [SettingsUISection(GeneralTab, LaneConnectorSection)]
         [SettingsUIButton()]
         [SettingsUIConfirmation()]
-        [SettingsUIDisableByCondition(typeof(ModSettings), nameof(IsResetConnectionsHidden))]
-        [SettingsUIHideByCondition(typeof(ModSettings), nameof(IsResetConnectionsHidden))]
+        [SettingsUIDisableByCondition(typeof(ModSettings), nameof(IsNotGameOrEditor))]
+        [SettingsUIHideByCondition(typeof(ModSettings), nameof(IsNotGameOrEditor))]
         public bool ResetLaneConnections
         {
             set {
                 World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<LaneConnectorToolSystem>().ResetAllConnections();
+            }
+        }
+        
+        [SettingsUISection(GeneralTab, PrioritiesSection)]
+        [SettingsUIButton()]
+        [SettingsUIConfirmation()]
+        [SettingsUIDisableByCondition(typeof(ModSettings), nameof(IsNotGameOrEditor))]
+        [SettingsUIHideByCondition(typeof(ModSettings), nameof(IsNotGameOrEditor))]
+        public bool ResetPriorities
+        {
+            set {
+                World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<PriorityToolSystem>().ResetAllPriorities();
             }
         }
         
@@ -89,7 +101,7 @@ namespace Traffic
             }
         }
         
-        public bool IsResetConnectionsHidden()
+        public bool IsNotGameOrEditor()
         {
             return (GameManager.instance.gameMode & GameMode.GameOrEditor) == 0;
         }

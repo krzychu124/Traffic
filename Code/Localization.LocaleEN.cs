@@ -121,9 +121,9 @@ namespace Traffic
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.ResetLaneConnections)), $"While in-game, it will remove all custom lane connections" },
                     { _setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetLaneConnections)), "Are you sure you want to remove all custom lane connections?" },
 
-                    // {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetPriorities)), "Reset Priority settings" },
-                    // {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetPriorities)), $"While in-game, it will remove all custom priority settings" },
-                    // {_setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetPriorities)), "Are you sure you want to remove all custom priority settings?" },
+                    {_setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetPriorities)), "Reset Priority settings" },
+                    {_setting.GetOptionDescLocaleID(nameof(ModSettings.ResetPriorities)), $"While in-game, it will remove all custom priority settings" },
+                    {_setting.GetOptionWarningLocaleID(nameof(ModSettings.ResetPriorities)), "Are you sure you want to remove all custom priority settings?" },
 
                     //Overlays
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.FeedbackOutlineWidth)), "Feedback outline width" },

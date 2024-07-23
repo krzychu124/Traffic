@@ -39,15 +39,15 @@ namespace Traffic.Systems.LaneConnections
                 All = new[] { ComponentType.ReadOnly<ConnectedEdge>(), ComponentType.ReadOnly<Temp>() },
                 Any = new[] { ComponentType.ReadOnly<ModifiedConnections>(), ComponentType.ReadOnly<ModifiedLaneConnections>(), }
             });
-            RequireForUpdate(_tempNodesQuery);
+            RequireAnyForUpdate(_tempEdgesQuery, _tempNodesQuery);
         }
 
         protected override void OnUpdate()
         {
-            Logger.DebugTool($"ApplyLaneConnectionsSystem: Process {_tempNodesQuery.CalculateEntityCount()} entities");
-
             int entityCount = _tempEdgesQuery.CalculateEntityCount();
+            Logger.DebugTool($"ApplyLaneConnectionsSystem[{UnityEngine.Time.frameCount}]: Process {_tempNodesQuery.CalculateEntityCount()} node entities, edges: {entityCount}");
             NativeParallelHashMap<NodeEdgeKey, Entity> tempEdgeMap = new NativeParallelHashMap<NodeEdgeKey, Entity>(entityCount * 2, Allocator.TempJob);
+            NativeHashSet<Entity> nodeSet = new NativeHashSet<Entity>(entityCount, Allocator.TempJob);
             JobHandle mapEdgesJobHandle = new MapNodeEdgeEntitiesJob
             {
                 entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
@@ -56,9 +56,13 @@ namespace Traffic.Systems.LaneConnections
                 tempData = SystemAPI.GetComponentLookup<Temp>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                nodeEdgeMap = tempEdgeMap,
-#if DEBUG_CONNECTIONS
+                modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                toolManagedEntities = SystemAPI.GetComponentLookup<ToolManaged>(true),
+                nodeEdgeMap = tempEdgeMap,
+                modifiedNodeSet = nodeSet,
+                collectUpdatedNodes = false,
+#if DEBUG_CONNECTIONS
                 debugSystemName = nameof(ApplyLaneConnectionsSystem),
 #endif
             }.Schedule(_tempEdgesQuery, Dependency);
@@ -81,6 +85,7 @@ namespace Traffic.Systems.LaneConnections
                 editIntersectionTypeHandle = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
                 modifiedLaneConnectionTypeHandle = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                 tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                dataTemps = SystemAPI.GetComponentLookup<DataTemp>(true),
                 dataOwnerData = SystemAPI.GetComponentLookup<DataOwner>(false),
                 generatedConnectionData = SystemAPI.GetBufferLookup<GeneratedConnection>(false),
                 modifiedLaneConnectionData = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(false),
@@ -91,6 +96,7 @@ namespace Traffic.Systems.LaneConnections
 
             _toolOutputBarrier.AddJobHandleForProducer(jobHandle);
             tempEdgeMap.Dispose(jobHandle);
+            nodeSet.Dispose(jobHandle);
             Dependency = jobHandle;
         }
     }

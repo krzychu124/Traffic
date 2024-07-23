@@ -15,6 +15,7 @@ using Game.Prefabs;
 using Game.Simulation;
 using Game.Tools;
 using Traffic.CommonData;
+using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -414,6 +415,7 @@ namespace Traffic.Systems
                 /*NON VANILLA - START*/
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                 generatedConnections = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                dataTemps = SystemAPI.GetComponentLookup<DataTemp>(true),
                 /*NON VANILLA - END*/
 
                 m_LeftHandTraffic = m_CityConfigurationSystem.leftHandTraffic,
@@ -692,6 +694,8 @@ namespace Traffic.Systems
             public BufferTypeHandle<ModifiedLaneConnections> modifiedLaneConnectionsType;
             [ReadOnly]
             public BufferLookup<GeneratedConnection> generatedConnections;
+            [ReadOnly]
+            public ComponentLookup<DataTemp> dataTemps;
             /*NON VANILLA - END*/
             
             [ReadOnly]
@@ -5371,11 +5375,11 @@ namespace Traffic.Systems
 
             private void FillModifiedLaneConnections(DynamicBuffer<ModifiedLaneConnections> connections, NativeHashSet<LaneEndKey> output, bool isTemp)
             {
-                Temp temp;
+                DataTemp temp;
                 for (var i = 0; i < connections.Length; i++)
                 {
                     ModifiedLaneConnections connection = connections[i];
-                    if (!isTemp || m_TempData.TryGetComponent(connection.modifiedConnections, out temp) && (temp.m_Flags & TempFlags.Delete) == 0)
+                    if (!isTemp || dataTemps.TryGetComponent(connection.modifiedConnections, out temp) && (temp.flags & TempFlags.Delete) == 0)
                     {
                         output.Add(new LaneEndKey(connection.edgeEntity, connection.laneIndex));
                     }

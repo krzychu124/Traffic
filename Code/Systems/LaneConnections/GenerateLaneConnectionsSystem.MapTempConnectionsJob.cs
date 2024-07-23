@@ -59,16 +59,20 @@ namespace Traffic.Systems.LaneConnections
                     do
                     {
                         Entity modifiedConnectionEntity = commandBuffer.CreateEntity(index);
-                        commandBuffer.AddComponent<Temp>(index, modifiedConnectionEntity, new Temp(item.owner, item.flags));
+                        commandBuffer.AddComponent<DataTemp>(index, modifiedConnectionEntity, new DataTemp(item.owner, item.flags));
                         commandBuffer.AddComponent<DataOwner>(index, modifiedConnectionEntity, new DataOwner(item.dataOwner));
                         commandBuffer.AddComponent<CustomLaneConnection>(index, modifiedConnectionEntity);
                         commandBuffer.AddComponent<PrefabRef>(index, modifiedConnectionEntity, new PrefabRef(fakePrefabRef));
-                        DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, modifiedConnectionEntity);
+                        int length = 0;
+                        if (item.generatedConnections.IsCreated)
+                        {
+                            DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, modifiedConnectionEntity);
 #if DEBUG_CONNECTIONS
-                        int length = item.generatedConnections.Length;
+                            length = item.generatedConnections.Length;
 #endif
-                        generatedConnections.CopyFrom(item.generatedConnections);
-                        item.generatedConnections.Dispose();
+                            generatedConnections.CopyFrom(item.generatedConnections);
+                            item.generatedConnections.Dispose();
+                        }
                         modifiedLaneConnections.Add(new ModifiedLaneConnections()
                         {
                             edgeEntity = item.edgeEntity,

@@ -139,7 +139,7 @@ namespace Traffic
         {
             if (UseGameLanguage == value)
             {
-                Logger.Warning($"(OnUseGameLanguageSet) No state changed {value}");
+                Logger.Info($"(OnUseGameLanguageSet) No state changed {value}");
                 return;
             }
             

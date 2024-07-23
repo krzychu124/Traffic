@@ -7,7 +7,9 @@ namespace Traffic.Components.LaneConnections
     public struct ConnectionDefinition : IComponentData
     {
         public Entity edge;
+#if DEBUG_CONNECTIONS                    
         public Entity connector;
+#endif
         public Entity owner;
         public Entity node;
         public int laneIndex;

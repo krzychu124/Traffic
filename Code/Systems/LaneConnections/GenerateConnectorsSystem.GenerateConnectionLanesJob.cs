@@ -40,7 +40,7 @@ namespace Traffic.Systems.LaneConnections
  
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
-                Logger.DebugConnections($"Connectors: {connectorsList.Count()}");
+                Logger.DebugConnections($"GenerateConnectionLanesJob Connectors: {connectorsList.Count()}");
                 NativeParallelMultiHashMap<Entity, Connection> connections = new (8, Allocator.Temp);
                 
                 for (int i = 0; i < editIntersections.Length; i++)
@@ -52,6 +52,7 @@ namespace Traffic.Systems.LaneConnections
                         DynamicBuffer<ConnectedEdge> connectedEdges = connectedEdgesBuffer[node];
                         DynamicBuffer<SubLane> subLanes = subLanesBuffer[node];
                         
+                        Logger.DebugConnections($"SubLanes: {subLanes.Length}");
                         foreach (SubLane subLane in subLanes)
                         {
                             Entity subLaneEntity = subLane.m_SubLane;

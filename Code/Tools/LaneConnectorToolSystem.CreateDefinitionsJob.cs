@@ -9,6 +9,7 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.UISystems;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -29,6 +30,7 @@ namespace Traffic.Tools
             [ReadOnly] public StateModifier stateModifier;
             [ReadOnly] public Entity editingIntersection;
             [ReadOnly] public Entity intersectionNode;
+            [ReadOnly] public ActionOverlayData quickActionData;
             [ReadOnly] public NativeList<ControlPoint> controlPoints;
             [ReadOnly] public ComponentLookup<Connector> connectorData;
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
@@ -103,15 +105,29 @@ namespace Traffic.Tools
                     /*----------------------------------------------*/
                 }
 
-                if (state == State.Default || node == Entity.Null ||  editingIntersection == Entity.Null || count < 1)
+                if (state == State.Default || node == Entity.Null ||  editingIntersection == Entity.Null)
                 {
                     Logger.DebugTool($"CreateDefinitionsJob finished! state:{state}, n:{node}, edit:{editingIntersection}, count:{count}");
                     return;
                 }
+
+                if (state == State.ApplyingQuickModifications)
+                {
+                    if (!quickActionData.entity.Equals(node) || quickActionData.mode == ModUISystem.ActionOverlayPreview.None)
+                    {
+                        Logger.DebugTool($"CreateDefinitionsJob finished! state:{state}, n:{node}, edit:{editingIntersection}, quickActionData: {quickActionData.entity} [{quickActionData.mode}]");
+                        return;
+                    }
+
+                    CreateQuickActionDefinition(node, quickActionData);
+                    Logger.DebugTool($"CreateDefinitionsJob finished! state:{state}, n:{node}, edit:{editingIntersection}, quickActionData: {quickActionData.entity} [{quickActionData.mode}]");
+                    return;
+                }
+                
                 Logger.DebugTool($"Creating connector definitions: {count}, {editingIntersection}");
                 bool firstConnectorValid = false;
                 bool nextConnectorValid = false;
-                Entity firstConnectorEntity = controlPoints[0].m_OriginalEntity;
+                Entity firstConnectorEntity = count > 0 ? controlPoints[0].m_OriginalEntity : Entity.Null;
                 Entity nextConnectorEntity = Entity.Null;
                 Connector firstConnector = new Connector() { laneIndex = -1 };
                 Connector nextConnector = new Connector() { laneIndex = -1 };
@@ -163,7 +179,8 @@ namespace Traffic.Tools
                             CreateDefinitions(firstConnectorEntity, sourceConnector, nextConnector, connectorsMap, filterConnections, ref connectionExists);
                             filterConnections.Dispose();
                         }
-                        if (nextConnector.edge == firstConnector.edge &&
+                        if (!connectionExists &&
+                            nextConnector.edge == firstConnector.edge &&
                             firstConnector.vehicleGroup > VehicleGroup.Car)
                         {
                             tooltip.value = Tooltip.UTurnTrackNotAllowed;
@@ -193,7 +210,7 @@ namespace Traffic.Tools
                 }
 
                 connectorsMap.Dispose();
-                Logger.DebugTool("CreateDefinitionsJob finished 2");
+                Logger.DebugTool($"CreateDefinitionsJob finished state:{state}, n:{node}, edit:{editingIntersection}, count:{count}");
             }
 
             private void FillConnectorMap(DynamicBuffer<ConnectorElement> connectorElements, NativeHashMap<ConnectorKey, Entity> connectorsMap) {
@@ -217,7 +234,9 @@ namespace Traffic.Tools
                 };
                 ConnectionDefinition definition = new ConnectionDefinition()
                 {
+#if DEBUG_CONNECTIONS                    
                     connector = source,
+#endif
                     edge = sourceConnector.edge,
                     node = sourceConnector.node,
                     owner = Entity.Null,
@@ -311,7 +330,9 @@ namespace Traffic.Tools
                 };
                 ConnectionDefinition definition = new ConnectionDefinition()
                 {
+#if DEBUG_CONNECTIONS                    
                     connector = source,
+#endif
                     edge = sourceConnector.edge,
                     node = sourceConnector.node,
                     owner = modifiedConnections.modifiedConnections,
@@ -504,6 +525,440 @@ namespace Traffic.Tools
                     }
                 }
                 connectionSet.Dispose();
+            }
+
+            private bool CreateQuickActionDefinition(Entity node, ActionOverlayData actionOverlayData)
+            {
+                if (actionOverlayData.mode == ModUISystem.ActionOverlayPreview.ResetToVanilla)
+                {
+                    if (!modifiedConnectionBuffer.HasBuffer(node))
+                    {
+                        return false;
+                    }
+
+                    DynamicBuffer<ModifiedLaneConnections> existingModifiedLaneConnections = modifiedConnectionBuffer[node];
+                    foreach (ModifiedLaneConnections modifiedLaneConnection in existingModifiedLaneConnections)
+                    {
+                        Entity entity = commandBuffer.CreateEntity();
+                        CreationDefinition creationDefinition = new CreationDefinition()
+                        {
+                            m_Original = node,
+                        };
+                        ConnectionDefinition definition = new ConnectionDefinition()
+                        {
+#if DEBUG_CONNECTIONS                    
+                            connector = default,
+#endif
+                            edge = modifiedLaneConnection.edgeEntity,
+                            node = node,
+                            owner = modifiedLaneConnection.modifiedConnections,
+                            laneIndex = modifiedLaneConnection.laneIndex,
+                            lanePosition = modifiedLaneConnection.lanePosition,
+                            carriagewayAndGroup = modifiedLaneConnection.carriagewayAndGroup,
+                            flags = ConnectionFlags.Remove
+                        };
+                        commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                        commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                        commandBuffer.AddComponent(entity, default(Updated));
+                    }
+                    return true;
+                }
+                    
+                DynamicBuffer<ConnectorElement> connectorElements = connectorElementsBuffer[editingIntersection];
+                if (actionOverlayData.mode == ModUISystem.ActionOverlayPreview.RemoveAllConnections)
+                {
+                    for (var i = 0; i < connectorElements.Length; i++)
+                    {
+                        ConnectorElement element = connectorElements[i];
+                        if (connectorData.HasComponent(element.entity))
+                        {
+                            Connector connector = connectorData[element.entity];
+                            if ((connector.connectorType & (ConnectorType.Target | ConnectorType.TwoWay)) != 0)
+                            {
+                                continue;
+                            }
+                            
+                            Entity entity = commandBuffer.CreateEntity();
+                            CreationDefinition creationDefinition = new CreationDefinition()
+                            {
+                                m_Original = node,
+                            };
+
+                            Entity modifiedConnection = FindModifiedLaneConnection(connector, node);
+                            ConnectionDefinition definition = new ConnectionDefinition()
+                            {
+#if DEBUG_CONNECTIONS                    
+                                connector = default,
+#endif
+                                edge = connector.edge,
+                                node = node,
+                                owner = modifiedConnection,
+                                laneIndex = connector.laneIndex,
+                                lanePosition = connector.lanePosition,
+                                carriagewayAndGroup = connector.carriagewayAndGroupIndex,
+                                flags = (modifiedConnection != Entity.Null ? ConnectionFlags.Modify : ConnectionFlags.Create) | ConnectionFlags.Essential
+                            };
+                            commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                            commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                            commandBuffer.AddComponent(entity, default(Updated));
+                            DynamicBuffer<TempLaneConnection> laneConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
+                            laneConnections.ResizeUninitialized(0);
+                            Logger.DebugConnections($"[RemoveAllConnections] ({node}|{editingIntersection}) [E:{connector.edge}|LI {connector.laneIndex} |MC {modifiedConnection}] => {definition.flags}");
+                        }
+                    }
+                    return true;
+                }
+                    
+                if (actionOverlayData.mode == ModUISystem.ActionOverlayPreview.RemoveUTurns)
+                {
+                    DynamicBuffer<ModifiedLaneConnections> modifiedConnections = default;
+                    if (modifiedConnectionBuffer.HasBuffer(node))
+                    {
+                        modifiedConnections = modifiedConnectionBuffer[node];
+                    }
+                    NativeList<ConnectorItem> sourceConnectors = new NativeList<ConnectorItem>(Allocator.Temp);
+                    FilterSourceConnectors(connectorElements, sourceConnectors);
+
+                    NativeHashMap<ConnectorKey, Entity> connectorsMap = new NativeHashMap<ConnectorKey, Entity>(connectorElements.Length, Allocator.Temp);
+                    FillConnectorMap(connectorElements, connectorsMap);
+                    for (var i = 0; i < sourceConnectors.Length; i++)
+                    {
+                        ConnectorItem sourceConnectorItem = sourceConnectors[i];
+                        Connector sourceConnector = sourceConnectorItem.connector;
+                        bool hasModifiedConnectorConnections = false;
+                        if (modifiedConnections.IsCreated)
+                        {
+                            // contains modified connections
+                            for (var j = 0; j < modifiedConnections.Length; j++)
+                            {
+                                ModifiedLaneConnections modifiedConnection = modifiedConnections[j];
+                                if (generatedConnectionBuffer.HasBuffer(modifiedConnection.modifiedConnections) &&
+                                    modifiedConnection.edgeEntity.Equals(sourceConnector.edge) &&
+                                    modifiedConnection.laneIndex == sourceConnector.laneIndex)
+                                {
+                                    hasModifiedConnectorConnections = true;
+                                    
+                                    Entity entity = commandBuffer.CreateEntity();
+                                    CreationDefinition creationDefinition = new CreationDefinition()
+                                    {
+                                        m_Original = node,
+                                    };
+
+                                    ConnectionDefinition definition = new ConnectionDefinition()
+                                    {
+#if DEBUG_CONNECTIONS                    
+                                        connector = default,
+#endif
+                                        edge = modifiedConnection.edgeEntity,
+                                        node = node,
+                                        owner = modifiedConnection.modifiedConnections,
+                                        laneIndex = modifiedConnection.laneIndex,
+                                        lanePosition = modifiedConnection.lanePosition,
+                                        carriagewayAndGroup = modifiedConnection.carriagewayAndGroup,
+                                        flags = ConnectionFlags.Modify | ConnectionFlags.Essential
+                                    };
+                                    commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                                    commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                                    commandBuffer.AddComponent(entity, default(Updated));
+                                    DynamicBuffer<TempLaneConnection> laneConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
+                                    
+                                    // create copy of container, ignore U-turn connections
+                                    DynamicBuffer<GeneratedConnection> connections = generatedConnectionBuffer[modifiedConnection.modifiedConnections];
+                                    for (var k = 0; k < connections.Length; k++)
+                                    {
+                                        GeneratedConnection connection = connections[k];
+                                        if (connectorsMap.TryGetValue(new ConnectorKey(connection.sourceEntity, connection.laneIndexMap.x), out Entity sourceConnectorEntity) &&
+                                            connectorsMap.TryGetValue(new ConnectorKey(connection.targetEntity, connection.laneIndexMap.y), out Entity targetConnectorEntity) &&
+                                            !connection.sourceEntity.Equals(connection.targetEntity))
+                                        {
+                                            Connector sConnector = connectorData[sourceConnectorEntity];
+                                            Connector tConnector = connectorData[targetConnectorEntity];
+                                            TempLaneConnection temp = new TempLaneConnection(
+                                                connection,
+                                                NetUtils.FitCurve(sConnector.position, sConnector.direction, -tConnector.direction, tConnector.position)
+                                            );
+                                            temp.flags |= ConnectionFlags.Modify | ConnectionFlags.Essential;
+                                            laneConnections.Add(temp);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!hasModifiedConnectorConnections)
+                        {
+                            Entity entity = commandBuffer.CreateEntity();
+                            CreationDefinition creationDefinition = new CreationDefinition()
+                            {
+                                m_Original = node,
+                            };
+
+                            ConnectionDefinition definition = new ConnectionDefinition()
+                            {
+#if DEBUG_CONNECTIONS                    
+                                connector = default,
+#endif
+                                edge = sourceConnector.edge,
+                                node = node,
+                                owner = Entity.Null,
+                                laneIndex = sourceConnector.laneIndex,
+                                lanePosition = sourceConnector.lanePosition,
+                                carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
+                                flags = ConnectionFlags.Modify | ConnectionFlags.Essential
+                            };
+                            commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                            commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                            commandBuffer.AddComponent(entity, default(Updated));
+                            DynamicBuffer<TempLaneConnection> laneConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
+                            GenerateNonUturnConnections(sourceConnectorItem, laneConnections);
+                        }
+                    }
+                    return true;
+                }
+                
+                if (actionOverlayData.mode == ModUISystem.ActionOverlayPreview.RemoveUnsafe)
+                {
+                    DynamicBuffer<ModifiedLaneConnections> modifiedConnections = default;
+                    if (modifiedConnectionBuffer.HasBuffer(node))
+                    {
+                        modifiedConnections = modifiedConnectionBuffer[node];
+                    }
+                    NativeList<ConnectorItem> sourceConnectors = new NativeList<ConnectorItem>(Allocator.Temp);
+                    FilterSourceConnectors(connectorElements, sourceConnectors);
+
+                    NativeHashMap<ConnectorKey, Entity> connectorsMap = new NativeHashMap<ConnectorKey, Entity>(connectorElements.Length, Allocator.Temp);
+                    FillConnectorMap(connectorElements, connectorsMap);
+                    for (int i = 0; i < sourceConnectors.Length; i++)
+                    {
+                        ConnectorItem sourceConnectorItem = sourceConnectors[i];
+                        Connector sourceConnector = sourceConnectorItem.connector;
+                        bool hasModifiedConnectorConnections = false;
+                        if (modifiedConnections.IsCreated)
+                        {
+                            // contains modified connections
+                            for (var j = 0; j < modifiedConnections.Length; j++)
+                            {
+                                ModifiedLaneConnections modifiedConnection = modifiedConnections[j];
+                                if (generatedConnectionBuffer.HasBuffer(modifiedConnection.modifiedConnections) &&
+                                    modifiedConnection.edgeEntity.Equals(sourceConnector.edge) &&
+                                    modifiedConnection.laneIndex == sourceConnector.laneIndex)
+                                {
+                                    hasModifiedConnectorConnections = true;
+                                    Entity entity = commandBuffer.CreateEntity();
+                                    CreationDefinition creationDefinition = new CreationDefinition()
+                                    {
+                                        m_Original = node,
+                                    };
+
+                                    ConnectionDefinition definition = new ConnectionDefinition()
+                                    {
+#if DEBUG_CONNECTIONS                    
+                                        connector = default,
+#endif
+                                        edge = modifiedConnection.edgeEntity,
+                                        node = node,
+                                        owner = modifiedConnection.modifiedConnections,
+                                        laneIndex = modifiedConnection.laneIndex,
+                                        lanePosition = modifiedConnection.lanePosition,
+                                        carriagewayAndGroup = modifiedConnection.carriagewayAndGroup,
+                                        flags = ConnectionFlags.Modify | ConnectionFlags.Essential
+                                    };
+                                    commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                                    commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                                    commandBuffer.AddComponent(entity, default(Updated));
+                                    DynamicBuffer<TempLaneConnection> laneConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
+                                    
+                                    // create copy of container, ignore unsafe connections
+                                    DynamicBuffer<GeneratedConnection> connections = generatedConnectionBuffer[modifiedConnection.modifiedConnections];
+                                    for (var k = 0; k < connections.Length; k++)
+                                    {
+                                        GeneratedConnection connection = connections[k];
+                                        if (connectorsMap.TryGetValue(new ConnectorKey(connection.sourceEntity, connection.laneIndexMap.x), out Entity sourceConnectorEntity) &&
+                                            connectorsMap.TryGetValue(new ConnectorKey(connection.targetEntity, connection.laneIndexMap.y), out Entity targetConnectorEntity) &&
+                                            !connection.isUnsafe)
+                                        {
+                                            Connector sConnector = connectorData[sourceConnectorEntity];
+                                            Connector tConnector = connectorData[targetConnectorEntity];
+                                            TempLaneConnection temp = new TempLaneConnection(
+                                                connection,
+                                                NetUtils.FitCurve(sConnector.position, sConnector.direction, -tConnector.direction, tConnector.position)
+                                            );
+                                            temp.flags |= ConnectionFlags.Modify | ConnectionFlags.Essential;
+                                            laneConnections.Add(temp);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!hasModifiedConnectorConnections)
+                        {
+                            int unsafeIdx = -1;
+                            if (connectionsBuffer.HasBuffer(sourceConnectorItem.entity))
+                            {
+                                DynamicBuffer<LaneConnection> laneConnections = connectionsBuffer[sourceConnectorItem.entity];
+                                for (var j = 0; j < laneConnections.Length; j++)
+                                {
+                                    LaneConnection laneConnection = laneConnections[j];
+                                    DynamicBuffer<Connection> currentConnections = connectionsBufferData[laneConnection.connection];
+                                    for (var k = 0; k < currentConnections.Length; k++)
+                                    {
+                                        if (currentConnections[k].isUnsafe)
+                                        {
+                                            unsafeIdx = k;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (unsafeIdx == -1)
+                            {
+                                // no modified connections of the lane, leave as vanilla
+                                continue;
+                            }
+
+                            
+                            Entity entity = commandBuffer.CreateEntity();
+                            CreationDefinition creationDefinition = new CreationDefinition()
+                            {
+                                m_Original = node,
+                            };
+
+                            ConnectionDefinition definition = new ConnectionDefinition()
+                            {
+#if DEBUG_CONNECTIONS                    
+                                connector = default,
+#endif
+                                edge = sourceConnector.edge,
+                                node = node,
+                                owner = Entity.Null,
+                                laneIndex = sourceConnector.laneIndex,
+                                lanePosition = sourceConnector.lanePosition,
+                                carriagewayAndGroup = sourceConnector.carriagewayAndGroupIndex,
+                                flags = ConnectionFlags.Modify | ConnectionFlags.Essential
+                            };
+                            commandBuffer.AddComponent<CreationDefinition>(entity, creationDefinition);
+                            commandBuffer.AddComponent<ConnectionDefinition>(entity, definition);
+                            commandBuffer.AddComponent(entity, default(Updated));
+                            DynamicBuffer<TempLaneConnection> tempConnections = commandBuffer.AddBuffer<TempLaneConnection>(entity);
+                            GenerateSafeConnections(sourceConnectorItem, tempConnections);
+                        }
+                    }
+                    return true;
+                }
+                
+                return false;
+            }
+
+            private Entity FindModifiedLaneConnection(Connector connector, Entity node)
+            {
+                if (!modifiedConnectionBuffer.HasBuffer(node))
+                {
+                    return Entity.Null;
+                }
+                
+                DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections = modifiedConnectionBuffer[node];
+                foreach (ModifiedLaneConnections modifiedLaneConnection in modifiedLaneConnections)
+                {
+                    if (connector.edge == modifiedLaneConnection.edgeEntity &&
+                        connector.laneIndex == modifiedLaneConnection.laneIndex)
+                    {
+                        return modifiedLaneConnection.modifiedConnections;
+                    }
+                }
+
+                return Entity.Null;
+            }
+            
+            private void FilterSourceConnectors(DynamicBuffer<ConnectorElement> source, NativeList<ConnectorItem> result)
+            {
+                for (var i = 0; i < source.Length; i++)
+                {
+                    ConnectorElement element = source[i];
+                    if (connectorData.HasComponent(element.entity))
+                    {
+                        Connector connector = connectorData[element.entity];
+                        if (connector.connectorType == ConnectorType.Source &&
+                            connectionsBuffer.HasBuffer(element.entity))
+                        {
+                            result.Add(new ConnectorItem() { connector = connector, entity = element.entity });
+                        }
+                    }
+                }
+            }
+            
+            private void GenerateNonUturnConnections(ConnectorItem connectorItem, DynamicBuffer<TempLaneConnection> resultConnections)
+            {
+                DynamicBuffer<LaneConnection> connectorConnections = connectionsBuffer[connectorItem.entity];
+                NativeHashSet<Entity> visitedConnections = new NativeHashSet<Entity>(connectorConnections.Length, Allocator.Temp);
+                for (var j = 0; j < connectorConnections.Length; j++)
+                {
+                    LaneConnection laneEndConnection = connectorConnections[j];
+                    if (!visitedConnections.Contains(laneEndConnection.connection))
+                    {
+                        visitedConnections.Add(laneEndConnection.connection);
+                        DynamicBuffer<Connection> connections = connectionsBufferData[laneEndConnection.connection];
+                        for (var k = 0; k < connections.Length; k++)
+                        {
+                            Connection connection = connections[k];
+                            if (!connection.sourceEdge.Equals(connection.targetEdge))
+                            {
+                                resultConnections.Add(new TempLaneConnection()
+                                {
+                                    sourceEntity = connection.sourceEdge,
+                                    targetEntity = connection.targetEdge,
+                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
+                                    lanePositionMap = connection.lanePositionMap,
+                                    carriagewayAndGroupIndexMap = connection.laneCarriagewayWithGroupIndexMap,
+                                    bezier = connection.curve,
+                                    method = connection.method,
+                                    isUnsafe = connection.isUnsafe,
+                                    flags = ConnectionFlags.Create | ConnectionFlags.Essential,
+                                });
+                            }
+                        }
+                    }
+                }
+                visitedConnections.Dispose();
+            }
+            
+            private void GenerateSafeConnections(ConnectorItem connectorItem, DynamicBuffer<TempLaneConnection> resultConnections)
+            {
+                DynamicBuffer<LaneConnection> connectorConnections = connectionsBuffer[connectorItem.entity];
+                NativeHashSet<Entity> visitedConnections = new NativeHashSet<Entity>(connectorConnections.Length, Allocator.Temp);
+                for (var j = 0; j < connectorConnections.Length; j++)
+                {
+                    LaneConnection laneEndConnection = connectorConnections[j];
+                    if (!visitedConnections.Contains(laneEndConnection.connection))
+                    {
+                        visitedConnections.Add(laneEndConnection.connection);
+                        DynamicBuffer<Connection> connections = connectionsBufferData[laneEndConnection.connection];
+                        for (var k = 0; k < connections.Length; k++)
+                        {
+                            Connection connection = connections[k];
+                            if (!connection.isUnsafe)
+                            {
+                                resultConnections.Add(new TempLaneConnection()
+                                {
+                                    sourceEntity = connection.sourceEdge,
+                                    targetEntity = connection.targetEdge,
+                                    laneIndexMap = new int2(connectorItem.connector.laneIndex, connection.targetNode.GetLaneIndex() & 0xff),
+                                    lanePositionMap = connection.lanePositionMap,
+                                    carriagewayAndGroupIndexMap = connection.laneCarriagewayWithGroupIndexMap,
+                                    bezier = connection.curve,
+                                    method = connection.method,
+                                    isUnsafe = false,
+                                    flags = ConnectionFlags.Create | ConnectionFlags.Essential
+                                });
+                            }
+                        }
+                    }
+                }
+                visitedConnections.Dispose();
+            }
+            
+            private struct ConnectorItem
+            {
+                public Entity entity;
+                public Connector connector;
             }
         }
     }

@@ -84,12 +84,12 @@ namespace Traffic
             // updateSystem.UpdateAt<PriorityToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateBefore<ApplyLaneConnectionsSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
+            updateSystem.UpdateAt<TrafficToolClearSystem>(SystemUpdatePhase.ClearTool);
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
 
             updateSystem.UpdateBefore<PreDeserialize<ModDefaultsSystem>>(SystemUpdatePhase.Deserialize);
-
 #if DEBUG
             updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);
 #endif

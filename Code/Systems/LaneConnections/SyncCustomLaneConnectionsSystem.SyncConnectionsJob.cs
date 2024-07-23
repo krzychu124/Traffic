@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Game.Common;
 using Game.Net;
 using Game.Prefabs;
 using Game.Tools;
@@ -163,7 +164,7 @@ namespace Traffic.Systems.LaneConnections
                             ModifiedLaneConnections connection = laneConnections[i];
                             Logger.DebugConnectionsSync($"Testing connection edge: {connection.edgeEntity}, index: {connection.laneIndex} mc: {connection.modifiedConnections}");
                             Entity genEntity = commandBuffer.CreateEntity(index);
-                            Temp newModifiedConnectionTemp = new Temp(connection.modifiedConnections, 0);
+                            DataTemp newModifiedConnectionTemp = new DataTemp(connection.modifiedConnections, 0);
                             commandBuffer.AddComponent<DataOwner>(index, genEntity, new DataOwner(entity));
                             commandBuffer.AddComponent<PrefabRef>(index, genEntity, new PrefabRef(fakePrefabRef));
                             if (edgeMap.TryGetValue(connection.edgeEntity, out EdgeInfo newEdgeInfo))
@@ -252,8 +253,8 @@ namespace Traffic.Systems.LaneConnections
                                         });
                                     }
                                     
-                                    newModifiedConnectionTemp.m_Flags |= ((newConnections.Length == 0 && generatedConnections.Length > 0 ) || !validComposition) ? TempFlags.Delete : TempFlags.Modify;
-                                    Logger.DebugConnectionsSync($"Generated connections for {entity}({temp.m_Original})[{connection.edgeEntity}] => ({newEdgeInfo.edge}): {newConnections.Length} Flags: {newModifiedConnectionTemp.m_Flags}");
+                                    newModifiedConnectionTemp.flags |= ((newConnections.Length == 0 && generatedConnections.Length > 0 ) || !validComposition) ? TempFlags.Delete : TempFlags.Modify;
+                                    Logger.DebugConnectionsSync($"Generated connections for {entity}({temp.m_Original})[{connection.edgeEntity}] => ({newEdgeInfo.edge}): {newConnections.Length} Flags: {newModifiedConnectionTemp.flags}");
                                 }
                                 else
                                 {
@@ -263,7 +264,7 @@ namespace Traffic.Systems.LaneConnections
                                         laneIndex = connection.laneIndex,
                                         modifiedConnections = genEntity,
                                     });
-                                    newModifiedConnectionTemp.m_Flags |= TempFlags.Delete;
+                                    newModifiedConnectionTemp.flags |= TempFlags.Delete;
                                     Logger.DebugConnectionsSync($"Edge composition changed! {entity}({temp.m_Original})[{connection.edgeEntity}] NewEdge: {newEdgeInfo.edge} {newEdgeInfo.wasTemp} | {newEdgeInfo.compositionChanged}");
                                 }
                             }
@@ -275,7 +276,7 @@ namespace Traffic.Systems.LaneConnections
                                     laneIndex = connection.laneIndex,
                                     modifiedConnections = genEntity,
                                 });
-                                newModifiedConnectionTemp.m_Flags |= TempFlags.Delete;
+                                newModifiedConnectionTemp.flags |= TempFlags.Delete;
                                 Entity cachedTarget = Entity.Null;
                                 if (nodeEdgeMap.IsCreated)
                                 {
@@ -284,7 +285,7 @@ namespace Traffic.Systems.LaneConnections
                                 Logger.DebugConnectionsSync($"Edge not found! {entity}({temp.m_Original})[{connection.edgeEntity}] Calc: {cachedTarget}");
                             }
 
-                            commandBuffer.AddComponent<Temp>(index, genEntity, newModifiedConnectionTemp);
+                            commandBuffer.AddComponent<DataTemp>(index, genEntity, newModifiedConnectionTemp);
                         }
 
                         var valueArray = edgeMap.GetValueArray(Allocator.Temp);
@@ -294,11 +295,37 @@ namespace Traffic.Systems.LaneConnections
                         }
                         valueArray.Dispose();
 
-                        Logger.DebugConnectionsSync($"Regenerated connections for node: {entity}({temp.m_Original}) ({newModifiedConnections.Length})");
-                        if (newModifiedConnections.Length > 0)
+                        if (modifiedConnectionsBuffer.HasBuffer(entity))
                         {
-                            DynamicBuffer<ModifiedLaneConnections> modifiedConnection = commandBuffer.AddBuffer<ModifiedLaneConnections>(index, entity);
-                            modifiedConnection.CopyFrom(newModifiedConnections.AsArray());
+                            Logger.DebugConnectionsSync($"Regenerated connections for exiting node: {entity}({temp.m_Original}) ({newModifiedConnections.Length})");
+                            DynamicBuffer<ModifiedLaneConnections> existingModifiedConnections = modifiedConnectionsBuffer[entity];
+                            foreach (ModifiedLaneConnections connection in existingModifiedConnections)
+                            {
+                                if (generatedConnectionBuffer.HasBuffer(connection.modifiedConnections))
+                                {
+                                    commandBuffer.AddComponent<Deleted>(index, connection.modifiedConnections);
+                                }
+                            }
+                            
+                            if (newModifiedConnections.Length > 0) {
+                                DynamicBuffer<ModifiedLaneConnections> modifiedConnection = commandBuffer.SetBuffer<ModifiedLaneConnections>(index, entity);
+                                modifiedConnection.CopyFrom(newModifiedConnections.AsArray());
+                            }
+                            else
+                            {
+                                commandBuffer.RemoveComponent<ModifiedLaneConnections>(index, entity);
+                                commandBuffer.RemoveComponent<ModifiedConnections>(index, entity);
+                            }
+                        }
+                        else
+                        {
+                            Logger.DebugConnectionsSync($"Regenerated connections for node: {entity}({temp.m_Original}) ({newModifiedConnections.Length})");
+                            if (newModifiedConnections.Length > 0)
+                            {
+                                commandBuffer.AddComponent<ModifiedConnections>(index, entity);
+                                DynamicBuffer<ModifiedLaneConnections> modifiedConnection = commandBuffer.AddBuffer<ModifiedLaneConnections>(index, entity);
+                                modifiedConnection.CopyFrom(newModifiedConnections.AsArray());
+                            }
                         }
 
 

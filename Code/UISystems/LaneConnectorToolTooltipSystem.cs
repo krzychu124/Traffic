@@ -21,7 +21,7 @@ namespace Traffic.UISystems
         private LaneConnectorToolSystem _laneConnectorTool;
         private StringTooltip _tooltip;
         private List<StringTooltip> _feedbackTooltips;
-        private StringTooltip _tooltipDebug;
+        private StringTooltip _tooltipModifierState;
 #if DEBUG_TOOL
         private StringTooltip _posTooltip;
         private StringTooltip _posTooltip2;
@@ -41,7 +41,7 @@ namespace Traffic.UISystems
                 new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_3" },
                 new() { path = $"{Mod.MOD_NAME}.FeedbackMessage_4" },
             };
-            _tooltipDebug = new StringTooltip() { path = "laneConnectorToolDebug", color = TooltipColor.Success };
+            _tooltipModifierState = new StringTooltip() { path = "laneConnectorToolModifierState", color = TooltipColor.Success };
 #if DEBUG_TOOL
             _posTooltip = new StringTooltip() { path = "laneConnectorToolPosition", color = TooltipColor.Warning, };
             _posTooltip2 = new StringTooltip() { path = "laneConnectorToolPosition2", color = TooltipColor.Warning, };
@@ -68,13 +68,17 @@ namespace Traffic.UISystems
                 bool warningAdded = false;
                 foreach (ArchetypeChunk chunk in archetypeChunks)
                 {
+                    if (hasError || usedTooltips > 5)
+                    {
+                        break;
+                    }
                     BufferAccessor<ToolFeedbackInfo> feedbackInfoAccessor = chunk.GetBufferAccessor(ref feedbackBufferType);
                     for (var i = 0; i < feedbackInfoAccessor.Length; i++)
                     {
                         DynamicBuffer<ToolFeedbackInfo> feedbackInfos = feedbackInfoAccessor[i];
                         for (var j = 0; j < feedbackInfos.Length; j++)
                         {
-                            if (usedTooltips++ > 5 || warningAdded)
+                            if (usedTooltips++ > 5 || warningAdded || hasError)
                             {
                                 break;
                             }
@@ -124,8 +128,8 @@ namespace Traffic.UISystems
             }
             if (_laneConnectorTool.ToolModifiers != LaneConnectorToolSystem.StateModifier.AnyConnector && _laneConnectorTool.tooltip != LaneConnectorToolSystem.Tooltip.RemoveConnection)
             {
-                _tooltipDebug.value = _modifierStringBuilder[_laneConnectorTool.ToolModifiers];
-                AddMouseTooltip(_tooltipDebug);
+                _tooltipModifierState.value = _modifierStringBuilder[_laneConnectorTool.ToolModifiers];
+                AddMouseTooltip(_tooltipModifierState);
             }
         }
 

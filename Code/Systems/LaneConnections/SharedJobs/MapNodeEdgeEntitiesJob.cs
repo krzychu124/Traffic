@@ -1,6 +1,8 @@
 ﻿using Game.Net;
 using Game.Tools;
 using Traffic.CommonData;
+using Traffic.Components;
+using Traffic.Components.LaneConnections;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -8,7 +10,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 
 namespace Traffic.Systems.LaneConnections.SharedJobs
-{
+{   //TODO collect nodes then build nodeEdgeMap to reduce processing time if there's no custom lane connections to synchronize
     /// <summary>
     /// Searching and mapping updated edges with their connected node
     /// </summary>
@@ -20,13 +22,17 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
         [ReadOnly] public EntityTypeHandle entityTypeHandle;
         [ReadOnly] public ComponentTypeHandle<Temp> tempTypeHandle;
         [ReadOnly] public ComponentTypeHandle<Edge> edgeTypeHandle;
+        [ReadOnly] public BufferLookup<ModifiedLaneConnections> modifiedConnectionsBuffer;
         [ReadOnly] public ComponentLookup<Temp> tempData;
         [ReadOnly] public ComponentLookup<Edge> edgeData;
-#if DEBUG_CONNECTIONS
         [ReadOnly] public ComponentLookup<Node> nodeData;
+        [ReadOnly] public ComponentLookup<ToolManaged> toolManagedEntities;
+#if DEBUG_CONNECTIONS
         [ReadOnly] public FixedString32Bytes debugSystemName;
 #endif
         [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgeBuffer;
+        [ReadOnly] public bool collectUpdatedNodes;
+        public NativeHashSet<Entity> modifiedNodeSet;
         public NativeParallelHashMap<NodeEdgeKey, Entity> nodeEdgeMap;
 
         public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
@@ -64,6 +70,10 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                         Entity commonTempNodeEntity = !isStartChanged ? edge.m_Start : edge.m_End;
                         Temp commonTempNode = !isStartChanged ? startNodeTemp : endNodeTemp;
 
+                        // add nodes to synchronize data, skip current temp nodes of modified edge
+                        AddTempNodeOriginalModifiedConnections(edge.m_Start, startNodeTemp.m_Original);
+                        AddTempNodeOriginalModifiedConnections(edge.m_End, endNodeTemp.m_Original);
+                        
                         // original node -> orignal edge ->> new edge
                         nodeEdgeMap.Add(new NodeEdgeKey(commonTempNode.m_Original, temp.m_Original), entity);
                         // temp node -> new edge ->> original edge
@@ -81,16 +91,18 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                         $"Start: {edge.m_Start} | startT: {startNodeTempTest.m_Original} [{startNodeTempTest.m_Flags}]\n" +
                         $"End:   {edge.m_End} | endT: {endNodeTempTest.m_Original} [{endNodeTempTest.m_Flags}]");
 #endif
+                    Temp startNodeTemp = tempData[edge.m_Start];
+                    Temp endNodeTemp = tempData[edge.m_End];
+                    AddTempNodeOriginalModifiedConnections(edge.m_Start, startNodeTemp.m_Original);
+                    AddTempNodeOriginalModifiedConnections(edge.m_End, endNodeTemp.m_Original);
                     if ((temp.m_Flags & TempFlags.Combine) != 0)
                     {
                         /*
-                             * 'entity' - new edge entity identifier, result of combine operation
-                             * find common node of temp combine edge, get the opposite of original edge that is going to be combined => it's deleted common node
-                             * loop through the other temp node connected edges, find deleted edge with deleted common node
-                             * cache mapping for deleted edge and entity as it'll be new edge joining 'entity' Edge start+end temp nodes
-                             */
-                        Temp startNodeTemp = tempData[edge.m_Start];
-                        Temp endNodeTemp = tempData[edge.m_End];
+                        * 'entity' - new edge entity identifier, result of combine operation
+                        * find common node of temp combine edge, get the opposite of original edge that is going to be combined => it's deleted common node
+                        * loop through the other temp node connected edges, find deleted edge with deleted common node
+                        * cache mapping for deleted edge and entity as it'll be new edge joining 'entity' Edge start+end temp nodes
+                        */
                         Edge originalEdge = edgeData[temp.m_Original];
 #if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"({debugSystemName})|Edge|HasOriginal|Combine|TEST_startNode isNode: {nodeData.HasComponent(edge.m_Start)} isTemp: {tempData.HasComponent(edge.m_Start)}");
@@ -99,7 +111,6 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                             $"\t\tO_Start: {originalEdge.m_Start} |T_Start: {edge.m_Start} | T[{startNodeTemp.m_Original} | {startNodeTemp.m_Flags}]\n" +
                             $"\t\tO_End:   {originalEdge.m_End} |T_End:   {edge.m_End} | T[{endNodeTemp.m_Original} | {endNodeTemp.m_Flags}]");
 #endif
-
                         bool2 commonNodeCheck = new bool2(originalEdge.m_Start.Equals(startNodeTemp.m_Original), originalEdge.m_End.Equals(endNodeTemp.m_Original));
                         bool isStartChanged = !commonNodeCheck.x;
                         Entity otherTempNodeEntity = isStartChanged ? edge.m_Start : edge.m_End;
@@ -168,6 +179,7 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                         Edge startOriginalEdge = edgeData[startNodeTemp.m_Original];
                         nodeEdgeMap.Add(new NodeEdgeKey(startOriginalEdge.m_End, startNodeTemp.m_Original), entity);
                         nodeEdgeMap.Add(new NodeEdgeKey(edge.m_End, entity), startNodeTemp.m_Original);
+                        AddTempNodeOriginalModifiedConnections(edge.m_End, startOriginalEdge.m_End);
 #if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"({debugSystemName})|Edge|Else|Start| {entity} T[{temp.m_Original} | {temp.m_Flags}] | OrigEdge: {startNodeTemp.m_Original} start: {startOriginalEdge.m_Start} end: {startOriginalEdge.m_End}");
                     }
@@ -181,6 +193,7 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                         Edge endOriginalEdge = edgeData[endNodeTemp.m_Original];
                         nodeEdgeMap.Add(new NodeEdgeKey(endOriginalEdge.m_Start, endNodeTemp.m_Original), entity);
                         nodeEdgeMap.Add(new NodeEdgeKey(edge.m_Start, entity), endNodeTemp.m_Original);
+                        AddTempNodeOriginalModifiedConnections(edge.m_Start, endOriginalEdge.m_Start);
 #if DEBUG_CONNECTIONS
                         Logger.DebugConnections($"({debugSystemName})|Edge|Else|End| {entity} T[{temp.m_Original} | {temp.m_Flags}] | OrigEdge: {endNodeTemp.m_Original} start: {endOriginalEdge.m_Start} end: {endOriginalEdge.m_End}");
                     }
@@ -192,6 +205,23 @@ namespace Traffic.Systems.LaneConnections.SharedJobs
                 }
             }
 
+        }
+
+        private void AddTempNodeOriginalModifiedConnections(Entity tempNode, Entity originalNode) 
+        {
+            if (!collectUpdatedNodes)
+            {
+                return;
+            }
+            
+            Logger.Debug($"Test Nodes: {tempNode}, {originalNode} || {nodeData.HasComponent(tempNode)} + {nodeData.HasComponent(originalNode)}, {!toolManagedEntities.HasComponent(originalNode)} + {modifiedConnectionsBuffer.HasBuffer(originalNode)}");
+            if (nodeData.HasComponent(tempNode) &&
+                nodeData.HasComponent(originalNode) &&
+                !toolManagedEntities.HasComponent(originalNode) && 
+                modifiedConnectionsBuffer.HasBuffer(originalNode))
+            {
+                modifiedNodeSet.Add(tempNode);
+            }
         }
     }
 }

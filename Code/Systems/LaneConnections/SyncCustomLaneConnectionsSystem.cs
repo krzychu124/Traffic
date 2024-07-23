@@ -5,6 +5,7 @@ using Game.Net;
 using Game.Prefabs;
 using Game.Tools;
 using Traffic.CommonData;
+using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Helpers;
 using Traffic.Systems.LaneConnections.SharedJobs;
@@ -31,7 +32,6 @@ namespace Traffic.Systems.LaneConnections
     {
         private CityConfigurationSystem _cityConfigurationSystem;
         private EntityQuery _updatedEdgesQuery;
-        private EntityQuery _updatedNodesQuery;
 
         protected override void OnCreate()
         {
@@ -42,87 +42,90 @@ namespace Traffic.Systems.LaneConnections
                 All = new[] { ComponentType.ReadOnly<Edge>(), ComponentType.ReadOnly<ConnectedNode>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
-
-            _updatedNodesQuery = GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<ConnectedEdge>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
-                None = new[] { ComponentType.ReadOnly<Deleted>(), ComponentType.Exclude<ModifiedLaneConnections>(), }
-            });
-            RequireForUpdate(_updatedNodesQuery);
+            RequireForUpdate(_updatedEdgesQuery);
         }
 
         protected override void OnUpdate()
         {
-            NativeArray<Entity> updatedNodes = _updatedNodesQuery.ToEntityArray(Allocator.TempJob);
+            int updatedEdges = _updatedEdgesQuery.CalculateEntityCount();
 #if DEBUG_CONNECTIONS
-            Logger.Debug($"SyncCustomLaneConnectionsSystem Update! ({updatedNodes.Length})");
+            Logger.Debug($"SyncCustomLaneConnectionsSystem[{UnityEngine.Time.frameCount}] Update! ({updatedEdges})");
 #endif
-            EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+            NativeHashSet<Entity> requireUpdate = new NativeHashSet<Entity>(32, Allocator.Temp);
+            int entityCount = _updatedEdgesQuery.CalculateEntityCount();
+            NativeParallelHashMap<NodeEdgeKey, Entity> tempMap = new NativeParallelHashMap<NodeEdgeKey, Entity>(entityCount * 2, Allocator.TempJob);
 
-            JobHandle mapJobHandle = default;
-            NativeParallelHashMap<NodeEdgeKey, Entity> tempMap = default;
-            if (!_updatedEdgesQuery.IsEmptyIgnoreFilter)
+            JobHandle mapJobHandle = new MapNodeEdgeEntitiesJob()
             {
-                int entityCount = _updatedEdgesQuery.CalculateEntityCount();
-                tempMap = new NativeParallelHashMap<NodeEdgeKey, Entity>(entityCount * 2, Allocator.TempJob);
-                
-                mapJobHandle = new MapNodeEdgeEntitiesJob()
-                {
-                    entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
-                    tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
-                    edgeTypeHandle = SystemAPI.GetComponentTypeHandle<Edge>(true),
-                    tempData = SystemAPI.GetComponentLookup<Temp>(true),
-                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-                    connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                    nodeEdgeMap = tempMap,
-#if DEBUG_CONNECTIONS
-                    nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                    debugSystemName = nameof(SyncCustomLaneConnectionsSystem),
-#endif
-                }.Schedule(_updatedEdgesQuery, Dependency);
-
-#if DEBUG_CONNECTIONS
-                // early complete for immediate results (debug only)
-                mapJobHandle.Complete();
-                NativeKeyValueArrays<NodeEdgeKey, Entity> keyValueArrays = tempMap.GetKeyValueArrays(Allocator.Temp);
-                string s = $"NodeEdgeKeyPairs (Sync: {keyValueArrays.Length}):\n";
-                for (var i = 0; i < keyValueArrays.Length; i++)
-                {
-                    var pair = (keyValueArrays.Keys[i], keyValueArrays.Values[i]);
-                    s += $"{pair.Item1.node} + {pair.Item1.edge} -> {pair.Item2}\n";
-                }
-                Logger.Debug(s);
-#endif
-            }
-
-            JobHandle jobHandle = new SyncConnectionsJob()
-            {
-                nodeData = SystemAPI.GetComponentLookup<Node>(true),
-                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
+                tempTypeHandle = SystemAPI.GetComponentTypeHandle<Temp>(true),
+                edgeTypeHandle = SystemAPI.GetComponentTypeHandle<Edge>(true),
                 tempData = SystemAPI.GetComponentLookup<Temp>(true),
-                hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
-                compositionData = SystemAPI.GetComponentLookup<Composition>(true),
-                netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
-                prefabData = SystemAPI.GetComponentLookup<PrefabRef>(true),
-                modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                edgeData = SystemAPI.GetComponentLookup<Edge>(true),
                 connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
-                generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
-                netCompositionLaneBuffer = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
-                fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
-                leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
+                modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                toolManagedEntities = SystemAPI.GetComponentLookup<ToolManaged>(true),
                 nodeEdgeMap = tempMap,
-                tempNodes = updatedNodes.AsReadOnly(),
-                commandBuffer = commandBuffer.AsParallelWriter(),
-            }.Schedule(updatedNodes.Length, JobHandle.CombineDependencies(Dependency, mapJobHandle));
+                modifiedNodeSet = requireUpdate,
+                collectUpdatedNodes = true,
+#if DEBUG_CONNECTIONS
+                debugSystemName = nameof(SyncCustomLaneConnectionsSystem),
+#endif
+            }.Schedule(_updatedEdgesQuery, Dependency);
 
-            jobHandle.Complete();
-            commandBuffer.Playback(EntityManager);
-            commandBuffer.Dispose();
-            updatedNodes.Dispose(jobHandle);
-            if (tempMap.IsCreated)
+            mapJobHandle.Complete();
+#if DEBUG_CONNECTIONS
+            // early complete for immediate results (debug only)
+            NativeKeyValueArrays<NodeEdgeKey, Entity> keyValueArrays = tempMap.GetKeyValueArrays(Allocator.Temp);
+            string s = $"NodeEdgeKeyPairs (Sync: {keyValueArrays.Length}):\n";
+            for (var i = 0; i < keyValueArrays.Length; i++)
             {
-                tempMap.Dispose(jobHandle);
+                var pair = (keyValueArrays.Keys[i], keyValueArrays.Values[i]);
+                s += $"{pair.Item1.node} + {pair.Item1.edge} -> {pair.Item2}\n";
             }
+            Logger.Debug(s);
+            string n = $"NodesToUpdate (Sync: {requireUpdate.Count})\n";
+            NativeArray<Entity> reqLog = requireUpdate.ToNativeArray(Allocator.Temp);
+            foreach (Entity entity in reqLog)
+            {
+                n += $"\tNode: {entity}\n";
+            }
+            Logger.Debug(n);
+            reqLog.Dispose();
+#endif
+            JobHandle jobHandle = default;
+            if (!requireUpdate.IsEmpty)
+            {
+                NativeArray<Entity> tempNodes = requireUpdate.ToNativeArray(Allocator.TempJob);
+                EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+                jobHandle = new SyncConnectionsJob()
+                {
+                    nodeData = SystemAPI.GetComponentLookup<Node>(true),
+                    edgeData = SystemAPI.GetComponentLookup<Edge>(true),
+                    tempData = SystemAPI.GetComponentLookup<Temp>(true),
+                    hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
+                    compositionData = SystemAPI.GetComponentLookup<Composition>(true),
+                    netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
+                    prefabData = SystemAPI.GetComponentLookup<PrefabRef>(true),
+                    modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                    connectedEdgeBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
+                    generatedConnectionBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
+                    netCompositionLaneBuffer = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
+                    fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
+                    leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
+                    nodeEdgeMap = tempMap,
+                    tempNodes = tempNodes.AsReadOnly(),
+                    commandBuffer = commandBuffer.AsParallelWriter(),
+                }.Schedule(tempNodes.Length, JobHandle.CombineDependencies(Dependency, mapJobHandle));
+
+                jobHandle.Complete();
+                commandBuffer.Playback(EntityManager);
+                commandBuffer.Dispose();
+                tempNodes.Dispose();
+            }
+            requireUpdate.Dispose();
+            tempMap.Dispose();
             Dependency = jobHandle;
 #if DEBUG_CONNECTIONS
             Logger.Debug("SyncCustomLaneConnectionsSystem Update finished!");

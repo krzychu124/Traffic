@@ -153,7 +153,7 @@ namespace Traffic.UISystems
         {
             if (_laneConnectorTool.Enabled)
             {
-                _laneConnectorTool.ToolMode = LaneConnectorToolSystem.Mode.ApplyPreviewModifications;
+                _laneConnectorTool.ToolMode = LaneConnectorToolSystem.Mode.ApplyQuickModifications;
             }
             if (_priorityTool.Enabled)
             {

@@ -20,11 +20,9 @@ namespace Traffic.Systems.LaneConnections
     {
         private EntityQuery _query;
         private EntityQuery _definitionQuery;
-        private ModificationBarrier3 _modificationBarrier;
 
         protected override void OnCreate() {
             base.OnCreate();
-            _modificationBarrier = World.GetOrCreateSystemManaged<ModificationBarrier3>();
             _query = GetEntityQuery(new EntityQueryDesc
             {
                 All = new[] { ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<Temp>(), ComponentType.ReadOnly<Updated>(), },
@@ -36,12 +34,15 @@ namespace Traffic.Systems.LaneConnections
                 None = new[] { ComponentType.ReadOnly<Deleted>(), }
             });
 
-            RequireForUpdate(_query);
+            RequireForUpdate(_definitionQuery);
         }
 
-        protected override void OnUpdate() {
-            Logger.DebugConnections("Run GenerateLaneConnectionsSystem");
+        protected override void OnUpdate()
+        {
+            JobHandle jobHandle = Dependency;
             int count = _query.CalculateEntityCount();
+            int count2 = _definitionQuery.CalculateEntityCount();
+            Logger.DebugConnections($"GenerateLaneConnectionsSystem[{UnityEngine.Time.frameCount}] updated temp nodes: {count}, creation definitions: {count2}");
             NativeParallelHashSet<Entity> createdModifiedLaneConnections = new NativeParallelHashSet<Entity>(16, Allocator.TempJob);
             NativeList<Entity> tempNodes = new NativeList<Entity>(count, Allocator.TempJob);
             NativeParallelHashMap<Entity, Entity> tempEntityMap = new NativeParallelHashMap<Entity, Entity>(count*4, Allocator.TempJob);
@@ -57,58 +58,55 @@ namespace Traffic.Systems.LaneConnections
                 tempNodes = tempNodes.AsParallelWriter(),
                 tempEntityMap = tempEntityMap,
             };
-            JobHandle jobHandle = fillTempNodeMapJob.Schedule(_query, Dependency);
+            jobHandle = fillTempNodeMapJob.Schedule(_query, jobHandle);
 
-            //TODO SIMPLIFY
-            if (!_definitionQuery.IsEmptyIgnoreFilter)
+            // UGLY CODE START (improve/redesign)
+            NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections = new NativeParallelMultiHashMap<Entity, TempModifiedConnections>(4, Allocator.TempJob);
+            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+            GenerateTempConnectionsJob tempConnectionsJob = new GenerateTempConnectionsJob
             {
-                // UGLY CODE START (improve/redesign)
-                NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections = new NativeParallelMultiHashMap<Entity, TempModifiedConnections>(4, Allocator.TempJob);
-                EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
-                GenerateTempConnectionsJob tempConnectionsJob = new GenerateTempConnectionsJob
-                {
-                    creationDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<CreationDefinition>(true),
-                    connectionDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
-                    tempConnectionBufferTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
-                    tempEntityMap = tempEntityMap.AsReadOnly(),
-                    createdModifiedLaneConnections = createdModifiedLaneConnections,
-                    createdModifiedConnections = createdModifiedConnections,
-                    commandBuffer = entityCommandBuffer.AsParallelWriter(),
-                };
-                JobHandle tempConnectionsHandle = tempConnectionsJob.Schedule(_definitionQuery, jobHandle);
-                tempConnectionsHandle.Complete();
-                
-                // GetUniqueKeyArray() returns sorted array of unique keys, tightly packed from start of array and the number of remaining items!!
-                // Length of returned array might be INCORRECT (internal NativeArray.Unique<T>() call is not performing resize for performance reasons)
-                (NativeArray<Entity> keys, int uniqueKeyCount) = createdModifiedConnections.GetUniqueKeyArray(Allocator.Temp);
-                NativeList<Entity> entities = new NativeList<Entity>(uniqueKeyCount, Allocator.TempJob);
-                entities.ResizeUninitialized(uniqueKeyCount);
-                new NativeSlice<Entity>(keys, 0, uniqueKeyCount).CopyTo(entities.AsArray());
-                NativeParallelHashSet<Entity> processedEntities = new NativeParallelHashSet<Entity>(entities.Length, Allocator.TempJob);
-                MapTempConnectionsJob mapTempConnectionsJob = new MapTempConnectionsJob
-                {
-                    modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
-                    createdModifiedConnections = createdModifiedConnections,
-                    fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
-                    keys = entities,
-                    processedEntities = processedEntities,
-                    commandBuffer = entityCommandBuffer.AsParallelWriter(),
-                };
-                JobHandle mapTempHandle = mapTempConnectionsJob.Schedule(entities, 1, tempConnectionsHandle);
-                mapTempHandle.Complete();
-                entityCommandBuffer.Playback(EntityManager);
-                entityCommandBuffer.Dispose();
-                processedEntities.Dispose(mapTempHandle);
-                entities.Dispose();
-                createdModifiedConnections.Dispose();
-                // UGLY CODE END
-            }
+                creationDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<CreationDefinition>(true),
+                connectionDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<ConnectionDefinition>(true),
+                tempConnectionBufferTypeHandle = SystemAPI.GetBufferTypeHandle<TempLaneConnection>(true),
+                tempEntityMap = tempEntityMap.AsReadOnly(),
+                createdModifiedLaneConnections = createdModifiedLaneConnections,
+                createdModifiedConnections = createdModifiedConnections,
+                commandBuffer = entityCommandBuffer.AsParallelWriter(),
+            };
+            jobHandle = tempConnectionsJob.Schedule(_definitionQuery, jobHandle);
+            jobHandle.Complete();
+            
+            // GetUniqueKeyArray() returns sorted array of unique keys, tightly packed from start of array and the number of remaining items!!
+            // Length of returned array might be INCORRECT (internal NativeArray.Unique<T>() call is not performing resize for performance reasons)
+            (NativeArray<Entity> keys, int uniqueKeyCount) = createdModifiedConnections.GetUniqueKeyArray(Allocator.Temp);
+            NativeList<Entity> entities = new NativeList<Entity>(uniqueKeyCount, Allocator.TempJob);
+            entities.ResizeUninitialized(uniqueKeyCount);
+            new NativeSlice<Entity>(keys, 0, uniqueKeyCount).CopyTo(entities.AsArray());
+            NativeParallelHashSet<Entity> processedEntities = new NativeParallelHashSet<Entity>(entities.Length, Allocator.TempJob);
+            MapTempConnectionsJob mapTempConnectionsJob = new MapTempConnectionsJob
+            {
+                modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
+                createdModifiedConnections = createdModifiedConnections,
+                fakePrefabRef = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
+                keys = entities,
+                processedEntities = processedEntities,
+                commandBuffer = entityCommandBuffer.AsParallelWriter(),
+            };
+            jobHandle = mapTempConnectionsJob.Schedule(entities, 1, jobHandle);
+            // complete job and apply commands on EntityManager
+            jobHandle.Complete();
+            entityCommandBuffer.Playback(EntityManager);
+            entityCommandBuffer.Dispose();
 
-            tempNodes.Dispose(jobHandle);
-            tempEntityMap.Dispose(jobHandle);
-            createdModifiedLaneConnections.Dispose(jobHandle);
+            processedEntities.Dispose();
+            entities.Dispose();
+            createdModifiedConnections.Dispose();
+            // UGLY CODE END
 
-            _modificationBarrier.AddJobHandleForProducer(jobHandle);
+            tempNodes.Dispose();
+            tempEntityMap.Dispose();
+            createdModifiedLaneConnections.Dispose();
+
             Dependency = jobHandle;
         }
 

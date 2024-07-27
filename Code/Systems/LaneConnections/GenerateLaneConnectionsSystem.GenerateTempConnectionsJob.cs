@@ -34,28 +34,30 @@ namespace Traffic.Systems.LaneConnections
                     CreationDefinition definition = definitions[i];
                     ConnectionDefinition connectionDefinition = connectionDefinitions[i];
                     tempConnections.Clear();
-                    if (tempConnectionsAccessor.Length > 0 &&
-                        tempEntityMap.TryGetValue(definition.m_Original, out Entity tempNodeEntity) &&
+                    if (tempEntityMap.TryGetValue(definition.m_Original, out Entity tempNodeEntity) &&
                         tempEntityMap.TryGetValue(connectionDefinition.edge, out Entity sourceEdgeEntity))
                     {
-                        DynamicBuffer<TempLaneConnection> tempLaneConnections = tempConnectionsAccessor[i];
-                        for (int j = 0; j < tempLaneConnections.Length; j++)
+                        if (tempConnectionsAccessor.Length > 0)
                         {
-                            if (tempEntityMap.TryGetValue(tempLaneConnections[j].targetEntity, out Entity targetEdgeEntity))
+                            DynamicBuffer<TempLaneConnection> tempLaneConnections = tempConnectionsAccessor[i];
+                            for (int j = 0; j < tempLaneConnections.Length; j++)
                             {
-                                tempConnections.Add(new GeneratedConnection
+                                if (tempEntityMap.TryGetValue(tempLaneConnections[j].targetEntity, out Entity targetEdgeEntity))
                                 {
-                                    sourceEntity = sourceEdgeEntity,
-                                    targetEntity = targetEdgeEntity,
-                                    laneIndexMap = tempLaneConnections[j].laneIndexMap,
-                                    lanePositionMap = tempLaneConnections[j].lanePositionMap,
-                                    carriagewayAndGroupIndexMap = tempLaneConnections[j].carriagewayAndGroupIndexMap,
-                                    method = tempLaneConnections[j].method,
-                                    isUnsafe = tempLaneConnections[j].isUnsafe,
+                                    tempConnections.Add(new GeneratedConnection
+                                    {
+                                        sourceEntity = sourceEdgeEntity,
+                                        targetEntity = targetEdgeEntity,
+                                        laneIndexMap = tempLaneConnections[j].laneIndexMap,
+                                        lanePositionMap = tempLaneConnections[j].lanePositionMap,
+                                        carriagewayAndGroupIndexMap = tempLaneConnections[j].carriagewayAndGroupIndexMap,
+                                        method = tempLaneConnections[j].method,
+                                        isUnsafe = tempLaneConnections[j].isUnsafe,
 #if DEBUG_GIZMO
-                                    debug_bezier = tempLaneConnections[j].bezier,
+                                        debug_bezier = tempLaneConnections[j].bezier,
 #endif
-                                });
+                                    });
+                                }
                             }
                         }
 #if DEBUG_CONNECTIONS
@@ -71,7 +73,9 @@ namespace Traffic.Systems.LaneConnections
                         {
                             dataOwner = tempNodeEntity,
                             owner = connectionDefinition.owner,
-                            flags = connectionDefinition.owner != Entity.Null ? TempFlags.Modify : TempFlags.Create,
+                            flags = connectionDefinition.owner != Entity.Null 
+                                ? ((connectionDefinition.flags & ConnectionFlags.Remove) != 0 ? TempFlags.Delete : TempFlags.Modify) 
+                                : TempFlags.Create,
                             edgeEntity = sourceEdgeEntity,
                             laneIndex = connectionDefinition.laneIndex,
                             carriagewayAndGroup = connectionDefinition.carriagewayAndGroup,

@@ -39,7 +39,7 @@ namespace Traffic.Systems.LaneConnections
         }
 
         protected override void OnUpdate() {
-            Logger.Debug($"GenerateConnectorsSystem.OnUpdate (frame: {UnityEngine.Time.renderedFrameCount})");
+            Logger.Debug($"GenerateConnectorsSystem[{UnityEngine.Time.frameCount}]");
             NativeParallelHashMap<NodeEdgeLaneKey, Entity> connectorsMap = new (128, Allocator.TempJob);
             EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             GenerateConnectorsJob job = new GenerateConnectorsJob

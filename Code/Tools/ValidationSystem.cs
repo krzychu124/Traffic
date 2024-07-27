@@ -80,9 +80,9 @@ namespace Traffic.Tools
                 {
                     entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                     editIntersectionType = SystemAPI.GetComponentTypeHandle<EditIntersection>(true),
+                    toolActionBlockedType = SystemAPI.GetComponentTypeHandle<ToolActionBlocked>(true),
                     tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
                     edgeType = SystemAPI.GetComponentTypeHandle<Edge>(true),
-                    toolActionBlockedType = SystemAPI.GetComponentTypeHandle<ToolActionBlocked>(true),
                     modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                     lanePriorityTypeHandle = SystemAPI.GetBufferTypeHandle<LanePriority>(true),
                     tempData = SystemAPI.GetComponentLookup<Temp>(true),
@@ -96,6 +96,7 @@ namespace Traffic.Tools
                     laneData = SystemAPI.GetComponentLookup<Lane>(true),
                     curveData = SystemAPI.GetComponentLookup<Curve>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
+                    toolManagedData = SystemAPI.GetComponentLookup<ToolManaged>(true),
                     connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                     lanePriorityBuffer = SystemAPI.GetBufferLookup<LanePriority>(true),
                     subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),

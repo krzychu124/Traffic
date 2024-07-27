@@ -89,6 +89,7 @@ namespace Traffic
             updateSystem.UpdateAt<LaneConnectorToolSystem>(SystemUpdatePhase.ToolUpdate);
             updateSystem.UpdateBefore<ApplyLaneConnectionsSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
             updateSystem.UpdateBefore<ApplyPrioritiesSystem, ApplyNetSystem>(SystemUpdatePhase.ApplyTool);
+            updateSystem.UpdateAt<TrafficToolClearSystem>(SystemUpdatePhase.ClearTool);
             updateSystem.UpdateAt<GenerateConnectorsSystem>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<GenerateHandles>(SystemUpdatePhase.Modification5);
             updateSystem.UpdateAt<SearchSystem>(SystemUpdatePhase.Modification5);

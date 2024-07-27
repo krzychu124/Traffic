@@ -1,8 +1,8 @@
-﻿## v.0.1.10
+﻿## v.0.1.11
 
-_Multilanguage support - help us translate the mod_
+_Major bug fixing, may reset some intersection settings_
 
-- All vanilla languages,
-- Non-vanilla languages: Czech, Dutch, Indonesian, Ukrainian,
-- Language selector - use different mod language than used by the game interface,
-- **Traffic Lights Enhancement (BepinEx)** compatibility detection
+- Improved compatibility with latest vanilla changes
+- Fix: in certain conditions lane connections could get reset and then not saved properly
+- Fix: quick tool actions could trigger notification about disconnected public transport route that did not disappear after restoring the default intersection configuration
+- Fix: The Track U-Turn lane connection is created despite warning it is not supported by Lane Connector Tool

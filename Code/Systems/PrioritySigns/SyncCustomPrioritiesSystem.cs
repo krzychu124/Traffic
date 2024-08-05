@@ -98,8 +98,8 @@ namespace Traffic.Systems.PrioritySigns
                         
                         Edge edge = edges[i];
                         bool2 isUpgrade = new bool2(
-                            tempData.TryGetComponent(edge.m_Start, out Temp startTemp) && (startTemp.m_Flags & TempFlags.Upgrade) != 0,
-                            tempData.TryGetComponent(edge.m_End, out Temp endTemp) && (endTemp.m_Flags & TempFlags.Upgrade) != 0
+                            tempData.TryGetComponent(edge.m_Start, out Temp startTemp) && (startTemp.m_Flags & (TempFlags.Upgrade | TempFlags.Essential)) != 0,
+                            tempData.TryGetComponent(edge.m_End, out Temp endTemp) && (endTemp.m_Flags & (TempFlags.Upgrade | TempFlags.Essential)) != 0
                         );
                         Logger.DebugTool($"Synchronizing Entity {entity}, {tempEdge.m_Original}[{tempEdge.m_Flags}]");
                         DynamicBuffer<LanePriority> priorities = lanePriorityData[tempEdge.m_Original];

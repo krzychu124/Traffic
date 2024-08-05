@@ -1,14 +1,14 @@
+import mod from "mod.json";
+import styles from "modUI/modUI.module.scss";
+import trafficIcon from "images/traffic_icon.svg";
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import classNames from "classnames";
-import { Button } from "cs2/ui";
+import { Button, Portal } from "cs2/ui";
 import { tool } from "cs2/bindings";
 import { trigger, useValue } from "cs2/api";
 import { useLocalization } from "cs2/l10n";
 import { LaneConnectorTool } from "modUI/laneConnectorTool/laneConnectorTool";
-import { UIBindingConstants, UIKeys, ModKeyBinds } from "types/traffic";
-import mod from "mod.json";
-import styles from "modUI/modUI.module.scss";
-import trafficIcon from "images/traffic_icon.svg";
+import { UIBindingConstants, UIKeys, ModKeyBinds, ModTool } from "types/traffic";
 import { loadingErrorsPresent$, modKeyBindings$ } from "bindings";
 import { ToolSelectionPanel } from "modUI/toolSelectionPanel/toolSelectionPanel";
 import { PriorityTool } from "modUI/priorityTool/priorityTool";
@@ -20,21 +20,28 @@ export const ModUI = () => {
   const [mainMenuOpen, setMainMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const loadingProblemsRef = useRef<any>(null);
+  const lastTool = useRef<string |null>(null);
   const selectedTool = useValue(tool.activeTool$);
   const loadingErrorsPresent = useValue(loadingErrorsPresent$);
   const {translate} = useLocalization();
   const keyBindings = useValue<ModKeyBinds>(modKeyBindings$);
 
-  const toggleMenu = useCallback(() => setMainMenuOpen(!mainMenuOpen), [mainMenuOpen]);
+  const toggleMenu = useCallback(() => {
+    if (mainMenuOpen) {
+      trigger(mod.id, UIBindingConstants.TOGGLE_TOOL, ModTool.None);
+    }
+    setMainMenuOpen(!mainMenuOpen);
+  }, [mainMenuOpen]);
 
   useEffect(() => {
     const isAnyActive = selectedTool.id == UIBindingConstants.LANE_CONNECTOR_TOOL ||
                         selectedTool.id == UIBindingConstants.PRIORITIES_TOOL;
     if (!mainMenuOpen && isAnyActive) {
       setMainMenuOpen(true);
-    } else if (mainMenuOpen && !isAnyActive && selectedTool.id !== tool.DEFAULT_TOOL) {
+    } else if (mainMenuOpen && !isAnyActive && selectedTool.id !== lastTool.current) {
       setMainMenuOpen(false);
     }
+    lastTool.current = selectedTool?.id;
   }, [mainMenuOpen, selectedTool?.id]);
 
   return (
@@ -63,7 +70,12 @@ export const ModUI = () => {
         </DescriptionTooltipWithKeyBind>
 
         {mainMenuOpen && (
-          <ToolSelectionPanel anchor={containerRef.current && {x: containerRef.current.offsetLeft, y: containerRef.current.offsetHeight}} />
+          <Portal>
+            <ToolSelectionPanel anchor={containerRef.current && {
+              x: containerRef.current.offsetLeft + ((containerRef.current.parentNode as HTMLDivElement)?.offsetLeft || 0),
+              y: containerRef.current.offsetHeight + ((containerRef.current.parentNode as HTMLDivElement)?.offsetTop || 0)
+            }} />
+          </Portal>
         )}
       </div>
     </>

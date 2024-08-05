@@ -2,7 +2,7 @@
 .panel {
   pointer-events: auto;
   position: absolute;
-
+  min-width: 230rem;
 }
 
 .panel.withIssues {

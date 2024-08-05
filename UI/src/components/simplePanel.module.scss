@@ -1,0 +1,41 @@
+$panelColor: rgba(80,80,80, 0.9);
+
+.simplePanel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-top-left-radius: var(--panelRadius);
+  border-top-right-radius: var(--panelRadius);
+  border-bottom-left-radius: var(--panelRadius);
+  border-bottom-right-radius: var(--panelRadius);
+  pointer-events: auto;
+  background-color: $panelColor
+}
+
+.header {
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6rem 10rem;
+
+  color: var(--accentColorNormal);
+  background-color: darken($panelColor, 20%);
+  text-transform: uppercase;
+
+  &:first-child {
+    border-top-left-radius: var(--panelRadius);
+    border-top-right-radius: var(--panelRadius);
+  }
+}
+
+.content {
+  padding: 5rem;
+  color: white;
+
+  &:last-child {
+    border-bottom-left-radius:  var(--panelRadius);
+    border-bottom-right-radius:  var(--panelRadius);
+  }
+}

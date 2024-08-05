@@ -40,8 +40,10 @@ namespace Traffic
         public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
         public static bool IsTLEEnabled => _isTLEEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("C2VM.CommonLibraries.LaneSystem"));
+        public static bool IsRBEnabled => _isRBEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("RoadBuilder"));
 
         private static bool? _isTLEEnabled;
+        private static bool? _isRBEnabled;
 
         internal ModSettings Settings { get; private set; }
 
@@ -106,6 +108,7 @@ namespace Traffic
 #endif
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
+            GameManager.instance.RegisterUpdater(RoadBuilderCompatibilityHandler);
             GameManager.instance.RegisterUpdater(ListEnabledMods);
             // NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
 
@@ -130,10 +133,12 @@ namespace Traffic
                 try
                 {
                     World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<UpdateSystem>().UpdateAfter<TLEDataMigrationSystem>(SystemUpdatePhase.Deserialize);
-                    ComponentSystemBase tleLaneSystem = World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged(Type.GetType("Game.Net.C2VMPatchedLaneSystem, C2VM.CommonLibraries.LaneSystem"));
-                    // ModsCompatibilityHelpers.ModifyTLELaneSystemUpdateRequirements(tleLaneSystem);
-                    tleLaneSystem.Enabled = false;
-                    World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<LaneSystem>().Enabled = true;
+                    ComponentSystemBase tleLaneSystem = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged(Type.GetType("Game.Net.C2VMPatchedLaneSystem, C2VM.CommonLibraries.LaneSystem"));
+                    if (tleLaneSystem != null)
+                    {
+                        tleLaneSystem.Enabled = false;
+                    }
+                    World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<LaneSystem>().Enabled = false;
                 }
                 catch (Exception e)
                 {
@@ -180,6 +185,23 @@ namespace Traffic
         private static void ListEnabledMods()
         {
             Logger.Info("\n======= Enabled Mods =======\n\t"+string.Join("\n\t",GameManager.instance.modManager.ListModsEnabled()) + "\n============================");
+        }
+
+        private static void RoadBuilderCompatibilityHandler()
+        {
+            if (IsRBEnabled)
+            {
+                Logger.Info($"Detected RoadBuilder installed and enabled!");
+
+                try
+                {
+                    World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<UpdateSystem>().UpdateBefore<RoadBuilderCompatibilitySystem, TrafficLaneSystem>(SystemUpdatePhase.Modification4);
+                }
+                catch (Exception e)
+                {
+                    UnityEngine.Debug.LogException(e);
+                }
+            }
         }
     }
 #if DEBUG_TOOL

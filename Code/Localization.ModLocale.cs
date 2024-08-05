@@ -76,7 +76,7 @@ namespace Traffic
             public void Unload()
             {
                 Logger.Debug($"Unloading locale {_localeId}");
-                LocaleSources?.Remove(_localeId);
+                // LocaleSources?.Remove(_localeId);
             }
 
             public override string ToString()

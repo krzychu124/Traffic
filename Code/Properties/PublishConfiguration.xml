@@ -15,6 +15,7 @@ The goal of the project is to bring more tools to the game that could help users
 ### Included features
 
 - **Lane Connector Tool** - no need to describe it for users familiar with TM:PE in CS1, but for new players, it's a tool which allows for changing lane connections at intersection to any that suits your usecase. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to add or change connections. More details below.
+- **Priorities Tool** - a tool that allows for changing lane priority at intersection to any that suits your usecase. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to reapply the change.
 
 ### Usage
 
@@ -46,6 +47,7 @@ Issues and limitations above are not impossible to solve (mostly), but they requ
 
 - Automatic data migration from _**Traffic Lights Enhancement's** Lane Direction_ tool into Traffic's Lane Connections (a message dialog will appear with migration resutls when loading a savegame)
 - Tested with _**Extended Road Upgrades**_, no isses found.
+- Selecting a road (or all instances) with _**Road Builder**_ mod will reset _Traffic's_ custom priorities and lane connections
 
 ### Saving
 
@@ -53,13 +55,12 @@ The mod is storing the data inside the savegame file, but thanks to how CS II is
 
 ### Editor
 
-The mod was not tested thoroughly in the map editor, but is expected to save the _Lane connector_ settings data into the map file which should later load successfully when a new game is created from it.
+The mod was not tested thoroughly in the map editor, but is expected to save the _Lane connector_ and _Priorities tool_ settings data into the map file which should later load successfully when a new game is created from it.
 Opinions/tests greatly appreciated.
 
 ### Plans
 
-For the next bigger update _**Priority Signs** per road segment_ feature is planned, at the moment I'm gathering feedback and ideas how it should work and what the minimal set of features it could offer could be. Since I can't reuse anything from original mod, why not make it better from the ground up.
-Multilanguage translation support will be handled on Crowdin, more info soon.
+Multilanguage translation support is handled via Crowdin, link in the mod description.
 In case of critical issues, small bugs fixes or tweaks they will be released more frequently.
 
 ### Feedback, Features Ideas, Support
@@ -93,14 +94,16 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.1.11
+  <ChangeLog>## v.0.2.0
 
-_Major bug fixing, may reset some intersection settings_
+_Priorities tool, Road Builder compatibility fix_
 
-- Improved compatibility with latest vanilla changes
-- Fix: in certain conditions lane connections could get reset and then not saved properly
-- Fix: quick tool actions could trigger notification about disconnected public transport route that did not disappear after restoring the default intersection configuration
-- Fix: The Track U-Turn lane connection is created despite warning it is not supported by Lane Connector Tool</ChangeLog>
+- **Priority management** - per lane or lane group
+- Tool menu with tool selection
+- Compatibility changes to support Road Builder mod,
+- Minor changes in tool panel UI, is no longer semitransparent due to strange performance issues
+- Fix: bug in localization manager that could force unload current custom translation data breaking language selector</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
+  <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />
 </Publish>

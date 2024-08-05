@@ -10,5 +10,6 @@ namespace Traffic.Components
         public float laneConnectorSize;
         public float laneConnectorLineWidth;
         public float feedbackLinesWidth;
+        public bool showLaneConnectionsPriority;
     }
 }

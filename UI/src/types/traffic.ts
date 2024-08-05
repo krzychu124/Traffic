@@ -31,11 +31,17 @@ export class UIKeys
 	public static SHORTCUT: string = `Traffic.UI.Tooltip.Shortcut`;
 	public static LANE_CONNECTOR_TOOL: string = `Traffic.UI.Tools[LaneConnector].Title`;
 	public static PRIORITIES_TOOL: string = `Traffic.UI.Tools[Priorities].Title`;
+	public static LANE_CONNECTOR_TOOL_DESCRIPTION: string = `Traffic.UI.Tools[LaneConnector].Description`;
+	public static PRIORITIES_TOOL_DESCRIPTION: string = `Traffic.UI.Tools[Priorities].Description`;
 	public static SELECT_INTERSECTION: string = `Traffic.UI.Tools[LaneConnector].SelectIntersectionMessage`;
 	public static REMOVE_ALL_CONNECTIONS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections]`;
 	public static REMOVE_U_TURNS: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUturns]`;
 	public static REMOVE_UNSAFE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe]`;
 	public static RESET_TO_VANILLA: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla]`;
+	public static LANE_GROUP_MODE: string = `TrafficUI.Tools[Priorities].Toolbox.Mode[LaneGroup]`;
+	public static LANE_MODE: string = `TrafficUI.Tools[Priorities].Toolbox.Mode[Lane]`;
+	public static APPLY_MODE: string = `TrafficUI.Tools[Priorities].Toolbox.Label.ApplyMode`;
+	public static APPLY_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Label.ApplyAction`;
 	public static PRIORITY_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Priority]`;
 	public static YIELD_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Yield]`;
 	public static STOP_ACTION: string = `TrafficUI.Tools[Priorities].Toolbox.Action[Stop]`;
@@ -46,13 +52,13 @@ export class UIKeys
 	public static REMOVE_U_TURNS_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message`;
 	public static REMOVE_UNSAFE_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title`;
 	public static REMOVE_UNSAFE_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message`;
-	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title`;
-	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message`;
+	public static RESET_TO_VANILLA_TOOLTIP_TITLE: string = `Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title`;
+	public static RESET_TO_VANILLA_TOOLTIP_MESSAGE: string = `Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message`;
 	public static PRIORITY_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Priority].Tooltip.Message`;
 	public static YIELD_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Yield].Tooltip.Message`;
 	public static STOP_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Stop].Tooltip.Message`;
 	public static RESET_ACTION_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[Reset].Tooltip.Message`;
-	public static TOGGLE_DISPLAY_MODE_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleDisplayMode].Tooltip.Message`;
+	public static TOGGLE_DISPLAY_MODE_TOOLTIP: string = `Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleApplyMode].Tooltip.Message`;
 }
 export interface ModKeyBinds
 {

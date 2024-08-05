@@ -33,6 +33,7 @@ namespace Traffic.UISystems
         private ProxyAction _togglePrioritiesToolAction;
         private ProxyAction _applyAction;
         private ProxyAction _cancelAction;
+        private ProxyAction _resetIntersectionAction;
 
         public override GameMode gameMode
         {
@@ -57,6 +58,7 @@ namespace Traffic.UISystems
             _togglePrioritiesToolAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.TogglePrioritiesTool);
             _applyAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ApplyTool);
             _cancelAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.CancelTool);
+            _resetIntersectionAction = ModSettings.Instance.GetAction(ModSettings.KeyBindAction.ResetIntersectionToDefaults);
 
             //ui bindings
             AddUpdateBinding(new GetterValueBinding<SelectedIntersectionData>(Mod.MOD_NAME, UIBindingConstants.SELECTED_INTERSECTION, () => SelectedIntersection));
@@ -157,7 +159,7 @@ namespace Traffic.UISystems
             }
             if (_priorityTool.Enabled)
             {
-                _priorityTool.ToolMode = PriorityToolSystem.Mode.ApplyPreviewModifications;
+                _priorityTool.ToolMode = PriorityToolSystem.Mode.ApplyQuickModifications;
             }
         }
 
@@ -172,25 +174,43 @@ namespace Traffic.UISystems
 
         private void ToggleTool(ModTool tool)
         {
-            _toolSystem.activeTool = _toolSystem.activeTool switch
+            switch (_toolSystem.activeTool)
             {
-                LaneConnectorToolSystem => tool switch
-                {
-                    ModTool.Priorities => _priorityTool,
-                    _ => _defaultTool
-                },
-                PriorityToolSystem => tool switch
-                {
-                    ModTool.LaneConnector => _laneConnectorTool,
-                    _ => _defaultTool,
-                },
-                _ => tool switch
-                {
-                    ModTool.LaneConnector => _laneConnectorTool,
-                    ModTool.Priorities => _priorityTool,
-                    _ => _toolSystem.activeTool //do nothing
-                }
-            };
+                case LaneConnectorToolSystem:
+                    switch (tool)
+                    {
+                        case ModTool.Priorities:
+                            _toolSystem.activeTool = _priorityTool;
+                            SelectedIntersection = new SelectedIntersectionData() { entity = Entity.Null };
+                            break;
+                        default:
+                            _toolSystem.activeTool = _defaultTool;
+                            SelectedIntersection = new SelectedIntersectionData() { entity = Entity.Null };
+                            break;
+                    }
+                    break;
+                case PriorityToolSystem:
+                    switch (tool)
+                    {
+                        case ModTool.LaneConnector:
+                            _toolSystem.activeTool = _laneConnectorTool;
+                            SelectedIntersection = new SelectedIntersectionData() { entity = Entity.Null };
+                            break;
+                        default:
+                            _toolSystem.activeTool = _defaultTool;
+                            SelectedIntersection = new SelectedIntersectionData() { entity = Entity.Null };
+                            break;
+                    }
+                    break;
+                default:
+                    _toolSystem.activeTool = tool switch
+                    {
+                        ModTool.LaneConnector => _laneConnectorTool,
+                        ModTool.Priorities => _priorityTool,
+                        _ => _toolSystem.activeTool //do nothing
+                    };
+                    break;
+            }
         }
 
         private void SetToolMode(int mode)
@@ -248,6 +268,7 @@ namespace Traffic.UISystems
             _togglePrioritiesToolAction.shouldBeEnabled = isGameOrEditor;
             _applyAction.shouldBeEnabled = isGameOrEditor;
             _cancelAction.shouldBeEnabled = isGameOrEditor;
+            _resetIntersectionAction.shouldBeEnabled = isGameOrEditor;
             Logger.Info($"OnGamePreload: {purpose} | {mode}");
             if (isGameOrEditor)
             {

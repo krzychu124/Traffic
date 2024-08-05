@@ -1,8 +1,9 @@
-﻿## v.0.1.11
+﻿## v.0.2.0
 
-_Major bug fixing, may reset some intersection settings_
+_Priorities tool, Road Builder compatibility fix_
 
-- Improved compatibility with latest vanilla changes
-- Fix: in certain conditions lane connections could get reset and then not saved properly
-- Fix: quick tool actions could trigger notification about disconnected public transport route that did not disappear after restoring the default intersection configuration
-- Fix: The Track U-Turn lane connection is created despite warning it is not supported by Lane Connector Tool
+- **Priority management** - per lane or lane group
+- Tool menu with tool selection
+- Compatibility changes to support Road Builder mod,
+- Minor changes in tool panel UI, is no longer semitransparent due to strange performance issues
+- Fix: bug in localization manager that could force unload current custom translation data breaking language selector

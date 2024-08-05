@@ -2,7 +2,7 @@ import { Button } from "cs2/ui";
 import { useLocalization } from "cs2/l10n";
 import { useCallback, useMemo, CSSProperties } from "react";
 import classNames from "classnames";
-import { UIBindingConstants, ModTool, ModKeyBinds } from "types/traffic";
+import { UIBindingConstants, ModTool, ModKeyBinds, UIKeys } from "types/traffic";
 import { useValue, trigger } from "cs2/api";
 import { tool, Number2 } from "cs2/bindings";
 import styles from "./toolSelectionPanel.module.scss";
@@ -33,8 +33,8 @@ export const ToolSelectionPanel = ({anchor}: Props) => {
 
   return (
     <div className={styles.panel} style={panelPosition}>
-      <DescriptionTooltipWithKeyBind title={"Lane Connector Tool"}
-                                     description={"Manage lane connection at selected intersection"}
+      <DescriptionTooltipWithKeyBind title={translate(UIKeys.LANE_CONNECTOR_TOOL, "Lane Connections")}
+                                     description={translate(UIKeys.LANE_CONNECTOR_TOOL_DESCRIPTION, "Manage lane connection at selected intersection")}
                                      keyBind={keyBindings.laneConnectorTool}
       >
         <Button variant="flat"
@@ -42,11 +42,11 @@ export const ToolSelectionPanel = ({anchor}: Props) => {
                 onClick={onLaneConnectorTool}
                 type="button"
         >
-          {translate("-", "Lane Connections")}
+          {translate(UIKeys.LANE_CONNECTOR_TOOL, "Lane Connections")}
         </Button>
       </DescriptionTooltipWithKeyBind>
-      <DescriptionTooltipWithKeyBind title={"Priorities Tool"}
-                                     description={"Manage lane priorities at selected intersection"}
+      <DescriptionTooltipWithKeyBind title={translate(UIKeys.PRIORITIES_TOOL, "Priorities")}
+                                     description={translate(UIKeys.PRIORITIES_TOOL_DESCRIPTION, "Manage lane priorities at selected intersection")}
                                      keyBind={keyBindings.prioritiesTool}
       >
         <Button variant="flat"
@@ -54,7 +54,7 @@ export const ToolSelectionPanel = ({anchor}: Props) => {
                 onClick={onPrioritiesTool}
                 type="button"
         >
-          {translate("--", "Priorities")}
+          {translate(UIKeys.PRIORITIES_TOOL, "Priorities")}
         </Button>
       </DescriptionTooltipWithKeyBind>
     </div>

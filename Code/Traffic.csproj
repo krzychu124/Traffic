@@ -246,6 +246,15 @@
       <Compile Update="Localization.LocaleManager.cs">
         <DependentUpon>Localization.cs</DependentUpon>
       </Compile>
+      <Compile Update="Tools\PriorityToolSystem.RemoveLanePrioritiesJob.cs">
+        <DependentUpon>PriorityToolSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Tools\PriorityToolSystem.CreateDefinitionsJob.cs">
+        <DependentUpon>PriorityToolSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Rendering\ToolOverlaySystem.PriorityOverlaysJob.cs">
+        <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <Target Name="SetupAttributes" BeforeTargets="BeforeBuild">

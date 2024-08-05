@@ -249,8 +249,9 @@ namespace Traffic.Tools
                 }
                 else if (chunk.Has(ref edgeType))
                 {
+                    CompositionFlags.General testFlags = (CompositionFlags.General.LevelCrossing | CompositionFlags.General.Roundabout | CompositionFlags.General.TrafficLights);
                     NativeArray<Edge> edges = chunk.GetNativeArray(ref edgeType);
-                    BufferAccessor<LanePriority> lanePriorityBuffer = chunk.GetBufferAccessor(ref lanePriorityTypeHandle);
+                    BufferAccessor<LanePriority> chunkLanePriorities = chunk.GetBufferAccessor(ref lanePriorityTypeHandle);
                     for (int i = 0; i < entities.Length; i++)
                     {
                         Entity entity = entities[i];
@@ -259,11 +260,11 @@ namespace Traffic.Tools
                         bool2 result = false;
                         Edge edge = edges[i];
                         bool2 isUpgrade = new bool2(
-                            tempData.TryGetComponent(edge.m_Start, out Temp startTemp) && (startTemp.m_Flags & TempFlags.Upgrade) != 0,
-                            tempData.TryGetComponent(edge.m_End, out Temp endTemp) && (endTemp.m_Flags & TempFlags.Upgrade) != 0
+                            tempData.TryGetComponent(edge.m_Start, out Temp startTemp) && (startTemp.m_Flags & (TempFlags.Upgrade | TempFlags.Essential)) != 0,
+                            tempData.TryGetComponent(edge.m_End, out Temp endTemp) && (endTemp.m_Flags & (TempFlags.Upgrade | TempFlags.Essential)) != 0
                         );
                         bool2 hasPriorities = false;
-                        DynamicBuffer<LanePriority> lanePriorities = lanePriorityBuffer[i];
+                        DynamicBuffer<LanePriority> lanePriorities = chunkLanePriorities[i];
                         for (var j = 0; j < lanePriorities.Length; j++)
                         {
                             LanePriority lanePriority = lanePriorities[j];
@@ -272,58 +273,9 @@ namespace Traffic.Tools
 
                         Composition composition = compositionData[entity];
                         CompositionFlags compositionFlagsStart = netCompositionData[composition.m_StartNode].m_Flags;
-                        if (hasPriorities.x && 
-                            (compositionFlagsStart.m_General & CompositionFlags.General.TrafficLights) != 0 && temp.m_Original != Entity.Null)
-                        {
-                            if (tempData.HasComponent(entity))
-                            {
-                                Temp tempEdge = tempData[entity];
-                                if ((tempEdge.m_Flags & TempFlags.Delete) != 0)
-                                {
-                                    continue;
-                                }
-                                if (compositionData.HasComponent(tempEdge.m_Original))
-                                {
-                                    Composition edgeComposition = compositionData[tempEdge.m_Original];
-                                    CompositionFlags edgeCompositionFlagsStart = netCompositionData[edgeComposition.m_StartNode].m_Flags;
-                                    if ((edgeCompositionFlagsStart.m_General & CompositionFlags.General.TrafficLights) != 0)
-                                    {
-                                        //skip, had a traffic lights upgrade, nothing has changed
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            result.x = true;
-                            feedbackInfos.Add(new ToolFeedbackInfo() { type = FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply });
-                        } 
-                        
                         CompositionFlags compositionFlagsEnd = netCompositionData[composition.m_EndNode].m_Flags;
-                        if (hasPriorities.y && 
-                            (compositionFlagsEnd.m_General & CompositionFlags.General.TrafficLights) != 0 && temp.m_Original != Entity.Null)
-                        {
-                            if (tempData.HasComponent(entity))
-                            {
-                                Temp tempEdge = tempData[entity];
-                                if ((tempEdge.m_Flags & TempFlags.Delete) != 0)
-                                {
-                                    continue;
-                                }
-                                if (compositionData.HasComponent(tempEdge.m_Original))
-                                {
-                                    Composition edgeComposition = compositionData[tempEdge.m_Original];
-                                    CompositionFlags edgeCompositionFlagsEnd = netCompositionData[edgeComposition.m_EndNode].m_Flags;
-                                    if ((edgeCompositionFlagsEnd.m_General & CompositionFlags.General.TrafficLights) != 0)
-                                    {
-                                        //skip, had a traffic lights upgrade, nothing has changed
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            result.y = true;
-                            feedbackInfos.Add(new ToolFeedbackInfo() { type = FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply });
-                        }
+                        result.x = hasPriorities.x && temp.m_Original != Entity.Null && CheckNodeUpgrade(entity, isStart: true, compositionFlagsStart, ref feedbackInfos);
+                        result.y = hasPriorities.y && temp.m_Original != Entity.Null && CheckNodeUpgrade(entity, isStart: false, compositionFlagsEnd, ref feedbackInfos);
                         
                         if (feedbackInfos.Length > 0)
                         {
@@ -360,45 +312,48 @@ namespace Traffic.Tools
                             Composition composition = compositionData[connectedEdge.m_Edge];
                             CompositionFlags compositionFlags = netCompositionData[isStartNode.Value ? composition.m_StartNode : composition.m_EndNode].m_Flags;
 
-                                if ((compositionFlags.m_General & testFlags) != 0)
-                            {
-                                if (temp.m_Original != Entity.Null)
-                                {
-                                        bool hasTrafficLights = (compositionFlags.m_General & CompositionFlags.General.TrafficLights) != 0;
-                                    commandBuffer.AddComponent<Error>(entity);
-                                    commandBuffer.AddComponent<BatchesUpdated>(entity);
+                            if ((compositionFlags.m_General & testFlags) != 0 &&
+                                temp.m_Original != Entity.Null)
+                            { 
+                                bool hasTrafficLights = (compositionFlags.m_General & CompositionFlags.General.TrafficLights) != 0;
+                                commandBuffer.AddComponent<Error>(entity);
+                                commandBuffer.AddComponent<BatchesUpdated>(entity);
 
-                                    //highlight and block node modification
-                                    commandBuffer.AddComponent<Error>(temp.m_Original);
-                                    commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
-                                        feedbackInfos.Add(new ToolFeedbackInfo()
-                                        {
-                                            type = !priorityToolActive 
-                                                ? FeedbackMessageType.ErrorLaneConnectorNotSupported
-                                                : hasTrafficLights 
-                                                    ? FeedbackMessageType.ErrorPrioritiesRemoveTrafficLights
-                                                    : FeedbackMessageType.ErrorPrioritiesNotSupported 
-                                        });
-                                    return true;
-                                }
+                                //highlight and block node modification
+                                commandBuffer.AddComponent<Error>(temp.m_Original);
+                                commandBuffer.AddComponent<BatchesUpdated>(temp.m_Original);
+                                feedbackInfos.Add(new ToolFeedbackInfo()
+                                {
+                                    type = !priorityToolActive 
+                                        ? FeedbackMessageType.ErrorLaneConnectorNotSupported
+                                        : hasTrafficLights 
+                                            ? FeedbackMessageType.ErrorPrioritiesRemoveTrafficLights
+                                            : FeedbackMessageType.ErrorPrioritiesNotSupported 
+                                });
+                                return true;
                             }
                         }
                     }
 
                     if (upgradedData.HasComponent(connectedEdge.m_Edge) &&
                         !deletedData.HasComponent(connectedEdge.m_Edge))
-                    {
+                    { 
                         Upgraded upgraded = upgradedData[connectedEdge.m_Edge];
+                        if (priorityToolActive)
+                        {
                             if ((upgraded.m_Flags.m_General & CompositionFlags.General.TrafficLights) != 0)
                             {
                                 feedbackInfos.Add(new ToolFeedbackInfo() { container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply });
                             }
-                            
-                        Edge edge = edgeData[connectedEdge.m_Edge];
-                        CompositionFlags.Side side = edge.m_Start == nodeEntity == !leftHandTraffic ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
-                        if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
+                        }
+                        else
                         {
-                            feedbackInfos.Add(new ToolFeedbackInfo() { container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades });
+                            Edge edge = edgeData[connectedEdge.m_Edge];
+                            CompositionFlags.Side side = edge.m_Start == nodeEntity == !leftHandTraffic ? upgraded.m_Flags.m_Left : upgraded.m_Flags.m_Right;
+                            if ((side & (CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidRightTurn)) != 0)
+                            {
+                                feedbackInfos.Add(new ToolFeedbackInfo() { container = connectedEdge.m_Edge, type = FeedbackMessageType.WarnResetForbiddenTurnUpgrades });
+                            }
                         }
                     }
                 }
@@ -444,6 +399,51 @@ namespace Traffic.Tools
                 }
                 
                 return false;
+            }
+
+            private bool CheckNodeUpgrade(Entity tempEntity, bool isStart, CompositionFlags compositionFlags, ref NativeList<ToolFeedbackInfo> feedbackInfos)
+            {
+                if ((compositionFlags.m_General & (CompositionFlags.General.LevelCrossing | CompositionFlags.General.Roundabout | CompositionFlags.General.TrafficLights)) == 0)
+                {
+                    return false;
+                }
+                
+                bool hasTrafficLights = (compositionFlags.m_General & CompositionFlags.General.TrafficLights) != 0;
+                bool hasLevelCrossing = (compositionFlags.m_General & CompositionFlags.General.LevelCrossing) != 0;
+                bool hasRoundabout = (compositionFlags.m_General & CompositionFlags.General.Roundabout) != 0;
+                if (tempData.HasComponent(tempEntity))
+                {
+                    Temp tempEdge = tempData[tempEntity];
+                    if ((tempEdge.m_Flags & TempFlags.Delete) != 0)
+                    {
+                        return false;
+                    }
+                    if (compositionData.HasComponent(tempEdge.m_Original))
+                    {
+                        Composition edgeComposition = compositionData[tempEdge.m_Original];
+                        CompositionFlags nodeCompositionFlags = netCompositionData[isStart ? edgeComposition.m_StartNode : edgeComposition.m_EndNode].m_Flags;
+                        bool hadTrafficLights = (nodeCompositionFlags.m_General & CompositionFlags.General.TrafficLights) != 0;
+                        bool hadLevelCrossing = (nodeCompositionFlags.m_General & CompositionFlags.General.LevelCrossing) != 0;
+                        bool hadRoundabout = (nodeCompositionFlags.m_General & CompositionFlags.General.Roundabout) != 0;
+                        if (hasRoundabout == hadRoundabout &&
+                            hasLevelCrossing == hadLevelCrossing &&
+                            hasTrafficLights == hadTrafficLights)
+                        {
+                            //skip, had traffic lights upgrade, nothing has changed
+                            return false;
+                        }
+
+                        hasTrafficLights = hasTrafficLights != hadTrafficLights;
+                        hasRoundabout = hasRoundabout != hadRoundabout;
+                        // hasLevelCrossing = hasLevelCrossing != hadLevelCrossing;
+                    }
+                }
+
+                FeedbackMessageType type = hasRoundabout 
+                    ? FeedbackMessageType.WarnResetPrioritiesRoundaboutApply : hasTrafficLights 
+                        ? FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply : FeedbackMessageType.WarnResetPrioritiesChangeApply;
+                feedbackInfos.Add(new ToolFeedbackInfo() { container = tempEntity, type = type });
+                return true;
             }
         }
     }

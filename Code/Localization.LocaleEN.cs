@@ -138,6 +138,9 @@ namespace Traffic
                     { _setting.GetOptionLabelLocaleID(nameof(ModSettings.ResetStyle)), "Reset Style Settings" },
                     { _setting.GetOptionDescLocaleID(nameof(ModSettings.ResetStyle)), $"Resets style settings to the mod defaults" },
 
+                    { _setting.GetOptionLabelLocaleID(nameof(ModSettings.ShowConnectionsOverlayWhenEditing)), "Preview lane connections with priorities" },
+                    { _setting.GetOptionDescLocaleID(nameof(ModSettings.ShowConnectionsOverlayWhenEditing)), "Displays all lane connections along with their associated priority settings when editing intersection priorities" },
+
                     /* lane connector tool general tooltips */
                     { GetToolTooltipLocaleID("LaneConnector", nameof(LaneConnectorToolSystem.Tooltip.SelectIntersection)), "Select Intersection" },
                     { GetToolTooltipLocaleID("LaneConnector", nameof(LaneConnectorToolSystem.Tooltip.SelectConnectorToAddOrRemove)), "Select Connector to Add or Remove Connection" },
@@ -161,9 +164,13 @@ namespace Traffic
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetForbiddenTurnUpgrades)), "[Traffic] Entering Lane Connection modification mode will remove Forbidden maneuvers from connected roads" },
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnForbiddenTurnApply)), "[Traffic] Applying Forbidden maneuver upgrade will reset Lane connections at a nearby intersection" },
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply)), "[Traffic] Applying Traffic Lights upgrade will reset Priority settings at the selected intersection"},
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetPrioritiesRoundaboutApply)), "[Traffic] Applying Roundabout upgrade will reset Priority settings at the selected intersection"},
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetPrioritiesChangeApply)), "[Traffic] Applying the change reset Priority settings at the selected intersection"},
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnRoadBuilderApply)), "[Traffic] Selecting this segment with Road Builder mod will reset Traffic settings at nearby intersections"},
 
-                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorHasRoundabout)), "[Traffic] Modifying lane connections at a selected intersection is not supported" },
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorHasRoundabout)), "[Traffic] Modifying lane connections at intersection with roundabout is not supported" },
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorApplyRoundabout)), "[Traffic] Roundabout upgrade cannot be used at an intersection with non-standard lane connections" },
+                    { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorLaneConnectorNotSupported)), "[Traffic] Modifying lane connections at a selected intersection is not supported"},
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorPrioritiesNotSupported)), "[Traffic] Modifying priority settings at a selected intersection is not supported"},
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.ErrorPrioritiesRemoveTrafficLights)), "[Traffic] Remove traffic lights to modify priority settings at a selected intersection"},
 
@@ -174,6 +181,9 @@ namespace Traffic
                     },
                     { UIKeys.SHORTCUT, "Shortcut: " },
                     { UIKeys.LANE_CONNECTOR_TOOL, "Lane Connector Tool" },
+                    { UIKeys.PRIORITIES_TOOL, "Priorities Tool" },
+                    { UIKeys.LANE_CONNECTOR_TOOL_DESCRIPTION, "Manage lane connection at selected intersection" },
+                    { UIKeys.PRIORITIES_TOOL_DESCRIPTION, "Manage lane priorities at selected intersection" },
                     { UIKeys.SELECT_INTERSECTION, "Select intersection to begin editing" },
                     { UIKeys.REMOVE_ALL_CONNECTIONS, "Remove All Connections" },
                     { UIKeys.REMOVE_U_TURNS, "Remove U-Turns" },
@@ -189,16 +199,20 @@ namespace Traffic
                         "Removes Unsafe lane connections from the selected intersection.\nUnsafe lane is a lane with a higher pathfinding penalty, meaning that lane connection has a lower selection priority when other options are available"
                     },
                     { UIKeys.RESET_TO_VANILLA_TOOLTIP_TITLE, "Reset to Vanilla" },
-                    { UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE, "Resets lane connections on the selected intersection to vanilla configuration" },
+                    { UIKeys.RESET_TO_VANILLA_TOOLTIP_MESSAGE, "Resets settings made with the current tool at the selected intersection to vanilla configuration" },
+                    { UIKeys.APPLY_MODE, "Apply mode"},
+                    { UIKeys.APPLY_ACTION, "Apply action"},
+                    { UIKeys.LANE_GROUP_MODE, "Lane Group"},
+                    { UIKeys.LANE_MODE, "Lane"},
                     { UIKeys.PRIORITY_ACTION, "Priority"},
                     { UIKeys.YIELD_ACTION, "Yield"},
                     { UIKeys.STOP_ACTION, "Stop"},
                     { UIKeys.RESET_ACTION, "Reset to default"},  
                     { UIKeys.PRIORITY_ACTION_TOOLTIP, "Highest priority, but may still give way to trams"},
-                    { UIKeys.YIELD_ACTION_TOOLTIP, "Give way to other traffic coming from roads with higher priority"},
+                    { UIKeys.YIELD_ACTION_TOOLTIP, "Give way to other traffic coming from roads with higher priority.\nIf you notice dashed outline it means that priority setting makes no sense - there is no other traffic to give way"},
                     { UIKeys.STOP_ACTION_TOOLTIP, "Stop at stop line and give way other traffic coming from roads with higher priority"},
                     { UIKeys.RESET_ACTION_TOOLTIP, "Resets selected lane or lane group to vanilla default settings"},
-                    { UIKeys.TOGGLE_DISPLAY_MODE_TOOLTIP, "Toggle between display modes"},
+                    { UIKeys.TOGGLE_DISPLAY_MODE_TOOLTIP, "Toggle between apply modes\nMode \"Lane\" allows for managing priority of individual lanes, while \"Lane Group\" applies the priority setting to lanes leading to the same road"},
 
 #if GAMEPAD_SUPPORT
                     /* Gamepad Hints*/

@@ -10,6 +10,7 @@ import { useToolActions } from "modUI/laneConnectorTool/helpers/useToolActions";
 import { VanillaComponentsResolver } from "types/internal";
 import mod from "mod.json";
 import styles from 'modUI/laneConnectorTool/laneConnectorTool.module.scss';
+import { SimplePanel } from "components/simplePanel";
 
 interface Props {
   isEditor?: boolean;
@@ -37,7 +38,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
   }, []);
 
   return (
-    <Panel
+    <SimplePanel
       className={classNames(styles.panel, {[styles.withIssues]: showLoadingErrorsButton})}
       style={positionStyle}
       header={(<>
@@ -45,7 +46,6 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
       </>)}
     >
       <div ref={panel}>
-        <PanelSection>
           {!isSelected && (
             <>
               <span className={styles.selectIntersectionMessage}>{translate(UIKeys.SELECT_INTERSECTION)}</span>
@@ -138,8 +138,7 @@ export const LaneConnectorTool = ({isEditor, showLoadingErrorsButton, onOpenLoad
              </div>
            )
           }
-        </PanelSection>
       </div>
-    </Panel>
+    </SimplePanel>
   );
 }

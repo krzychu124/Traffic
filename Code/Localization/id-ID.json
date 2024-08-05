@@ -74,7 +74,6 @@
     "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Konektor Jalur Jalan Tidak Aman",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Masuk ke mode modifikasi Koneksi Lajur akan menghapus manuver terlarang dari jalan yang terhubung",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Menerapkan peningkatan manuver terlarang akan mengatur ulang koneksi lajur di persimpangan terdekat",
-    "Traffic.Tooltip.Tools[FeedbackMessage][ErrorHasRoundabout]": "[Traffic] Memodifikasi koneksi jalur di persimpangan yang dipilih tidak didukung",
     "Traffic.Tooltip.Tools[FeedbackMessage][ErrorApplyRoundabout]": "[Traffic] Peningkatan bundaran tidak dapat digunakan di persimpangan dengan koneksi jalur yang tidak standar",
     "Traffic.UI.Tooltip.MainButton": "Modifikasi menyediakan alat tambahan yang dapat membantu mengelola lalu lintas dalam game. Saat ini hanya alat Konektor Jalur, lebih banyak lagi yang akan segera hadir. Jika Anda memiliki saran untuk fitur baru atau peningkatan, jangan ragu untuk berkomentar di forum mod atau membuka saran fitur di halaman GitHub mod",
     "Traffic.UI.Tooltip.Shortcut": "Tombol: ",
@@ -90,6 +89,5 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "Menghapus putar-balik U dari persimpangan yang dipilih, hanya berlaku untuk putar-balik U pada segmen yang sama",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "Jalur tidak aman",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "Menghapus koneksi jalur tidak aman dari persimpangan yang dipilih.\nJalur tidak aman adalah jalur dengan penalti pencarian jalur yang lebih tinggi, yang berarti bahwa koneksi jalur memiliki prioritas pemilihan yang lebih rendah ketika pilihan lain tersedia",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Atur Ulang ke Asli",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Mengatur ulang koneksi jalur pada persimpangan yang dipilih ke konfigurasi asli"
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Atur Ulang ke Asli"
 }

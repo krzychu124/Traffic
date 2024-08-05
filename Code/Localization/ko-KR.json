@@ -74,7 +74,6 @@
     "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "안전하지 않은 차로 연결",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] 차로 연결 수정 모드로 들어가면 연결된 도로에 금지된 행동이 제거됩니다.",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 금지행동 업그레이드를 적용하면 근처 교차로 차로 연결이 재설정됩니다.",
-    "Traffic.Tooltip.Tools[FeedbackMessage][ErrorHasRoundabout]": "[Traffic] 선택한 교차로에서 차로 연결 수정은 지원되지 않습니다.",
     "Traffic.Tooltip.Tools[FeedbackMessage][ErrorApplyRoundabout]": "[Traffic] 비표준 차로 연결이 있는 교차로에서는 원형 교차로 업그레이드를 사용할 수 없습니다.",
     "Traffic.UI.Tooltip.MainButton": "수정 기능은 게임 내 교통 관리에 도움이 되는 추가 도구를 제공합니다. 현재 차로 연결 도구는 더 많은 도구를 제공 할 예정입니다. 새로운 도구나 개선 사항에 대한 제안 사항이 있다면 언제든지 Mod 포럼이나 Mod GitHub의 기능 제안을 열어 건의해주세요.",
     "Traffic.UI.Tooltip.Shortcut": "단축키 :",
@@ -90,6 +89,5 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "선택한 교차로에서 유턴을 제거하며 단일 교차점에서만 U턴 제거가 적용 됩니다.",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "안전하지 않은 차로",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "선택한 교차로에서 안전하지 않은 차로 연결을 제거합니다.\n안전하지 않은 차로는 길 찾기 페널티가 더 높은 차선입니다. 즉, 다른 옵션을 사용할 수 있을 경우 차로 연결의 선택 우선순위가 더 낮습니다.",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title": "바닐라로 초기화",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message": "선택한 교차로의 모든 차선 연결을 바닐라 설정값으로 초기화합니다."
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "바닐라로 초기화"
 }

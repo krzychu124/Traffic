@@ -116,6 +116,7 @@ namespace Traffic.Systems.PrioritySigns
 
                 for (int i = 0; i < editIntersections.Length; i++)
                 {
+                    Entity editIntersectionEntity = entities[i];
                     EditIntersection editIntersection = editIntersections[i];
                     Entity node = editIntersection.node;
                     if (nodeData.HasComponent(node) && subLanesBuffer.HasBuffer(node))
@@ -153,11 +154,13 @@ namespace Traffic.Systems.PrioritySigns
                             if (Helpers.NetUtils.GetAdditionalLaneDetails(sourceEdge, targetEdge, new int2(lane.m_StartNode.GetLaneIndex() & 0xff, lane.m_EndNode.GetLaneIndex() & 0xff), isEdgeEndMap, ref compositionData, ref prefabCompositionLaneBuffer,
                                 out float3x2 lanePositionMap, out int4 carriagewayWithGroupMap))
                             {
-                                Bezier4x3 bezier = curveData[subLaneEntity].m_Bezier;
+                                Curve curve = curveData[subLaneEntity];
+                                Bezier4x3 bezier = curve.m_Bezier;
                                 int laneIndex = lane.m_StartNode.GetLaneIndex() & 0xff;
                                 Logger.DebugConnections(
-                                    $"Adding connection (subLane: {subLaneEntity}): idx[{lane.m_StartNode.GetLaneIndex() & 0xff}->{lane.m_EndNode.GetLaneIndex() & 0xff}] edge:[{sourceEdge}=>{targetEdge}] | methods: {subLane.m_PathMethods}");
-                                Connection connection = new Connection(lane, bezier, lanePositionMap, carriagewayWithGroupMap, subLane.m_PathMethods, sourceEdge, targetEdge, false, false);
+                                    $"GenerateLaneHandlesJob: Adding connection (subLane: {subLaneEntity}): idx[{lane.m_StartNode.GetLaneIndex() & 0xff}->{lane.m_EndNode.GetLaneIndex() & 0xff}] edge:[{sourceEdge}=>{targetEdge}] | methods: {subLane.m_PathMethods}");
+                                float offset = math.clamp(1f / curve.m_Length, 0f, 1f);
+                                Connection connection = new Connection(lane, MathUtils.Cut(bezier, new float2(offset, 1f - offset)), lanePositionMap, carriagewayWithGroupMap, subLane.m_PathMethods, sourceEdge, targetEdge, false, false);
                                 connections.Add(new NodeEdgeLaneKey(node.Index, sourceEdge.Index, laneIndex), connection);
                             }
                         }
@@ -166,11 +169,11 @@ namespace Traffic.Systems.PrioritySigns
                         DynamicBuffer<PriorityHandle> priorityHandles;
                         if (chunk.Has(ref priorityHandleType))
                         {
-                            priorityHandles = commandBuffer.SetBuffer<PriorityHandle>(entities[i]);
+                            priorityHandles = commandBuffer.SetBuffer<PriorityHandle>(editIntersectionEntity);
                         }
                         else
                         {
-                            priorityHandles = commandBuffer.AddBuffer<PriorityHandle>(entities[i]);
+                            priorityHandles = commandBuffer.AddBuffer<PriorityHandle>(editIntersectionEntity);
                         }
 
                         NativeHashMap<EdgeToEdgeKey, int> targetGroups = new NativeHashMap<EdgeToEdgeKey, int>(2, Allocator.Temp);
@@ -236,7 +239,7 @@ namespace Traffic.Systems.PrioritySigns
                                 int laneIndex = pathNode.GetLaneIndex() & 0xff;
 
                                 Entity laneHandle = commandBuffer.CreateEntity();
-                                commandBuffer.AddComponent<DataOwner>(laneHandle, new DataOwner(entities[i]));
+                                commandBuffer.AddComponent<DataOwner>(laneHandle, new DataOwner(editIntersectionEntity));
                                 commandBuffer.AddComponent<LaneHandle>(laneHandle);
                                 commandBuffer.AddComponent<Updated>(laneHandle);
                                 collectedPriorityHandles.Add(new PriorityHandle() { edge = edge, isEnd = edgeValue.m_End, laneHandle = laneHandle });
@@ -318,7 +321,7 @@ namespace Traffic.Systems.PrioritySigns
 
             private Segment CalculateLaneSegment(ref Segment edgeSegment, ref NetCompositionLane compositionLane, float edgeWidth)
             {
-                float halfLaneWidth = math.max((netLaneData[compositionLane.m_Lane].m_Width - 0.2f) / 2f, 0.5f);
+                float halfLaneWidth = math.max((netLaneData[compositionLane.m_Lane].m_Width - 0.3f) / 2f, 0.5f);
                 float t = (compositionLane.m_Position.x - halfLaneWidth) / math.max(1f, edgeWidth) + 0.5f;
                 float t2 = (compositionLane.m_Position.x + halfLaneWidth) / math.max(1f, edgeWidth) + 0.5f;
                 Segment segment = new Segment()

@@ -86,6 +86,9 @@ namespace Traffic
         [SettingsUISlider(min = 0.1f, max = 1f, step = 0.1f, unit = Game.UI.Unit.kFloatSingleFraction)]
         [SettingsUISection(GeneralTab, OverlaysSection)]
         public float FeedbackOutlineWidth { get; set; }
+        
+        [SettingsUISection(GeneralTab, OverlaysSection)]
+        public bool ShowConnectionsOverlayWhenEditing { get; set; }
 
         [SettingsUIButton()]
         [SettingsUISection(GeneralTab, OverlaysSection)]
@@ -97,6 +100,7 @@ namespace Traffic
                 ConnectorSize = data.laneConnectorSize;
                 ConnectionLaneWidth = data.laneConnectorLineWidth;
                 FeedbackOutlineWidth = data.feedbackLinesWidth;
+                ShowConnectionsOverlayWhenEditing = data.showLaneConnectionsPriority;
                 ApplyAndSave();
             }
         }
@@ -180,6 +184,7 @@ namespace Traffic
                 feedbackLinesWidth = FeedbackOutlineWidth,
                 laneConnectorSize = ConnectorSize,
                 laneConnectorLineWidth = ConnectionLaneWidth,
+                showLaneConnectionsPriority = ShowConnectionsOverlayWhenEditing,
             });
             base.Apply();
         }

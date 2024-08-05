@@ -74,7 +74,6 @@
     "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Небезопасное соединение полос движения",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Вход в режим изменения соединений полос удалит запрещенные манёвры из соединенных дорог",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Применение команды обновления Запретных манёвров сбросит соединения на ближайшем перекрёстке",
-    "Traffic.Tooltip.Tools[FeedbackMessage][ErrorHasRoundabout]": "[Traffic] Изменение соединения полос на выбранном перекрёстке не поддерживается",
     "Traffic.Tooltip.Tools[FeedbackMessage][ErrorApplyRoundabout]": "[Traffic] Обновление круга не может быть использовано на пересечении с нестандартными соединениями полос",
     "Traffic.UI.Tooltip.MainButton": "Мод предоставляет дополнительные инструменты, которые помогут управлять внутриигровым трафиком. На данный момент доступен инструмент Соединения Полос, но в скором появятся новые возможности. Если у вас есть предложения по новым инструментам или улучшениям, не стесняйтесь комментировать ветку на форуме модов или откройте новую тему с предложением на странице мода GitHub",
     "Traffic.UI.Tooltip.Shortcut": "Сочетания клавиш: ",
@@ -90,6 +89,5 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "Удаляет развороты на выбранном перекрёстке, применяется только к разворотам на том же сегменте",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "Небезопасная полоса",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "Удаляет небезопасные соединения полос с выбранного перекрёстка.\nНебезопасная полоса — полоса с повышенным штрафом для алгоритма поиска путей, что ведёт к более редким случаям выбора данного пути транспортными средствами, когда доступны другие варианты",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Сбросить до стандартного",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Сбрасывает соединения полос на выбранном перекрёстке до стандартных настроек"
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Сбросить до стандартного"
 }

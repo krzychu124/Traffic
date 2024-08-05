@@ -92,7 +92,6 @@ namespace Traffic.Systems.PrioritySigns
                         {
                             commandBuffer.RemoveComponent<LanePriority>(tempEdge.m_Original);
                             commandBuffer.RemoveComponent<ModifiedPriorities>(tempEdge.m_Original);
-                            commandBuffer.AddComponent<Updated>(tempEdge.m_Original);
                             continue;
                         }
 
@@ -106,8 +105,6 @@ namespace Traffic.Systems.PrioritySigns
                             commandBuffer.AddComponent<ModifiedPriorities>(tempEdge.m_Original);
                         }
                         priorities.CopyFrom(nonDefaultPriorities.AsArray());
-                        
-                        commandBuffer.AddComponent<Updated>(tempEdge.m_Original);
                     }
                 }
                 nonDefaultPriorities.Dispose();

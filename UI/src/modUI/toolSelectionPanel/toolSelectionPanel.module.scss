@@ -1,3 +1,4 @@
+$panelColor: rgba(80,80,80, 0.9);
 
 .panel {
   position: absolute;
@@ -9,14 +10,14 @@
   flex-direction: column;
 
   border-radius: 4rem;
-  background-color: var(--accentColorNormal);
+  background-color: $panelColor;
 }
 
 
 .actionButton, .actionLoadingResultsButton {
   pointer-events: auto;
   background-color: #0f1013;
-  padding: 4rem;
+  padding: 0 4rem;
   border-radius: 4rem;
   margin-bottom: 3rem;
 

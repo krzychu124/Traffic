@@ -1,6 +1,6 @@
 ﻿namespace Traffic.Components.PrioritySigns
 {
-    public enum PriorityType
+    public enum PriorityType : ushort
     {
         Default,
         RightOfWay,

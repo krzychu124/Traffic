@@ -49,7 +49,10 @@ namespace Traffic.Rendering
                         ToolFeedbackInfo toolFeedbackInfo = feedbackInfos[j];
                         if (toolFeedbackInfo.container != Entity.Null && toolFeedbackInfo.type < FeedbackMessageType.ErrorLaneConnectorNotSupported)
                         {
-                            if ((toolFeedbackInfo.type == FeedbackMessageType.WarnForbiddenTurnApply || toolFeedbackInfo.type == FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply) &&
+                            if ((toolFeedbackInfo.type == FeedbackMessageType.WarnForbiddenTurnApply || 
+                                toolFeedbackInfo.type == FeedbackMessageType.WarnResetPrioritiesTrafficLightsApply ||
+                                toolFeedbackInfo.type == FeedbackMessageType.WarnResetPrioritiesRoundaboutApply||
+                                toolFeedbackInfo.type == FeedbackMessageType.WarnResetPrioritiesChangeApply) &&
                                 nodeChunkData.Length > 0)
                             {
                                 OverlayRenderingHelpers.DrawNodeOutline(
@@ -65,7 +68,8 @@ namespace Traffic.Rendering
                                     0f
                                 );
                             }
-                            if (toolFeedbackInfo.type == FeedbackMessageType.WarnResetForbiddenTurnUpgrades && prefabRefData.HasComponent(toolFeedbackInfo.container))
+                            if (toolFeedbackInfo.type == FeedbackMessageType.WarnResetForbiddenTurnUpgrades &&
+                                prefabRefData.HasComponent(toolFeedbackInfo.container))
                             {
                                 PrefabRef prefabRef = prefabRefData[toolFeedbackInfo.container];
                                 Edge edge = edgeData[toolFeedbackInfo.container];

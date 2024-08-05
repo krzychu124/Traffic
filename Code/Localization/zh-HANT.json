@@ -74,7 +74,6 @@
     "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "不安全的車道連線",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] 進入車道連接模式將會移除所有相關道路現有的禁止行駛升級標記。",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 應用禁止行駛升級標記將會重設附近路口的車道連線。",
-    "Traffic.Tooltip.Tools[FeedbackMessage][ErrorHasRoundabout]": "[Traffic] 不支援在此路口修改車道連線。",
     "Traffic.Tooltip.Tools[FeedbackMessage][ErrorApplyRoundabout]": "[Traffic] 不能將非正常車道連接的路口升級為圓環/迴旋處。",
     "Traffic.UI.Tooltip.MainButton": "本模組提供了額外的交通管理工具。目前，暫時僅有車道連接工具，更多工具將在未來的更新中提供。如果您對添加新工具或改進有任何建議，請隨時在論壇的討論串中留言或在 GitHub 上提出建議。",
     "Traffic.UI.Tooltip.Shortcut": "快捷鍵： ",
@@ -90,6 +89,5 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "移除該路口所有的不安全迴轉車道連線，僅應用於該路段。",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "不安全的車道連線",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "移除該路口中不安全的車道連線。這種車道連線具有較高的尋路懲罰，意味著當其他車道可用時，它的優先級很低。",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Title": "重置為遊戲預設車道連線",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[ResetToVanilla].Tooltip.Message": "將該路口的車道連線重置為遊戲預設連線。"
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "重置為遊戲預設車道連線"
 }

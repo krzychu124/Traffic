@@ -163,8 +163,8 @@ namespace Traffic.Systems.DataMigration
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {
-            writer.Write(DataMigrationVersion.LaneConnectionDataUpgradeV2);
-            Logger.Serialization($"Saving ({nameof(TrafficDataMigrationSystem)} data version: {DataMigrationVersion.LaneConnectionDataUpgradeV2}");
+            writer.Write(DataMigrationVersion.PriorityManagementDataV1);
+            Logger.Serialization($"Saving ({nameof(TrafficDataMigrationSystem)} data version: {DataMigrationVersion.PriorityManagementDataV1}");
         }
 
         public void Deserialize<TReader>(TReader reader) where TReader : IReader

@@ -49,7 +49,7 @@ namespace Traffic.Tools
                 int count = controlPoints.Length;
 
                 Entity node = Entity.Null;
-                if (state == State.Default && count > 0)
+                if (state == State.Default && count == 1)
                 {
                     if (nodeData.HasComponent(controlPoints[0].m_OriginalEntity))
                     {
@@ -62,6 +62,7 @@ namespace Traffic.Tools
                             node = node
                         };
                         commandBuffer.AddComponent<EditIntersection>(temp, edit);
+                        commandBuffer.AddComponent<EditLaneConnections>(temp);
                         commandBuffer.AddComponent<Updated>(temp);
                     }
                 }
@@ -69,45 +70,15 @@ namespace Traffic.Tools
                 {
                     node = intersectionNode;
                 }
+                
                 Logger.DebugTool($"Node: {node} | {intersectionNode}, state: {state}, count: {count}");
-                if (nodeData.HasComponent(node))
-                {
-                    CreationDefinition nodeDef = new CreationDefinition()
-                    {
-                        m_Flags = 0,
-                        m_Original = node,
-                        m_Prefab = prefabRefData[node].m_Prefab
-                    };
-
-                    float3 pos = nodeData[node].m_Position;
-                    ControlPoint point = new ControlPoint(node, new RaycastHit()
-                    {
-                        m_Position = pos,
-                        m_HitEntity = node,
-                        m_HitPosition = pos,
-                    });
-
-                    NetCourse netCourse = default(NetCourse);
-                    netCourse.m_Curve = new Bezier4x3(point.m_Position, point.m_Position, point.m_Position, point.m_Position);
-                    netCourse.m_StartPosition = GetCoursePos(netCourse.m_Curve, point, 0f);
-                    netCourse.m_StartPosition.m_Flags |= (CoursePosFlags.IsFirst);
-                    netCourse.m_StartPosition.m_ParentMesh = -1;
-                    netCourse.m_EndPosition = GetCoursePos(netCourse.m_Curve, point, 1f);
-                    netCourse.m_EndPosition.m_Flags |= (CoursePosFlags.IsLast);
-                    netCourse.m_EndPosition.m_ParentMesh = -1;
-                    netCourse.m_Length = MathUtils.Length(netCourse.m_Curve);
-                    netCourse.m_FixedIndex = -1;
-
-                    Entity nodeEntity = commandBuffer.CreateEntity();
-                    commandBuffer.AddComponent(nodeEntity, nodeDef);
-                    commandBuffer.AddComponent(nodeEntity, netCourse);
-                    commandBuffer.AddComponent<Updated>(nodeEntity);
-                    /*----------------------------------------------*/
-                }
-
                 if (state == State.Default || node == Entity.Null ||  editingIntersection == Entity.Null)
                 {
                     Logger.DebugTool($"CreateDefinitionsJob finished! state:{state}, n:{node}, edit:{editingIntersection}, count:{count}");
+                    return;
+                }
+                if (!CreateNodeDefinition(node))
+                {
                     return;
                 }
 
@@ -149,7 +120,16 @@ namespace Traffic.Tools
 
                 bool foundModifiedSource = false;
                 bool connectionExists = false;
-                DynamicBuffer<ConnectorElement> connectorElements = connectorElementsBuffer[editingIntersection];
+                
+                DynamicBuffer<ConnectorElement> connectorElements;
+                if (connectorElementsBuffer.HasBuffer(editingIntersection))
+                {
+                    connectorElements =  connectorElementsBuffer[editingIntersection];
+                }
+                else
+                {
+                    connectorElements = commandBuffer.AddBuffer<ConnectorElement>(editingIntersection);
+                }
                 NativeHashMap<ConnectorKey, Entity> connectorsMap = new NativeHashMap<ConnectorKey, Entity>(connectorElements.Length, Allocator.Temp);
                 FillConnectorMap(connectorElements, connectorsMap);
                 if (modifiedConnectionBuffer.HasBuffer(intersectionNode))
@@ -955,6 +935,46 @@ namespace Traffic.Tools
                     }
                 }
                 visitedConnections.Dispose();
+            }
+            
+            private bool CreateNodeDefinition(Entity node)
+            {
+                if (node != Entity.Null && nodeData.HasComponent(node))
+                {
+                    CreationDefinition nodeDef = new CreationDefinition()
+                    {
+                        m_Flags = 0,
+                        m_Original = node,
+                        m_Prefab = prefabRefData[node].m_Prefab
+                    };
+
+                    float3 pos = nodeData[node].m_Position;
+                    ControlPoint point = new ControlPoint(node, new RaycastHit()
+                    {
+                        m_Position = pos,
+                        m_HitEntity = node,
+                        m_HitPosition = pos,
+                    });
+
+                    NetCourse netCourse = default(NetCourse);
+                    netCourse.m_Curve = new Bezier4x3(point.m_Position, point.m_Position, point.m_Position, point.m_Position);
+                    netCourse.m_StartPosition = GetCoursePos(netCourse.m_Curve, point, 0f);
+                    netCourse.m_StartPosition.m_Flags |= (CoursePosFlags.IsFirst);
+                    netCourse.m_StartPosition.m_ParentMesh = -1;
+                    netCourse.m_EndPosition = GetCoursePos(netCourse.m_Curve, point, 1f);
+                    netCourse.m_EndPosition.m_Flags |= (CoursePosFlags.IsLast);
+                    netCourse.m_EndPosition.m_ParentMesh = -1;
+                    netCourse.m_Length = MathUtils.Length(netCourse.m_Curve);
+                    netCourse.m_FixedIndex = -1;
+
+                    Entity nodeEntity = commandBuffer.CreateEntity();
+                    commandBuffer.AddComponent(nodeEntity, nodeDef);
+                    commandBuffer.AddComponent(nodeEntity, netCourse);
+                    commandBuffer.AddComponent<Updated>(nodeEntity);
+                    /*----------------------------------------------*/
+                    return true;
+                }
+                return false;
             }
             
             private struct ConnectorItem

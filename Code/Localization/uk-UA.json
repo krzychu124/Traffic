@@ -133,6 +133,7 @@
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Yield].Tooltip.Message": "Поступатися дорогою перед іншим транспортом, що надходить з доріг з вищим приорітетом.\nЯкщо ви бачите пунктирний контур, це означає, що налаштування приорітету не має ефекту — ваш приорітет вже є найвищим",
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Stop].Tooltip.Message": "Зупинитись на лінії зупинки та поступитися дорогою перед транспортом, що надходить з доріг з вищим пріоритетом",
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Reset].Tooltip.Message": "Скидає параметри обраної смуги руху або групи смуг до стандартних налаштувань",
+    "Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleApplyMode].Tooltip.Message": "Перемикання між режимами застосування",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Скидає лінії з'єднань на вибраному перехресті до оригінальної конфігурації",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Скинути у Первісний Стан",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Режим дії"

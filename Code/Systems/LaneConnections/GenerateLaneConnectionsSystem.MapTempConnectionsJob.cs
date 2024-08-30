@@ -63,7 +63,9 @@ namespace Traffic.Systems.LaneConnections
                         commandBuffer.AddComponent<DataOwner>(index, modifiedConnectionEntity, new DataOwner(item.dataOwner));
                         commandBuffer.AddComponent<CustomLaneConnection>(index, modifiedConnectionEntity);
                         commandBuffer.AddComponent<PrefabRef>(index, modifiedConnectionEntity, new PrefabRef(fakePrefabRef));
+#if DEBUG_CONNECTIONS
                         int length = 0;
+#endif
                         if (item.generatedConnections.IsCreated)
                         {
                             DynamicBuffer<GeneratedConnection> generatedConnections = commandBuffer.AddBuffer<GeneratedConnection>(index, modifiedConnectionEntity);

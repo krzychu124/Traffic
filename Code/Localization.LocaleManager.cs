@@ -178,14 +178,14 @@ namespace Traffic
 
             public static (string, bool) ApplySettings(string gameLocale, bool useGameLanguage, string currentLanguage)
             {
-                Logger.Warning($"(ApplySettings) game locale {gameLocale} UseGameLocale: {useGameLanguage} mod locale: {currentLanguage}");
+                Logger.Info($"(ApplySettings) game locale {gameLocale} UseGameLocale: {useGameLanguage} mod locale: {currentLanguage}");
                 if (!useGameLanguage)
                 {
-                    Logger.Warning($"Applying custom mod locale {currentLanguage} | current game locale: {gameLocale}");
+                    Logger.Info($"Applying custom mod locale {currentLanguage} | current game locale: {gameLocale}");
                     LocalizationManager manager = GameManager.instance.localizationManager;
                     if (!LocaleSources.ContainsKey(currentLanguage))
                     {
-                        Logger.Warning($"Custom mod locale {currentLanguage} not found, fallback to English, useGameLanguage ");
+                        Logger.Info($"Custom mod locale {currentLanguage} not found, fallback to English, useGameLanguage ");
                         manager.RemoveSource(gameLocale, LocaleSources["en-US"].Item3);
                         manager.AddSource(gameLocale, LocaleSources["en-US"].Item3);
                         return (currentLanguage, true);
@@ -202,7 +202,7 @@ namespace Traffic
                 
                 if (currentLanguage != gameLocale)
                 {
-                    Logger.Warning($"Use Game Language - detected different mod locale ({currentLanguage}) than currently set in the game settings ({gameLocale}). Falling back to the game locale");
+                    Logger.Info($"Use Game Language - detected different mod locale ({currentLanguage}) than currently set in the game settings ({gameLocale}). Falling back to the game locale");
                     return (gameLocale, true);
                 }
                 

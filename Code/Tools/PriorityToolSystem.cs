@@ -1,6 +1,4 @@
-﻿using System;
-using Colossal.Entities;
-using Colossal.Mathematics;
+﻿using Colossal.Entities;
 using Game.Audio;
 using Game.Common;
 using Game.Input;
@@ -13,6 +11,7 @@ using Traffic.Components;
 using Traffic.Components.PrioritySigns;
 using Traffic.Systems;
 using Traffic.UISystems;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -22,6 +21,9 @@ using UnityEngine.InputSystem;
 
 namespace Traffic.Tools
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class PriorityToolSystem : ToolBaseSystem
     {
         public enum Mode
@@ -53,7 +55,7 @@ namespace Traffic.Tools
                 if (value <= ModUISystem.PriorityToolSetMode.Reset)
                 {
                     _toolSetMode = value;
-                    _toolModeChanged = true;
+                    // _toolModeChanged = true;
                 }
             }
         }
@@ -65,7 +67,7 @@ namespace Traffic.Tools
                 if (value <= ModUISystem.OverlayMode.Lane)
                 {
                     _overlayMode = value;
-                    _overlayModeChanged = true;
+                    // _overlayModeChanged = true;
                 }
             }
         }
@@ -89,8 +91,8 @@ namespace Traffic.Tools
 
         private ModUISystem.PriorityToolSetMode _toolSetMode;
         private ModUISystem.OverlayMode _overlayMode;
-        private bool _toolModeChanged;
-        private bool _overlayModeChanged;
+        // private bool _toolModeChanged;
+        // private bool _overlayModeChanged;
 
         private Entity _selectedNode;
         private NativeList<ControlPoint> _controlPoints;

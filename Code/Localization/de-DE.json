@@ -17,7 +17,7 @@
     "Options.OPTION[Traffic.Traffic.Mod/CancelToolAction/binding]": "Tool abbrechen",
     "Options.OPTION[Traffic.Traffic.Mod/ToggleLaneConnectorTool/binding]": "Lane Connector Werkzeug umschalten",
     "Options.OPTION[Traffic.Traffic.Mod/TogglePrioritiesTool/binding]": "Vorfahrtsregeltool umschalten",
-    "Options.OPTION[Traffic.Traffic.Mod/RemoveAllConnections/binding]": "Fahrspuren der Kreuzung entfernen",
+    "Options.OPTION[Traffic.Traffic.Mod/RemoveAllConnections/binding]": "Verbindungen der Kreuzung entfernen",
     "Options.OPTION[Traffic.Traffic.Mod/RemoveUTurns/binding]": "U-Turns entfernen",
     "Options.OPTION[Traffic.Traffic.Mod/RemoveUnsafe/binding]": "Unsichere Fahrbahnverbindungen entfernen",
     "Options.OPTION[Traffic.Traffic.Mod/ResetIntersectionToDefaults/binding]": "Ausgewählte Kreuzung auf Standardwerte zurücksetzen",
@@ -135,5 +135,8 @@
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Reset].Tooltip.Message": "Setzt an der ausgewählten Spur oder Spurengruppe die Einstellung zu Vanilla zurück",
     "Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleApplyMode].Tooltip.Message": "Umschalten zwischen den Aktivierungsmodi",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Spurverbindungen an der ausgewählten Kreuzung auf Vanille-Konfiguration zurücksetzen",
-    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Auf Vanilla zurücksetzen"
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Auf Vanilla zurücksetzen",
+    "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Aktivierungsmodus umschalten",
+    "Traffic.UI.Tools[Priorities].Description": "Bearbeite Vorfahrtsregeln an der ausgewählten Kreuzungen",
+    "Traffic.UI.Tools[LaneConnector].Description": "Bearbeite Verbindungen/Fahrspuren an der ausgewählten Kreuzung"
 }

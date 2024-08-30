@@ -8,6 +8,7 @@ using Game.Tools;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -16,6 +17,9 @@ using TrackLane = Game.Net.TrackLane;
 
 namespace Traffic.Tools
 {
+#if WITH_BURST
+    [BurstCompile]
+#endif
     public partial class ValidationSystem : GameSystemBase
     {
         private EntityQuery _tempQuery;

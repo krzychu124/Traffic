@@ -6,6 +6,7 @@ using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
 using Traffic.Tools;
 using Traffic.UISystems;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -16,6 +17,9 @@ namespace Traffic.Rendering
 {
     public partial class ToolOverlaySystem
     {
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct PriorityOverlaysJob : IJob
         {
             [ReadOnly] public NativeArray<ArchetypeChunk> chunks;

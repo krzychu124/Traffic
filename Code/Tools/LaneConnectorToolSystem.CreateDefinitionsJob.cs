@@ -9,6 +9,7 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Tools.Helpers;
 using Traffic.UISystems;
 using Unity.Burst;
 using Unity.Collections;
@@ -423,19 +424,6 @@ namespace Traffic.Tools
                     laneConnections[i] = tempLaneConnections[i];
                 }
                 tempLaneConnections.Dispose();
-            }
-
-            private CoursePos GetCoursePos(Bezier4x3 curve, ControlPoint controlPoint, float delta) {
-                CoursePos result = default(CoursePos);
-
-                result.m_Entity = controlPoint.m_OriginalEntity;
-                result.m_SplitPosition = controlPoint.m_CurvePosition;
-                result.m_Position = controlPoint.m_Position;
-                result.m_Elevation = controlPoint.m_Elevation;
-                result.m_Rotation = NetUtils.GetNodeRotation(MathUtils.Tangent(curve, delta));
-                result.m_CourseDelta = delta;
-                result.m_ParentMesh = controlPoint.m_ElementIndex.x;
-                return result;
             }
 
             private PathMethod StateModifierToPathMethod(StateModifier modifier) {
@@ -958,10 +946,10 @@ namespace Traffic.Tools
 
                     NetCourse netCourse = default(NetCourse);
                     netCourse.m_Curve = new Bezier4x3(point.m_Position, point.m_Position, point.m_Position, point.m_Position);
-                    netCourse.m_StartPosition = GetCoursePos(netCourse.m_Curve, point, 0f);
+                    netCourse.m_StartPosition = ToolHelpers.GetCoursePos(netCourse.m_Curve, point, 0f);
                     netCourse.m_StartPosition.m_Flags |= (CoursePosFlags.IsFirst);
                     netCourse.m_StartPosition.m_ParentMesh = -1;
-                    netCourse.m_EndPosition = GetCoursePos(netCourse.m_Curve, point, 1f);
+                    netCourse.m_EndPosition = ToolHelpers.GetCoursePos(netCourse.m_Curve, point, 1f);
                     netCourse.m_EndPosition.m_Flags |= (CoursePosFlags.IsLast);
                     netCourse.m_EndPosition.m_ParentMesh = -1;
                     netCourse.m_Length = MathUtils.Length(netCourse.m_Curve);

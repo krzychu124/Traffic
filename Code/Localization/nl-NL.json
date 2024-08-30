@@ -133,9 +133,10 @@
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Yield].Tooltip.Message": "Verleen voorrang aan ander verkeer dat van wegen met hogere prioriteit komt. Als je een stippellijn ziet, betekent dit dat de prioriteitsinstelling geen zin heeft – er is geen ander verkeer om voorrang aan te geven",
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Stop].Tooltip.Message": "Stop bij de stopstreep en verleen voorrang aan ander verkeer dat van wegen met hogere prioriteit komt",
     "Traffic.UI.Tools[Priorities].Toolbox.Action[Reset].Tooltip.Message": "Stelt de geselecteerde rijstrook of rijstrookgroep terug naar de standaardinstellingen",
+    "Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleApplyMode].Tooltip.Message": "Wissel tussen toepassingsmodi",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Stelt de instellingen die met de huidige tool op het geselecteerde kruispunt zijn gemaakt, terug naar de oorspronkelijke configuratie",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Terugstellen naar standaard",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Actiemodus Wissen",
     "Traffic.UI.Tools[Priorities].Description": "Beheer van prioriteiten voor rijstroken op geselecteerde kruispunten",
-    "Traffic.UI.Tools[LaneConnector].Description": "Beheer van rijstroekverbindingen op geselecteerde kruispunten"
+    "Traffic.UI.Tools[LaneConnector].Description": "Beheer van rijstrookverbindingen op geselecteerde kruispunten"
 }

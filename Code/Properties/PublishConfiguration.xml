@@ -14,8 +14,8 @@ The goal of the project is to bring more tools to the game that could help users
 
 ### Included features
 
-- **Lane Connector Tool** - no need to describe it for users familiar with TM:PE in CS1, but for new players, it's a tool which allows for changing lane connections at intersection to any that suits your usecase. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to add or change connections. More details below.
-- **Priorities Tool** - a tool that allows for changing lane priority at intersection to any that suits your usecase. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to reapply the change.
+- **Lane Connector Tool** - no need to describe it for users familiar with TM:PE in CS1, but for new players, it's a tool which allows for changing lane connections at intersection to any that suits your use case. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to add or change connections. More details below.
+- **Priorities Tool** - a tool that allows for changing lane priority at intersection to any that suits your use case. Since the mod cannot read the user's mind, in certain conditions it may require revisiting the modified intersection to reapply the change.
 
 ### Usage
 
@@ -33,20 +33,20 @@ For more advanced setups:
 
 - No support at intersections with _the roundabout upgrade_, custom lane connections has to be reset first to apply the upgrade
 - No support for vanilla _forbidden direction_ upgrades (tooltips with more information is available in game)
-- No support for managing bi-directinal lane connections (e.g.: two-way single train/tram track connections)
+- No support for managing bidirectional lane connections (e.g.: two-way single train/tram track connections)
 - Intersection with custom _Lane Connections_ will not generate lane connections when modified by e.g.: adding new intersecting road - connections need to be created manually or simply reset
 
 Custom _Lane Connections_ may be automatically removed (leaving lanes not connected!) in following conditions:
-- when the network composition has changed e.g.: "small two-way road" was replaced with asymetric 2+1 variant
+- when the network composition has changed e.g.: "small two-way road" was replaced with asymmetric 2+1 variant
 - road direction has changed with help of replace tool
 - tram track upgrade has been applied or removed
 
-Issues and limitations above are not impossible to solve (mostly), but they require extensive effort which would delay the release of the mod, so I deciced to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
+Issues and limitations above are not impossible to solve (mostly), but they require extensive effort which would delay the release of the mod, so I decided to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
 
 ### Compatibility with other modifications
 
-- Automatic data migration from _**Traffic Lights Enhancement's** Lane Direction_ tool into Traffic's Lane Connections (a message dialog will appear with migration resutls when loading a savegame)
-- Tested with _**Extended Road Upgrades**_, no isses found.
+- Automatic data migration from _**Traffic Lights Enhancement's** Lane Direction_ tool into Traffic's Lane Connections (a message dialog will appear with migration results when loading a savegame)
+- Tested with _**Extended Road Upgrades**_, no issues found.
 - Selecting a road (or all instances) with _**Road Builder**_ mod will reset _Traffic's_ custom priorities and lane connections
 
 ### Saving
@@ -65,7 +65,7 @@ In case of critical issues, small bugs fixes or tweaks they will be released mor
 
 ### Feedback, Features Ideas, Support
 
-You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX forum in the comment section of the mod, but for easier management, for larget feature requests or anything that requires more  discussion, I'd prefer Github's _Issues_ or _Discussions_
+You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX forum in the comment section of the mod, but for easier management, for larger feature requests or anything that requires more  discussion, I'd prefer GitHub's _Issues_ or _Discussions_
 
 ### Credits
 
@@ -88,21 +88,17 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.0" />
+  <ModVersion Value="0.2.1" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.1.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.0
+  <ChangeLog>## v.0.2.1
 
-_Priorities tool, Road Builder compatibility fix_
+_Compatibility patch for the game update 1.1.8f1_
 
-- **Priority management** - per lane or lane group
-- Tool menu with tool selection
-- Compatibility changes to support Road Builder mod,
-- Minor changes in tool panel UI, is no longer semitransparent due to strange performance issues
-- Fix: bug in localization manager that could force unload current custom translation data breaking language selector</ChangeLog>
+- Minor code cleanup, doesn't affect any functionality</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
   <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />

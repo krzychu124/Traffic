@@ -74,6 +74,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Nebezpečné řazení pruhů",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Vstup do režimu editace řazení pruhů vymaže zákazy odbočení z připojených silnic",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Použití zákazu odbočení resetuje módem nastavené řazení pruhů",
+    "Traffic.Tooltip.Tools[FeedbackMessage][ErrorHasRoundabout]": "[Traffic] Upravení řazení pruhů není ve vybrané křižovatce podporováno",
     "Traffic.Tooltip.Tools[FeedbackMessage][ErrorApplyRoundabout]": "[Traffic] Kruhový objezd nemůže být vytvořen ve křižovatce s nestandartním řazením pruhů",
     "Traffic.UI.Tooltip.MainButton": "Modifikace poskytuje nástroje, které pomohou v řízení herní dopravy. V současnosti nástroj na řízení jízdních pruhů. Další nástroje se budou přidávat v budoucnosti. Pokud máte nějaký návrh na nový nástroj nebo vylepšení neváhejte se ozvat na fóru módu a nebo na GitHubu v sekci doporučení nových funkcí",
     "Traffic.UI.Tooltip.Shortcut": "Klávesová zkratka: ",
@@ -89,5 +90,6 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "Odstraní možnost otáčení vozidel do protisměru v křižovatce",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "Nebezpečný pruh",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "Odstraní nebezpečné řazení ve zvolené křižovatce.\nNebezpečný pruh je pruh s výším postihem pro trasování vozidel a to znamená menší priorita pro zvolení cesty vozidlem pokud jsou jiné možnosti",
+    "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Odstraní uživatelské nastavení pravidel pro řazení do pruhů",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Obnovit do základního nastavení"
 }

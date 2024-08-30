@@ -2,6 +2,7 @@
 using Game.Net;
 using Traffic.Components;
 using Traffic.Components.PrioritySigns;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -10,6 +11,9 @@ namespace Traffic.Tools
 {
     public partial class PriorityToolSystem
     {
+#if WITH_BURST
+        [BurstCompile]
+#endif
         private struct RemoveLanePrioritiesJob : IJobFor
         {
             [ReadOnly] public ComponentLookup<Edge> edgeData;

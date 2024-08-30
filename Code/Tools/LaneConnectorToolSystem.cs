@@ -255,7 +255,7 @@ namespace Traffic.Tools
 
         protected override void OnStartRunning() {
             base.OnStartRunning();
-            Logger.Info($"Starting {nameof(LaneConnectorToolSystem)}");
+            Logger.Debug($"Starting {nameof(LaneConnectorToolSystem)}");
             _mainCamera = Camera.main;
             _controlPoints.Clear();
             _nodeElevation.Clear();
@@ -279,7 +279,7 @@ namespace Traffic.Tools
 
         protected override void OnStopRunning() {
             base.OnStopRunning();
-            Logger.Info($"Stopping {nameof(LaneConnectorToolSystem)}");
+            Logger.Debug($"Stopping {nameof(LaneConnectorToolSystem)}");
             _mainCamera = null;
             _selectedNode = Entity.Null;
             _nodeElevation.value = 0f;

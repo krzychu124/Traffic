@@ -8,11 +8,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.2.0</Version>
+        <Version>0.2.1</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.2.0</AssemblyVersion>
-        <FileVersion>0.2.0</FileVersion>
+        <AssemblyVersion>0.2.1</AssemblyVersion>
+        <FileVersion>0.2.1</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -254,6 +254,24 @@
       </Compile>
       <Compile Update="Rendering\ToolOverlaySystem.PriorityOverlaysJob.cs">
         <DependentUpon>ToolOverlaySystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\PrioritySigns\ApplyPrioritiesSystem.HandleTempEntitiesJob.cs">
+        <DependentUpon>ApplyPrioritiesSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\PrioritySigns\GenerateEdgePrioritiesSystem.GenerateTempPrioritiesJob.cs">
+        <DependentUpon>GenerateEdgePrioritiesSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\PrioritySigns\GenerateHandles.GenerateLaneHandlesJob.cs">
+        <DependentUpon>GenerateHandles.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\PrioritySigns\SyncCustomPrioritiesSystem.SyncOriginalPrioritiesJob.cs">
+        <DependentUpon>SyncCustomPrioritiesSystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Systems\ModCompatibility\RoadBuilderCompatibilitySystem.ResetTrafficSettings.cs">
+        <DependentUpon>RoadBuilderCompatibilitySystem.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Tools\TrafficToolClearSystem.ClearEntitiesJob.cs">
+        <DependentUpon>TrafficToolClearSystem.cs</DependentUpon>
       </Compile>
     </ItemGroup>
 

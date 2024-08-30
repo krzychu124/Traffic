@@ -185,12 +185,12 @@ namespace Traffic.Systems.LaneConnections
                         {
                             originalLaneConnections.Sort(default(ModifiedLaneConnectionsComparer));
                             modifiedLaneConnectionData[tempNode.m_Original].Clear();
-                            modifiedLaneConnectionData[tempNode.m_Original].AddRange(originalLaneConnections);
+                            modifiedLaneConnectionData[tempNode.m_Original].AddRange(originalLaneConnections.AsArray());
                         }
                         else
                         {
                             DynamicBuffer<ModifiedLaneConnections> newModifiedConnections = commandBuffer.AddBuffer<ModifiedLaneConnections>(tempNode.m_Original);
-                            newModifiedConnections.CopyFrom(originalLaneConnections);
+                            newModifiedConnections.CopyFrom(originalLaneConnections.AsArray());
                         }
                         commandBuffer.AddComponent<Updated>(tempNode.m_Original);
                     }

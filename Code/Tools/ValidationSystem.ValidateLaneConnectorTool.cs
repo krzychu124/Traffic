@@ -20,9 +20,6 @@ using TrackLane = Game.Net.TrackLane;
 
 namespace Traffic.Tools
 {
-#if WITH_BURST
-    [BurstCompile]
-#endif
     public partial class ValidationSystem
     {
 #if WITH_BURST
@@ -249,7 +246,6 @@ namespace Traffic.Tools
                 }
                 else if (chunk.Has(ref edgeType))
                 {
-                    CompositionFlags.General testFlags = (CompositionFlags.General.LevelCrossing | CompositionFlags.General.Roundabout | CompositionFlags.General.TrafficLights);
                     NativeArray<Edge> edges = chunk.GetNativeArray(ref edgeType);
                     BufferAccessor<LanePriority> chunkLanePriorities = chunk.GetBufferAccessor(ref lanePriorityTypeHandle);
                     for (int i = 0; i < entities.Length; i++)

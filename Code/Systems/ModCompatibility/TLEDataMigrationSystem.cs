@@ -17,6 +17,8 @@ using SubLane = Game.Net.SubLane;
 
 namespace Traffic.Systems.ModCompatibility
 {
+    using Colossal.IO.AssetDatabase;
+
 #if WITH_BURST
     [BurstCompile]
 #endif
@@ -29,7 +31,14 @@ namespace Traffic.Systems.ModCompatibility
         {
             base.OnCreate();
             Logger.Info($"Initializing {nameof(TLEDataMigrationSystem)}!");
-            Type customLaneDirectionType = Type.GetType("C2VM.CommonLibraries.LaneSystem.CustomLaneDirection, C2VM.CommonLibraries.LaneSystem", false);
+            ExecutableAsset tleAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")));
+            Type customLaneDirectionType = tleAsset?.assembly.GetType("C2VM.CommonLibraries.LaneSystem.CustomLaneDirection", false);
+            if (customLaneDirectionType == null)
+            {
+                Logger.Error($"CustomLaneDirection component type not found in C2VM.CommonLibraries.LaneSystem. Disabled Migration System!");
+                Enabled = false;
+                return;
+            }
             try
             {
                 _tleComponent = ComponentType.FromTypeIndex(TypeManager.GetTypeIndex(customLaneDirectionType));

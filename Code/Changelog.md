@@ -1,5 +1,5 @@
-﻿## v.0.2.1
+﻿## v.0.2.2
 
-_Compatibility patch for the game update 1.1.8f1_
+_Compatibility patch for the game update 1.1.10f1_
 
-- Minor code cleanup, doesn't affect any functionality
+- Fix for potential error on load that is related with Road Builder mod compatibility

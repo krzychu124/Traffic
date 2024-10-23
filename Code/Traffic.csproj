@@ -8,11 +8,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.2.1</Version>
+        <Version>0.2.2</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.2.1</AssemblyVersion>
-        <FileVersion>0.2.1</FileVersion>
+        <AssemblyVersion>0.2.2</AssemblyVersion>
+        <FileVersion>0.2.2</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -31,6 +31,9 @@
     <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.targets"/>
     
     <ItemGroup>
+        <Reference Include="Colossal.AssetPipeline">
+            <Private>false</Private>
+        </Reference>
         <Reference Include="Colossal.Collections">
             <Private>false</Private>
         </Reference>
@@ -104,7 +107,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\Keys.props" Link="Properties\Keys.props"/>
         <None Include="$(ModPropsFile)" Link="Properties\Mod.props"/>
         <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets"/>
         <None Update="Localization\TranslationSource.json">

@@ -189,10 +189,10 @@ namespace Traffic
             base.Apply();
         }
 
-        private ProxyBinding.Watcher MimicVanillaAction(ProxyAction vanillaAction, ProxyAction customAction, string actionGroup)
+        private ProxyBinding.Watcher MimicVanillaAction(ProxyAction vanillaAction, ProxyAction customAction, InputManager.DeviceType deviceType)
         {
-            ProxyBinding customActionBinding = customAction.bindings.FirstOrDefault(b => b.group == actionGroup);
-            ProxyBinding vanillaActionBinding = vanillaAction.bindings.FirstOrDefault(b => b.group == actionGroup);
+            ProxyBinding customActionBinding = customAction.bindings.FirstOrDefault(b => (b.device & deviceType) != 0);
+            ProxyBinding vanillaActionBinding = vanillaAction.bindings.FirstOrDefault(b => (b.device & deviceType) != 0);
             ProxyBinding.Watcher actionWatcher = new ProxyBinding.Watcher(vanillaActionBinding, binding => SetMimic(customActionBinding, binding));
             SetMimic(customActionBinding, actionWatcher.binding);
             return actionWatcher;

@@ -12,6 +12,8 @@ using Unity.Jobs;
 
 namespace Traffic.Systems.ModCompatibility
 {
+    using Colossal.IO.AssetDatabase;
+    
 #if WITH_BURST
     [BurstCompile]
 #endif
@@ -23,12 +25,15 @@ namespace Traffic.Systems.ModCompatibility
         protected override void OnCreate()
         {
             base.OnCreate();
-            Type rbType = Type.GetType("RoadBuilder.Domain.Components.RoadBuilderUpdateFlagComponent, RoadBuilder", false);
+            ExecutableAsset rbAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("RoadBuilder")));
+            Type rbType = rbAsset?.assembly.GetType("RoadBuilder.Domain.Components.RoadBuilderUpdateFlagComponent", false);;
             if (rbType == null)
             {
+                Logger.Error("RoadBuilderUpdateFlagComponent not found! Disabling RoadBuilderCompatibilitySystem...");
                 Enabled = false;
                 return;
             }
+            
             _roadBuilderUpdateTag = new ComponentType(rbType, ComponentType.AccessMode.ReadOnly);
             _query = GetEntityQuery(new EntityQueryDesc()
             {

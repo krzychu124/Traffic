@@ -132,13 +132,32 @@ namespace Traffic
                 Logger.Info($"Detected TLE installed and enabled!");
                 try
                 {
-                    World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<UpdateSystem>().UpdateAfter<TLEDataMigrationSystem>(SystemUpdatePhase.Deserialize);
-                    ComponentSystemBase tleLaneSystem = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged(Type.GetType("Game.Net.C2VMPatchedLaneSystem, C2VM.CommonLibraries.LaneSystem"));
-                    if (tleLaneSystem != null)
+                    Type type = null;
+                    if (Colossal.IO.AssetDatabase.AssetDatabase.global.TryGetAsset(
+                            Colossal.IO.AssetDatabase.SearchFilter<Colossal.IO.AssetDatabase.ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")),
+                            out Colossal.IO.AssetDatabase.ExecutableAsset tleAsset
+                        ))
                     {
-                        tleLaneSystem.Enabled = false;
+                        type = tleAsset.assembly.GetType("Game.Net.C2VMPatchedLaneSystem", false);
                     }
-                    World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<LaneSystem>().Enabled = false;
+                    if (type == null)
+                    {
+                        Logger.Info($"TLE type not found!");
+                        return;
+                    }
+                    
+                    ComponentSystemBase tleLaneSystem = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged(type);
+                    if (tleLaneSystem == null)
+                    {
+                        Logger.Info($"TLE custom LaneSystem not found!");
+                    }
+                    else
+                    {
+                        Logger.Info("TLE custom LaneSystem found, starting up up migration system!");
+                        tleLaneSystem.Enabled = false;
+                        World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<UpdateSystem>().UpdateAfter<TLEDataMigrationSystem>(SystemUpdatePhase.Deserialize);
+                        World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<LaneSystem>().Enabled = false;
+                    }
                 }
                 catch (Exception e)
                 {
@@ -152,6 +171,12 @@ namespace Traffic
         {
             try
             {
+                string detectedRuntime = (string)typeof(GameManager).GetField("s_ModdingRuntime", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null);
+                if (!"BepInEx".Equals(detectedRuntime))
+                {
+                    Logger.Info($"TrySearchingForIncompatibleTLEOnBepinEx - {detectedRuntime} runtime, test skipped.");
+                    return;
+                }
                 Type type = Type.GetType("C2VM.TrafficLightsEnhancement.Plugin, C2VM.TrafficLightsEnhancement", false);
                 Type type2 = Type.GetType("C2VM.CommonLibraries.LaneSystem.Plugin, C2VM.CommonLibraries.LaneSystem", false);
                 if (type != null || type2 != null)

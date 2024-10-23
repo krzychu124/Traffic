@@ -121,12 +121,12 @@ namespace Traffic
 
         private void RegisterToolActionWatchers()
         {
-            ProxyAction builtInApplyAction =  InputManager.instance.FindAction(InputManager.kToolMap, "Apply");
-            ProxyBinding.Watcher applyWatcher = MimicVanillaAction(builtInApplyAction, GetAction(KeyBindAction.ApplyTool), "Mouse");
+            ProxyAction builtInApplyAction = InputManager.instance.FindAction(InputManager.kToolMap, "Apply");
+            ProxyBinding.Watcher applyWatcher = MimicVanillaAction(builtInApplyAction, GetAction(KeyBindAction.ApplyTool), InputManager.DeviceType.Mouse);
             _vanillaBindingWatchers.Add("Apply_Mouse", applyWatcher);
             
-            ProxyAction builtInCancelAction = InputManager.instance.FindAction(InputManager.kToolMap, "Mouse Cancel");
-            ProxyBinding.Watcher cancelWatcher = MimicVanillaAction(builtInCancelAction, GetAction(KeyBindAction.CancelTool), "Mouse");
+            ProxyAction builtInCancelAction = InputManager.instance.FindAction(InputManager.kToolMap, "Secondary Apply");
+            ProxyBinding.Watcher cancelWatcher = MimicVanillaAction(builtInCancelAction, GetAction(KeyBindAction.CancelTool), InputManager.DeviceType.Mouse);
             _vanillaBindingWatchers.Add("Cancel_Mouse", cancelWatcher);
         }
 

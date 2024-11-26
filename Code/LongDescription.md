@@ -33,7 +33,7 @@ Custom _Lane Connections_ may be automatically removed (leaving lanes not connec
 - road direction has changed with help of replace tool
 - tram track upgrade has been applied or removed
 
-Issues and limitations above are not impossible to solve (mostly), but they require extensive effort which would delay the release of the mod, so I decided to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
+Issues and limitations above are possible to solve, but they require extensive effort which would delay the release of the mod, so I decided to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
 
 ### Compatibility with other modifications
 

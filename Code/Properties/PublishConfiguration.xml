@@ -41,7 +41,7 @@ Custom _Lane Connections_ may be automatically removed (leaving lanes not connec
 - road direction has changed with help of replace tool
 - tram track upgrade has been applied or removed
 
-Issues and limitations above are not impossible to solve (mostly), but they require extensive effort which would delay the release of the mod, so I decided to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
+Issues and limitations above are possible to solve, but they require extensive effort which would delay the release of the mod, so I decided to reduce the initial scope of compatibility features. I hope to improve them later, with your help.
 
 ### Compatibility with other modifications
 
@@ -88,15 +88,17 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.4" />
+  <ModVersion Value="0.2.5" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.1.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.4
+  <ChangeLog>## v.0.2.5
 
-- Version bump</ChangeLog>
+_Compatibility fix for the game update 1.1.12f1_
+
+- No other functional changes</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
   <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />

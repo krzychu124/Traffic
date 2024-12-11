@@ -88,15 +88,15 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.5" />
+  <ModVersion Value="0.2.6" />
   <!--Recommended version of the base game to use the mod-->
-  <GameVersion Value="1.1.*" />
+  <GameVersion Value="1.2.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.5
+  <ChangeLog>## v.0.2.6
 
-_Compatibility fix for the game update 1.1.12f1_
+_Compatibility fix for the game update 1.2.0f1_
 
 - No other functional changes</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />

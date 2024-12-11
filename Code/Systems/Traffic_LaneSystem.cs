@@ -391,6 +391,7 @@ namespace Traffic.Systems
                 m_PrefabSpawnableObjectData = SystemAPI.GetComponentLookup<SpawnableObjectData>(true),
                 m_PrefabObjectGeometryData = SystemAPI.GetComponentLookup<ObjectGeometryData>(true),
                 m_PrefabBuildingData = SystemAPI.GetComponentLookup<BuildingData>(true),
+                m_PrefabNetObjectData = SystemAPI.GetComponentLookup<NetObjectData>(true),
                 m_PrefabData = SystemAPI.GetComponentLookup<PrefabData>(true),
                 m_Edges = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                 m_Nodes = SystemAPI.GetBufferLookup<ConnectedNode>(true),
@@ -623,7 +624,11 @@ namespace Traffic.Systems
             public ComponentLookup<BuildingData> m_PrefabBuildingData;
 
             [ReadOnly]
+            public ComponentLookup<NetObjectData> m_PrefabNetObjectData;
+            
+            [ReadOnly]
             public ComponentLookup<PrefabData> m_PrefabData;
+            
             [ReadOnly]
             public BufferLookup<ConnectedEdge> m_Edges;
             
@@ -1013,6 +1018,7 @@ namespace Traffic.Systems
                             position.y = nodeGeometryComponents[entityIndex].m_Position;
                             int groupIndex2 = 1;
                             GetNodeConnectPositions(entity3, 0f, sourceNodeConnectPositions, targetNodeConnectPositions, includeAnchored: false, ref groupIndex2, out float middleRadius2, out float roundaboutSize2);
+                            bool flag7 = groupIndex2 <= 2;
                             GetMiddleConnections(entity3, ownerTemp3.m_Original, middleConnections, tempEdgeTargets, tempSourceConnectPositions, tempTargetConnectPositions, ref groupIndex2);
                             FilterMainCarConnectPositions(sourceNodeConnectPositions, sourceMainCarConnectPositions);
                             FilterMainCarConnectPositions(targetNodeConnectPositions, targetMainCarConnectPositions);
@@ -1028,8 +1034,12 @@ namespace Traffic.Systems
                                 testKeys = true;
                             }
                             /*NON-STOCK*/
-                            
-                            if (middleRadius2 > 0f) // isRoundabout
+                            RoadTypes roadTypes = RoadTypes.None;
+                            if (middleRadius2 > 0f)
+                            {
+                                roadTypes = GetRoundaboutRoadPassThrough(entity3);
+                            }
+                            if (middleRadius2 > 0f && (roadTypes == RoadTypes.None || flag7)) // isRoundabout
                             {
                                 if (sourceMainCarConnectPositions.Length != 0 || targetMainCarConnectPositions.Length != 0)
                                 {
@@ -1070,7 +1080,7 @@ namespace Traffic.Systems
                                     }
                                     bool preferHighway = highwayConnectPositions > nonHighwayConnectPositions || highwayConnectPositions >= 2;
                                     ConnectPosition connectPosition2;
-                                    bool flag7;
+                                    bool flag8;
                                     if (sourceMainCarConnectPositions.Length != 0)
                                     {
                                         int num7 = 0;
@@ -1096,7 +1106,7 @@ namespace Traffic.Systems
                                             spaceForLanes = spaceForLanes2 * (float)laneCount;
                                         }
                                         connectPosition2 = sourceMainCarConnectPositions[num7];
-                                        flag7 = true;
+                                        flag8 = true;
                                     }
                                     else
                                     {
@@ -1111,10 +1121,10 @@ namespace Traffic.Systems
                                             tempTargetConnectPositions.Clear();
                                         }
                                         connectPosition2 = targetMainCarConnectPositions[num10];
-                                        flag7 = false;
+                                        flag8 = false;
                                     }
                                     ExtractNextConnectPosition(connectPosition2, position, sourceMainCarConnectPositions, targetMainCarConnectPositions, out ConnectPosition nextPosition, out bool nextIsSource);
-                                    if (flag7)
+                                    if (flag8)
                                     {
                                         FilterActualCarConnectPositions(connectPosition2, sourceNodeConnectPositions, tempSourceConnectPositions);
                                     }
@@ -1124,13 +1134,14 @@ namespace Traffic.Systems
                                     }
                                     int laneCount3 = GetRoundaboutLaneCount(connectPosition2, nextPosition, tempSourceConnectPositions, tempTargetConnectPositions, targetNodeConnectPositions, position);
                                     connectPosition2 = nextPosition;
-                                    flag7 = nextIsSource;
+                                    flag8 = nextIsSource;
                                     tempSourceConnectPositions.Clear();
                                     tempTargetConnectPositions.Clear();
+                                    int length = sourceMainCarConnectPositions.Length;
                                     while (sourceMainCarConnectPositions.Length != 0 || targetMainCarConnectPositions.Length != 0)
                                     {
                                         ExtractNextConnectPosition(connectPosition2, position, sourceMainCarConnectPositions, targetMainCarConnectPositions, out ConnectPosition nextPosition2, out bool nextIsSource2);
-                                        if (flag7)
+                                        if (flag8)
                                         {
                                             FilterActualCarConnectPositions(connectPosition2, sourceNodeConnectPositions, tempSourceConnectPositions);
                                         }
@@ -1139,13 +1150,13 @@ namespace Traffic.Systems
                                             FilterActualCarConnectPositions(nextPosition2, targetNodeConnectPositions, tempTargetConnectPositions);
                                         }
                                         CreateRoundaboutCarLanes(chunkIndex, ref random4, entity3, laneBuffer, ref prevLaneIndex, -1, ref laneGroup, connectPosition2, nextPosition2, middleConnections, tempSourceConnectPositions,
-                                            tempTargetConnectPositions, targetNodeConnectPositions, roundaboutLane, position, middleRadius2, ref laneCount3, laneCount, spaceForLanes, tempComponents.Length != 0, ownerTemp3);
+                                            tempTargetConnectPositions, targetNodeConnectPositions, roundaboutLane, position, middleRadius2, ref laneCount3, laneCount, length, spaceForLanes, roadTypes, flag7, tempComponents.Length != 0, ownerTemp3);
                                         connectPosition2 = nextPosition2;
-                                        flag7 = nextIsSource2;
+                                        flag8 = nextIsSource2;
                                         tempSourceConnectPositions.Clear();
                                         tempTargetConnectPositions.Clear();
                                     }
-                                    if (flag7)
+                                    if (flag8)
                                     {
                                         FilterActualCarConnectPositions(connectPosition2, sourceNodeConnectPositions, tempSourceConnectPositions);
                                     }
@@ -1154,7 +1165,7 @@ namespace Traffic.Systems
                                         FilterActualCarConnectPositions(nextPosition, targetNodeConnectPositions, tempTargetConnectPositions);
                                     }
                                     CreateRoundaboutCarLanes(chunkIndex, ref random4, entity3, laneBuffer, ref prevLaneIndex, nextLaneIndex, ref laneGroup, connectPosition2, nextPosition, middleConnections, tempSourceConnectPositions,
-                                        tempTargetConnectPositions, targetNodeConnectPositions, roundaboutLane, position, middleRadius2, ref laneCount3, laneCount, spaceForLanes, tempComponents.Length != 0, ownerTemp3);
+                                        tempTargetConnectPositions, targetNodeConnectPositions, roundaboutLane, position, middleRadius2, ref laneCount3, laneCount, length, spaceForLanes, roadTypes, flag7, tempComponents.Length != 0, ownerTemp3);
                                     tempSourceConnectPositions.Clear();
                                     tempTargetConnectPositions.Clear();
                                 }
@@ -1182,7 +1193,7 @@ namespace Traffic.Systems
                                     
                                     tempMainConnectionKeys.Clear();
                                     
-                                    ProcessCarConnectPositions(chunkIndex, ref nodeLaneIndex, ref random4, entity3, laneBuffer, middleConnections, createdConnections, tempSourceConnectPositions, tempTargetConnectPositions, sourceNodeConnectPositions,
+                                    ProcessCarConnectPositions(chunkIndex, ref nodeLaneIndex, ref random4, entity3, laneBuffer, middleConnections, createdConnections, tempSourceConnectPositions, tempTargetConnectPositions, sourceNodeConnectPositions, roadTypes,
                                             tempComponents.Length != 0, ownerTemp3, yield, /*NON-STOCK*/ tempModifiedLaneEnds, tempMainConnectionKeys, priorities);
                                     //NON-STOCK
                                     if (modifiedLaneConnections.Length > 0)
@@ -1231,7 +1242,7 @@ namespace Traffic.Systems
                                                     {
                                                         merge = CalculateLaneMergeFlags(edgeConnectionOffset, sourcePosGroupIndex, targetPosGroupIndex, sourceLaneCount, targetLaneCount);
                                                     }
-                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, isLeftLimit, isRightLimit, merge.x,merge.y, false))
+                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, isLeftLimit, isRightLimit, merge.x,merge.y, false, RoadTypes.None))
                                                     {
                                                         createdConnections.Add(key);
                                                         tempMainConnectionKeys.Add(new ConnectionKey(cs.m_Owner.Index, cs.m_LaneData.m_Group, ct.m_Owner.Index, ct.m_LaneData.m_Group));
@@ -1288,7 +1299,7 @@ namespace Traffic.Systems
                                             float curviness = -1f;
                                             if (CreateNodeLane(chunkIndex, ref nodeLaneIndex, ref random4, ref curviness, entity3, laneBuffer, middleConnections, sourceMainCarConnectPos, targetPosition, group, 0, isUnsafe,
                                                 isForbidden, tempComponents.Length != 0, trackOnly: false, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false, isRightLimit: false,
-                                                isMergeLeft: false, isMergeRight: false, fixedTangents: false))
+                                                isMergeLeft: false, isMergeRight: false, fixedTangents: false, RoadTypes.None))
                                             {
                                                 Logger.DebugLaneSystem($"Added Master Lane connection {new ConnectionKey(sourceMainCarConnectPos, targetPosition).GetString()} [ {sourceMainCarConnectPos.m_GroupIndex}[{sourceMainCarConnectPos.m_GroupIndex >> 8}] ({sourceMainCarConnectPos.m_LaneData.m_Group}) | {targetPosition.m_GroupIndex}[{targetPosition.m_GroupIndex >> 8}] ({targetPosition.m_LaneData.m_Group})] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
                                                 createdConnections.Add(new ConnectionKey(sourceMainCarConnectPos, targetPosition));
@@ -1356,7 +1367,7 @@ namespace Traffic.Systems
                                                             if (CreateNodeLane(chunkIndex, ref nodeLaneIndex2, ref random4, ref curviness, entity3, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false,
                                                                 isTemp: tempComponents.Length != 0 /*todo*/,
                                                                 trackOnly: true, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false /*todo*/, isRightLimit: false /*todo*/, isMergeLeft: false, isMergeRight: false,
-                                                                fixedTangents: false))
+                                                                fixedTangents: false, RoadTypes.None))
                                                             {
                                                                 ConnectionKey key = new ConnectionKey(sourcePosition, targetPosition);
                                                                 createdConnections.Add(key);
@@ -1618,7 +1629,7 @@ namespace Traffic.Systems
 
             private void CreateRoundaboutCarLanes(int jobIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, ref int prevLaneIndex, int nextLaneIndex, ref uint laneGroup,
                 ConnectPosition prevMainPosition, ConnectPosition nextMainPosition, NativeList<MiddleConnection> middleConnections, NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer,
-                NativeList<ConnectPosition> allTargets, ConnectPosition lane, float3 middlePosition, float middleRadius, ref int laneCount, int totalLaneCount, float spaceForLanes, bool isTemp, Temp ownerTemp
+                NativeList<ConnectPosition> allTargets, ConnectPosition lane, float3 middlePosition, float middleRadius, ref int laneCount, int totalLaneCount, int totalSourceCount, float spaceForLanes, RoadTypes roadPassThrough, bool isDeadEnd, bool isTemp, Temp ownerTemp
             ) {
                 float2 @float = math.normalizesafe(prevMainPosition.m_Position.xz - middlePosition.xz);
                 float2 float2 = math.normalizesafe(nextMainPosition.m_Position.xz - middlePosition.xz);
@@ -1701,6 +1712,7 @@ namespace Traffic.Systems
                     bool flag4 = i == num2 && targetBuffer.Length >= 1;
                     bool flag5 = num2 == 1 && sourceBuffer.Length >= 1 && targetBuffer.Length >= 1;
                     float curviness = -1f;
+                    bool isUnsafe = roadPassThrough != 0 || (isDeadEnd && (nextLaneIndex < 0 || flag3 || flag4));
                     for (int j = 0; j < num7; j++)
                     {
                         int num9 = math.select(j, num7 - j - 1, m_LeftHandTraffic);
@@ -1736,16 +1748,16 @@ namespace Traffic.Systems
                             Bezier4x3 bezier4x = NetUtils.FitCurve(sourcePosition.m_Position, sourcePosition.m_Tangent, -targetPosition.m_Tangent, position);
                             sourcePosition.m_Tangent = bezier4x.b - bezier4x.a;
                             targetPosition.m_Tangent = MathUtils.Normalize(targetPosition.m_Tangent, targetPosition.m_Tangent.xz);
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, laneGroup, (ushort)num9, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, laneGroup, (ushort)num9, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a, b, isMergeLeft: false,
-                                isMergeRight: false, fixedTangents: true);
+                                isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         else
                         {
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, (ushort)num9, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, (ushort)num9, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a, b, isMergeLeft: false,
-                                isMergeRight: false, fixedTangents: false);
+                                isMergeRight: false, fixedTangents: false, roadPassThrough);
                         }
                     }
                     if (!isTemp && (flag || flag2))
@@ -1761,9 +1773,9 @@ namespace Traffic.Systems
                         connectPosition2.m_LaneData.m_Flags = (lane.m_LaneData.m_Flags & (LaneFlags.Road | LaneFlags.Track | LaneFlags.PublicOnly | LaneFlags.HasAuxiliary));
                         connectPosition2.m_LaneData.m_Flags |= LaneFlags.Master;
                         curviness = -1f;
-                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, 0, isUnsafe: false, isForbidden: false,
+                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, 0, isUnsafe, isForbidden: false,
                             isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false, isMergeLeft: false,
-                            isMergeRight: false, fixedTangents: false);
+                            isMergeRight: false, fixedTangents: false, roadPassThrough);
                     }
                     laneGroup++;
                     float num11 = 0f;
@@ -1771,6 +1783,7 @@ namespace Traffic.Systems
                     if (flag3)
                     {
                         bool flag6 = flag2;
+						int yield = math.select(0, 1, totalSourceCount >= 2);
                         for (int k = 0; k < num7; k++)
                         {
                             int num12 = math.select(k, num7 - k - 1, m_LeftHandTraffic);
@@ -1804,8 +1817,8 @@ namespace Traffic.Systems
                             curve.m_Length = 1f;
                             curviness = NetUtils.CalculateStartCurviness(curve, m_NetLaneData[sourcePosition2.m_LaneData.m_Lane].m_Width);
                             CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition2, targetPosition2, laneGroup, (ushort)num12, isUnsafe: false,
-                                isForbidden: false, isTemp, trackOnly: false, 1, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a2, b2, isMergeLeft: false,
-                                isMergeRight: false, fixedTangents: true);
+                                isForbidden: false, isTemp, trackOnly: false, yield, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a2, b2, isMergeLeft: false,
+                                isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         if (flag6)
                         {
@@ -1823,14 +1836,15 @@ namespace Traffic.Systems
                             PresetCurve(ref sourcePosition3, ref targetPosition3, middlePosition, centerPosition, float6, num15, 0f, num / (float)num2, 2f);
                             curviness = -1f;
                             CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition3, targetPosition3, laneGroup, 0, isUnsafe: false,
-                                isForbidden: false, isTemp, trackOnly: false, 1, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
-                                isMergeLeft: false, isMergeRight: false, fixedTangents: true);
+                                isForbidden: false, isTemp, trackOnly: false, yield, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
+                                isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         laneGroup++;
                     }
                     if (flag4)
                     {
                         bool flag7 = flag;
+						int yield2 = math.select(0, -1, totalSourceCount >= 2);
                         for (int l = 0; l < targetBuffer.Length; l++)
                         {
                             int num16 = math.select(l, targetBuffer.Length - l - 1, m_LeftHandTraffic);
@@ -1858,14 +1872,14 @@ namespace Traffic.Systems
                             Bezier4x3 bezier4x3 = new Bezier4x3(sourcePosition4.m_Position, sourcePosition4.m_Position + sourcePosition4.m_Tangent, targetPosition4.m_Position + targetPosition4.m_Tangent,
                                 targetPosition4.m_Position);
                             num11 = math.max(num11, math.distance(MathUtils.Position(bezier4x3, 0.5f).xz, middlePosition.xz));
-                            bool flag8 = l >= laneCount;
+							isUnsafe = (l >= laneCount);
                             curve = default(Curve);
                             curve.m_Bezier = bezier4x3;
                             curve.m_Length = 1f;
                             curviness = NetUtils.CalculateEndCurviness(curve, m_NetLaneData[targetPosition4.m_LaneData.m_Lane].m_Width);
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition4, targetPosition4, laneGroup, (ushort)num16, flag8,
-                                isForbidden: false, isTemp, trackOnly: false, -1, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, a3, b3, flag8 && m_LeftHandTraffic,
-                                flag8 && !m_LeftHandTraffic, fixedTangents: true);
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition4, targetPosition4, laneGroup, (ushort)num16, isUnsafe,
+                                isForbidden: false, isTemp, trackOnly: false, yield2, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, a3, b3, isUnsafe && m_LeftHandTraffic,
+                                isUnsafe && !m_LeftHandTraffic, fixedTangents: true, roadPassThrough);
                         }
                         if (flag7)
                         {
@@ -1883,15 +1897,16 @@ namespace Traffic.Systems
                             PresetCurve(ref sourcePosition5, ref targetPosition5, middlePosition, centerPosition, float6, num19, num / (float)num2, 0f, 2f);
                             curviness = -1f;
                             CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition5, targetPosition5, laneGroup, 0, isUnsafe: false,
-                                isForbidden: false, isTemp, trackOnly: false, -1, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
-                                isMergeLeft: false, isMergeRight: false, fixedTangents: true);
+                                isForbidden: false, isTemp, trackOnly: false, yield2, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
+                                isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         laneGroup++;
                     }
                     if (flag5)
                     {
+						bool flag8 = false;
                         bool flag9 = false;
-                        bool flag10 = false;
+						int yield3 = math.select(0, 1, totalSourceCount >= 2);
                         float x3 = middleRadius + ((float)totalLaneCount - 0.5f) * spaceForLanes / (float)totalLaneCount;
                         x3 = math.lerp(x3, math.max(x3, num11), 0.5f);
                         float2 float7 = m_LeftHandTraffic ? MathUtils.RotateRight(float3, num * ((float)i - 0.75f) / (float)num2) : MathUtils.RotateLeft(float3, num * ((float)i - 0.75f) / (float)num2);
@@ -1944,13 +1959,13 @@ namespace Traffic.Systems
                                 }
                                 connectPosition3 = sourceBuffer[index];
                                 targetPosition6 = connectPosition4;
-                                flag9 |= ((connectPosition3.m_LaneData.m_Flags & LaneFlags.Slave) != 0);
+                                flag8 |= ((connectPosition3.m_LaneData.m_Flags & LaneFlags.Slave) != 0);
                                 targetPosition6.m_Tangent = -targetPosition6.m_Tangent;
                                 PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition2, centerTangent, x3, 0f, num * 0.5f / (float)num2, 2f);
                                 curviness = -1f;
                                 CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, (ushort)num22, isUnsafe: false,
-                                    isForbidden: false, isTemp, trackOnly: false, 1, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a4, b4, isMergeLeft: false,
-                                    isMergeRight: false, fixedTangents: true);
+                                    isForbidden: false, isTemp, trackOnly: false, yield3, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a4, b4, isMergeLeft: false,
+                                    isMergeRight: false, fixedTangents: true, roadPassThrough);
                             }
                             bool a5 = false;
                             bool b5 = m == targetBuffer.Length - 1;
@@ -1960,15 +1975,15 @@ namespace Traffic.Systems
                             }
                             connectPosition3 = connectPosition4;
                             targetPosition6 = targetBuffer[index2];
-                            flag10 |= ((targetPosition6.m_LaneData.m_Flags & LaneFlags.Slave) != 0);
+                            flag9 |= ((targetPosition6.m_LaneData.m_Flags & LaneFlags.Slave) != 0);
                             PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition3, centerTangent2, x3, num * 0.5f / (float)num2, 0f, 2f);
-                            bool flag11 = num21 != 0;
+                            isUnsafe = (num21 != 0);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, (ushort)num22, flag11,
-                                isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a5, b5, flag11 && !m_LeftHandTraffic,
-                                flag11 && m_LeftHandTraffic, fixedTangents: true);
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, (ushort)num22, isUnsafe,
+                                isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a5, b5, isUnsafe && !m_LeftHandTraffic,
+                                isUnsafe && m_LeftHandTraffic, fixedTangents: true, roadPassThrough);
                         }
-                        if (flag9)
+                        if (flag8)
                         {
                             connectPosition3 = prevMainPosition;
                             targetPosition6 = connectPosition4;
@@ -1976,10 +1991,10 @@ namespace Traffic.Systems
                             PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition2, centerTangent, x3, 0f, num * 0.5f / (float)num2, 2f);
                             curviness = -1f;
                             CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, 0, isUnsafe: false,
-                                isForbidden: false, isTemp, trackOnly: false, 1, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
-                                isMergeLeft: false, isMergeRight: false, fixedTangents: true);
+                                isForbidden: false, isTemp, trackOnly: false, yield3, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
+                                isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
-                        if (flag10)
+						if (flag9)
                         {
                             connectPosition3 = connectPosition4;
                             targetPosition6 = nextMainPosition;
@@ -1987,7 +2002,7 @@ namespace Traffic.Systems
                             curviness = -1f;
                             CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, 0, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
-                                isMergeLeft: false, isMergeRight: false, fixedTangents: true);
+                                isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         laneGroup += 2u;
                     }
@@ -3050,14 +3065,13 @@ namespace Traffic.Systems
                     {
                         continue;
                     }
-                    if (math.cmin(math.abs(new float2(offset.y, elevationOffset) - netCompositionLane.m_Position.yy)) < 2f)
+                    float2 lhs = new float2(offset.y, elevationOffset);
+                    lhs = math.abs(lhs - netCompositionLane.m_Position.yy);
+                    float num2 = math.lengthsq(new float2(netCompositionLane.m_Position.x - offset.x, math.cmin(lhs)));
+                    if (num2 < num)
                     {
-                        float num2 = math.abs(netCompositionLane.m_Position.x - offset.x);
-                        if (num2 < num)
-                        {
-                            num = num2;
-                            result = i;
-                        }
+                        num = num2;
+                        result = i;
                     }
                 }
                 return result;
@@ -4245,6 +4259,10 @@ namespace Traffic.Systems
                     {
                         component7.m_Flags |= ParkingLaneFlags.VirtualLane;
                     }
+                    if ((laneFlags & LaneFlags.PublicOnly) != 0)
+                    {
+                        component7.m_Flags |= ParkingLaneFlags.SpecialVehicles;
+                    }
                     if (edgeLaneData.m_EdgeDelta.x == 0f || edgeLaneData.m_EdgeDelta.x == 1f)
                     {
                         component7.m_Flags |= ParkingLaneFlags.StartingLane;
@@ -4614,6 +4632,10 @@ namespace Traffic.Systems
                     if ((netLaneData.m_Flags & LaneFlags.Virtual) != 0)
                     {
                         component6.m_Flags |= ParkingLaneFlags.VirtualLane;
+                    }
+                    if ((netLaneData.m_Flags & LaneFlags.PublicOnly) != 0)
+                    {
+                        component6.m_Flags |= ParkingLaneFlags.SpecialVehicles;
                     }
                     component6.m_Flags |= (ParkingLaneFlags.StartingLane | ParkingLaneFlags.EndingLane | ParkingLaneFlags.FindConnections);
                 }
@@ -5002,6 +5024,22 @@ namespace Traffic.Systems
                 }
             }
 
+            private RoadTypes GetRoundaboutRoadPassThrough(Entity owner)
+            {
+                RoadTypes roadTypes = RoadTypes.None;
+                if (m_SubObjects.TryGetBuffer(owner, out DynamicBuffer<Game.Objects.SubObject> bufferData))
+                {
+                    for (int i = 0; i < bufferData.Length; i++)
+                    {
+                        if (m_PrefabRefData.TryGetComponent(bufferData[i].m_SubObject, out PrefabRef componentData) && m_PrefabNetObjectData.TryGetComponent(componentData.m_Prefab, out NetObjectData componentData2) && (componentData2.m_CompositionFlags.m_General & CompositionFlags.General.Roundabout) != 0)
+                        {
+                            roadTypes |= componentData2.m_RoadPassThrough;
+                        }
+                    }
+                }
+                return roadTypes;
+            }
+            
             private void GetNodeConnectPositions(Entity owner, float curvePosition, NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer, bool includeAnchored, ref int groupIndex,
                 out float middleRadius, out float roundaboutSize
             ) {
@@ -5621,7 +5659,7 @@ namespace Traffic.Systems
             }
 
             private void ProcessCarConnectPositions(int jobIndex, ref int nodeLaneIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, NativeList<MiddleConnection> middleConnections,
-                NativeParallelHashSet<ConnectionKey> createdConnections, NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> allSources, bool isTemp,
+                NativeParallelHashSet<ConnectionKey> createdConnections, NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> allSources, RoadTypes roadPassThrough, bool isTemp,
                 Temp ownerTemp, int yield, /*NON-STOCK*/NativeHashSet<LaneEndKey> modifiedLaneEndConnections, NativeHashSet<ConnectionKey> createdGroups, NativeHashMap<int, int> priorities
             ) {
                 if (sourceBuffer.Length >= 1 && targetBuffer.Length >= 1)
@@ -5637,7 +5675,7 @@ namespace Traffic.Systems
                     }
                     Logger.DebugLaneSystem($"Sorted targets\n  S({sourcePosition.m_Owner} | {sourcePosition.m_LaneData.m_Index}[{sourcePosition.m_GroupIndex}] ({sourcePosition.m_LaneData.m_Group}) -> [{sourcePosition.m_LaneData.m_Flags}]), nLaneIdx: {nodeLaneIndex}, owner: {owner}:\n{sb}");
 #endif
-                    CreateNodeCarLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, middleConnections, createdConnections, sourceBuffer, targetBuffer, allSources, isTemp, ownerTemp, yield, modifiedLaneEndConnections, createdGroups, priorities);
+                    CreateNodeCarLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, middleConnections, createdConnections, sourceBuffer, targetBuffer, allSources, roadPassThrough, isTemp, ownerTemp, yield, modifiedLaneEndConnections, createdGroups, priorities);
                 }
             }
 
@@ -5681,7 +5719,7 @@ namespace Traffic.Systems
             }
 
             private void CreateNodeCarLanes(int jobIndex, ref int nodeLaneIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, NativeList<MiddleConnection> middleConnections, NativeParallelHashSet<ConnectionKey> createdConnections,
-                NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> allSources, bool isTemp, Temp ownerTemp, int yield, NativeHashSet<LaneEndKey> modifiedLaneEndConnections, NativeHashSet<ConnectionKey> createdGroups, NativeHashMap<int, int> priorities
+                NativeList<ConnectPosition> sourceBuffer, NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> allSources, RoadTypes roadPassThrough, bool isTemp, Temp ownerTemp, int yield, NativeHashSet<LaneEndKey> modifiedLaneEndConnections, NativeHashSet<ConnectionKey> createdGroups, NativeHashMap<int, int> priorities
             ) {
                 ConnectPosition sourcePositionFirst = sourceBuffer[0];
                 ConnectPosition sourcePositionLast = sourceBuffer[sourceBuffer.Length - 1];
@@ -6163,7 +6201,7 @@ namespace Traffic.Systems
                                 priority = p;
                             }
                             if (CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition3, connectPosition11, group, (ushort)laneIndex, isUnsafe, isForbidden, isTemp, trackOnly: false, priority, ownerTemp,
-                                isTurn, isRight, isGentle, isUTurn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft, isMergeRight, fixedTangents: false))
+                                isTurn, isRight, isGentle, isUTurn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft, isMergeRight, fixedTangents: false, roadPassThrough))
                             {
                                 Logger.DebugLaneSystem($"Added Node Lane connections {new ConnectionKey(sourcePosition3, connectPosition11).GetString()} [ {sourcePosition3.m_GroupIndex}[{sourcePosition3.m_GroupIndex >> 8}] ({sourcePosition3.m_LaneData.m_Group}) | {connectPosition11.m_GroupIndex}[{connectPosition11.m_GroupIndex >> 8}] ({connectPosition11.m_LaneData.m_Group}) ] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
                                 createdConnections.Add(new ConnectionKey(sourcePosition3, connectPosition11));
@@ -6292,7 +6330,7 @@ namespace Traffic.Systems
                         bool isTurn = IsTurn(sourcePosition, targetPosition, out right, out gentle, out uturn);
                         float curviness = -1f;
                         CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false, isTemp,
-                            trackOnly: true, 0, ownerTemp, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft: false, isMergeRight: false, fixedTangents: false);
+                            trackOnly: true, 0, ownerTemp, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft: false, isMergeRight: false, fixedTangents: false, RoadTypes.None);
                     }
                 }
             }
@@ -6450,7 +6488,7 @@ namespace Traffic.Systems
 
             private bool CreateNodeLane(int jobIndex, ref int nodeLaneIndex, ref Unity.Mathematics.Random random, ref float curviness, Entity owner, LaneBuffer laneBuffer, NativeList<MiddleConnection> middleConnections,
                 ConnectPosition sourcePosition, ConnectPosition targetPosition, uint group, ushort laneIndex, bool isUnsafe, bool isForbidden, bool isTemp, bool trackOnly, int yield, Temp ownerTemp, bool isTurn,
-                bool isRight, bool isGentle, bool isUTurn, bool isRoundabout, bool isLeftLimit, bool isRightLimit, bool isMergeLeft, bool isMergeRight, bool fixedTangents
+                bool isRight, bool isGentle, bool isUTurn, bool isRoundabout, bool isLeftLimit, bool isRightLimit, bool isMergeLeft, bool isMergeRight, bool fixedTangents, RoadTypes roadPassThrough
             ) {
                 NetCompositionData netCompositionData = m_PrefabCompositionData[sourcePosition.m_NodeComposition];
                 NetCompositionData netCompositionData2 = m_PrefabCompositionData[targetPosition.m_NodeComposition];
@@ -6900,7 +6938,8 @@ namespace Traffic.Systems
                         for (int m = 0; m < middleConnections.Length; m++)
                         {
                             MiddleConnection value = middleConnections[m];
-                            if ((value.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) == 0)
+                            if ((value.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) == 0 ||
+                                (isRoundabout && roadPassThrough != 0 && ((sourcePosition.m_Owner == owner && !value.m_IsSource) || (targetPosition.m_Owner == owner && value.m_IsSource))))
                             {
                                 continue;
                             }
@@ -6967,6 +7006,17 @@ namespace Traffic.Systems
                             float num11 = MathUtils.Distance(curve.m_Bezier, new Line3.Segment(value.m_ConnectPosition.m_Position, value.m_ConnectPosition.m_Position + value.m_ConnectPosition.m_Tangent * num10),
                                 out float2 t);
                             num11 += num10 * t.y;
+                            if (roadPassThrough != 0)
+                            {
+                                if (value.m_IsSource)
+                                {
+                                    t.x = math.lerp(t.x, 1f, 0.5f);
+                                }
+                                else
+                                {
+                                    t.x = math.lerp(0f, t.x, 0.5f);
+                                }
+                            }
                             if (num11 < value.m_Distance)
                             {
                                 value.m_Distance = num11;

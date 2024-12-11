@@ -40,7 +40,7 @@ namespace Traffic
         public static string InformationalVersion => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
 
         public static bool IsTLEEnabled => _isTLEEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("C2VM.CommonLibraries.LaneSystem"));
-        public static bool IsRBEnabled => _isRBEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("RoadBuilder"));
+        public static bool IsRBEnabled => _isRBEnabled ??= GameManager.instance.modManager.ListModsEnabled().Any(x => x.StartsWith("RoadBuilder, Version"));
 
         private static bool? _isTLEEnabled;
         private static bool? _isRBEnabled;
@@ -188,7 +188,7 @@ namespace Traffic
                         "Detected incompatible Traffic Lights Enhancement Mod!\nClick for more details.",
                         progressState: Colossal.PSI.Common.ProgressState.Failed,
                         onClicked: () => {
-                            Game.UI.MessageDialogWithDetails dialog = new(
+                            Game.UI.MessageDialog dialog = new(
                                 "Traffic Mod Compatibility Report",
                                 "**Traffic** mod compatibility detector found incompatible version of **Traffic Lights Enhancement** mod",
                                 $"Please remove **Traffic Lights Enhancement** from \n{path.Replace("\\", "\\\\")}\n\n" +

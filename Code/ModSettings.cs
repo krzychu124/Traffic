@@ -42,7 +42,7 @@ namespace Traffic
         
         [SettingsUISection(GeneralTab, MainSection)]
         [SettingsUIDropdown(typeof(ModSettings), nameof(GetLanguageOptions))]
-        [SettingsUIValueVersion(typeof(Localization), nameof(Localization.languageSourceVersion))]
+        [SettingsUIValueVersion(typeof(Localization), nameof(Localization.LanguageSourceVersion))]
         [SettingsUISetter(typeof(ModSettings), nameof(ChangeModLanguage))]        
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(UseGameLanguage))]
         public string CurrentLocale { get; set; } = "en-US";

@@ -166,6 +166,7 @@ namespace Traffic.Systems
             public byte m_SegmentIndex;
             public byte m_UnsafeCount;
             public byte m_ForbiddenCount;
+            public byte m_SkippedCount;
             public TrackTypes m_TrackTypes;
             public UtilityTypes m_UtilityTypes;
             public bool m_IsEnd;
@@ -245,17 +246,17 @@ namespace Traffic.Systems
 
         private struct LaneBuffer
         {
-            public NativeParallelHashMap<LaneKey, Entity> m_OldLanes;
-            public NativeParallelHashMap<LaneKey, Entity> m_OriginalLanes;
-            public NativeParallelHashMap<Entity, Unity.Mathematics.Random> m_SelectedSpawnables;
+            public NativeHashMap<LaneKey, Entity> m_OldLanes;
+            public NativeHashMap<LaneKey, Entity> m_OriginalLanes;
+            public NativeHashMap<Entity, Unity.Mathematics.Random> m_SelectedSpawnables;
             public NativeList<Entity> m_Updates;
 
             public LaneBuffer(Allocator allocator)
             {
-                m_OldLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
-                m_OriginalLanes = new NativeParallelHashMap<LaneKey, Entity>(32, allocator);
-                m_SelectedSpawnables = new NativeParallelHashMap<Entity, Unity.Mathematics.Random>(10, allocator);
-				m_Updates = new NativeList<Entity>(32, allocator);
+                m_OldLanes = new NativeHashMap<LaneKey, Entity>(32, allocator);
+                m_OriginalLanes = new NativeHashMap<LaneKey, Entity>(32, allocator);
+                m_SelectedSpawnables = new NativeHashMap<Entity, Unity.Mathematics.Random>(10, allocator);
+                m_Updates = new NativeList<Entity>(32, allocator);
             }
 
             public void Clear()
@@ -270,7 +271,7 @@ namespace Traffic.Systems
                 m_OldLanes.Dispose();
                 m_OriginalLanes.Dispose();
                 m_SelectedSpawnables.Dispose();
-				m_Updates.Dispose();
+                m_Updates.Dispose();
             }
         }
 
@@ -287,6 +288,7 @@ namespace Traffic.Systems
         private ToolSystem m_ToolSystem;
         private TerrainSystem m_TerrainSystem;
         private ModificationBarrier4 m_ModificationBarrier;
+        private LaneReferencesSystem m_LaneReferencesSystem;
         private EntityQuery m_OwnerQuery;
         private EntityQuery m_BuildingSettingsQuery;
         private ComponentTypeSet m_AppliedTypes;
@@ -297,6 +299,7 @@ namespace Traffic.Systems
             base.OnCreate();
             m_CityConfigurationSystem = base.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             m_ToolSystem = base.World.GetOrCreateSystemManaged<ToolSystem>();
+            m_LaneReferencesSystem = base.World.GetOrCreateSystemManaged<LaneReferencesSystem>();
             m_TerrainSystem = base.World.GetOrCreateSystemManaged<TerrainSystem>();
             m_ModificationBarrier = base.World.GetOrCreateSystemManaged<ModificationBarrier4>();
             m_OwnerQuery = GetEntityQuery(new EntityQueryDesc[]
@@ -366,6 +369,7 @@ namespace Traffic.Systems
                 m_SlaveLaneData = SystemAPI.GetComponentLookup<SlaveLane>(true),
                 m_SecondaryLaneData = SystemAPI.GetComponentLookup<SecondaryLane>(true),
                 m_LaneSignalData = SystemAPI.GetComponentLookup<LaneSignal>(true),
+                m_BuildOrderData = SystemAPI.GetComponentLookup<BuildOrder>(true),
                 m_UpdatedData = SystemAPI.GetComponentLookup<Updated>(true),
                 m_OwnerData = SystemAPI.GetComponentLookup<Owner>(true),
                 m_OverriddenData = SystemAPI.GetComponentLookup<Overridden>(true),
@@ -427,6 +431,7 @@ namespace Traffic.Systems
                 m_TempOwnerTypes = m_TempOwnerTypes,
                 m_TerrainHeightData = m_TerrainSystem.GetHeightData(),
                 m_BuildingConfigurationData = m_BuildingSettingsQuery.GetSingleton<BuildingConfigurationData>(),
+                m_SkipLaneQueue = m_LaneReferencesSystem.GetSkipLaneQueue().AsParallelWriter(),
                 m_CommandBuffer = m_ModificationBarrier.CreateCommandBuffer().AsParallelWriter(),
             };
 #if DEBUG_LANE_SYS
@@ -436,6 +441,7 @@ namespace Traffic.Systems
 #endif
             
             m_TerrainSystem.AddCPUHeightReader(jobHandle);
+            m_LaneReferencesSystem.AddSkipLaneWriter(jobHandle);
             m_ModificationBarrier.AddJobHandleForProducer(jobHandle);
             Dependency = jobHandle;
         }
@@ -547,7 +553,10 @@ namespace Traffic.Systems
             
             [ReadOnly]
             public ComponentLookup<LaneSignal> m_LaneSignalData;
-            
+
+            [ReadOnly]
+            public ComponentLookup<BuildOrder> m_BuildOrderData;
+
             [ReadOnly]
             public ComponentLookup<Updated> m_UpdatedData;
             
@@ -716,7 +725,9 @@ namespace Traffic.Systems
             
             [ReadOnly]
             public BuildingConfigurationData m_BuildingConfigurationData;
-            
+
+            public NativeQueue<Lane>.ParallelWriter m_SkipLaneQueue;
+
             public EntityCommandBuffer.ParallelWriter m_CommandBuffer;
             #endregion
 
@@ -786,10 +797,10 @@ namespace Traffic.Systems
                             if (m_SubLanes.HasBuffer(ownerTemp.m_Original))
                             {
                                 DynamicBuffer<SubLane> lanes2 = m_SubLanes[ownerTemp.m_Original];
-                                FillOldLaneBuffer(lanes2, laneBuffer.m_OriginalLanes);
+                                FillOldLaneBuffer(isEdge: true, isNode: false, owner, lanes2, laneBuffer.m_OriginalLanes);
                             }
                         }
-                        FillOldLaneBuffer(lanes, laneBuffer.m_OldLanes);
+                        FillOldLaneBuffer(isEdge: true, isNode: false, owner, lanes, laneBuffer.m_OldLanes);
                         if (edgeGeometryComponents.Length != 0)
                         {
                             Edge edge = edges[i];
@@ -803,6 +814,7 @@ namespace Traffic.Systems
                             int connectionIndex = 0;
                             int groupIndex = 0;
                             Unity.Mathematics.Random random = randomSeeds[i].GetRandom(PseudoRandomSeed.kSubLane);
+                            bool isSingleCurve = NetUtils.TryGetCombinedSegmentForLanes(geometryData, prefabGeometryData, out Segment segment);
                             //nodes for connecting buildings to the road edge
                             for (int j = 0; j < dynamicBuffer.Length; j++)
                             {
@@ -812,11 +824,11 @@ namespace Traffic.Systems
                                 FilterNodeConnectPositions(owner, ownerTemp.m_Original, nativeList, edgeTargets);
                                 FilterNodeConnectPositions(owner, ownerTemp.m_Original, nativeList2, edgeTargets);
                                 CreateEdgeConnectionLanes(chunkIndex, ref edgeLaneIndex, ref connectionIndex, ref random, owner, laneBuffer, nativeList, nativeList2, tempBuffer, tempBuffer2, composition.m_Edge,
-                                    geometryData, prefabGeometryData, curve, tempComponents.Length != 0, ownerTemp);
+                                    geometryData, curve, isSingleCurve, tempComponents.Length != 0, ownerTemp);
                                 nativeList.Clear();
                                 nativeList2.Clear();
                             }
-                            CreateEdgeLanes(chunkIndex, ref random, owner, laneBuffer, composition, edge, geometryData, prefabGeometryData, tempComponents.Length != 0, ownerTemp);
+                            CreateEdgeLanes(chunkIndex, ref random, owner, laneBuffer, composition, edge, geometryData, segment, isSingleCurve, tempComponents.Length != 0, ownerTemp);
                         }
                         else if (editorContainersComponents.Length != 0)
                         {
@@ -836,7 +848,7 @@ namespace Traffic.Systems
                             CreateEdgeLane(chunkIndex, ref random2, owner, laneBuffer, segment2, default(NetCompositionData), default(CompositionData), default(DynamicBuffer<NetCompositionLane>),
                                 prefabCompositionLaneData, new int2(0, 4), new float2(0f, 1f), default(NativeList<LaneAnchor>), default(NativeList<LaneAnchor>), false, tempComponents.Length != 0, ownerTemp);
                         }
-                        RemoveUnusedOldLanes(chunkIndex, lanes, laneBuffer.m_OldLanes);
+                        RemoveUnusedOldLanes(chunkIndex, owner, lanes, laneBuffer.m_OldLanes);
                         laneBuffer.Clear();
                     }
                     nativeList.Dispose();
@@ -868,10 +880,10 @@ namespace Traffic.Systems
                             if (m_SubLanes.HasBuffer(ownerTemp2.m_Original))
                             {
                                 DynamicBuffer<SubLane> lanes4 = m_SubLanes[ownerTemp2.m_Original];
-                                FillOldLaneBuffer(lanes4, laneBuffer.m_OriginalLanes);
+                                FillOldLaneBuffer(isEdge: false, isNode: false, entity,lanes4, laneBuffer.m_OriginalLanes);
                             }
                         }
-                        FillOldLaneBuffer(lanes3, laneBuffer.m_OldLanes);
+                        FillOldLaneBuffer(isEdge: false, isNode: false, entity,lanes3, laneBuffer.m_OldLanes);
                         if (!flag)
                         {
                             Entity entity2 = entity;
@@ -960,7 +972,7 @@ namespace Traffic.Systems
                                 }
                             }
                         }
-                        RemoveUnusedOldLanes(chunkIndex, lanes3, laneBuffer.m_OldLanes);
+                        RemoveUnusedOldLanes(chunkIndex, entity, lanes3, laneBuffer.m_OldLanes);
                         laneBuffer.Clear();
                         if (clearAreas.IsCreated)
                         {
@@ -1007,10 +1019,10 @@ namespace Traffic.Systems
                             if (m_SubLanes.HasBuffer(ownerTemp3.m_Original))
                             {
                                 DynamicBuffer<SubLane> lanes6 = m_SubLanes[ownerTemp3.m_Original];
-                                FillOldLaneBuffer(lanes6, laneBuffer.m_OriginalLanes);
+                                FillOldLaneBuffer(isEdge: false, isNode: true, entity3, lanes6, laneBuffer.m_OriginalLanes);
                             }
                         }
-                        FillOldLaneBuffer(lanes5, laneBuffer.m_OldLanes);
+                        FillOldLaneBuffer(isEdge: false, isNode: true, entity3, lanes5, laneBuffer.m_OldLanes);
                         if (nodeGeometryComponents.Length != 0) //chunk has NodeGeometry component
                         {
                             
@@ -1216,7 +1228,6 @@ namespace Traffic.Systems
                                                 Logger.DebugLaneSystem($"Skip 2 o: {cs.m_Owner} | sO: {sourceMainCarConnectPos.m_Owner} || lIdx: {connectionsEntity.laneIndex} ||g: {cs.m_LaneData.m_Group} sG: {sourceMainCarConnectPos.m_LaneData.m_Group}");
                                                 continue;
                                             }
-                                            
                                             for (var j = 0; j < connections.Length; j++)
                                             {
                                                 GeneratedConnection connection = connections[j];
@@ -1242,7 +1253,8 @@ namespace Traffic.Systems
                                                     {
                                                         merge = CalculateLaneMergeFlags(edgeConnectionOffset, sourcePosGroupIndex, targetPosGroupIndex, sourceLaneCount, targetLaneCount);
                                                     }
-                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, isLeftLimit, isRightLimit, merge.x,merge.y, false, RoadTypes.None))
+                                                    bool isSkipped = false;
+                                                    if (CreateNodeLane(chunkIndex, ref idx, ref random4, ref curviness, ref isSkipped, entity3, laneBuffer, middleConnections, cs, ct, group, 0, connection.isUnsafe, false, tempComponents.Length != 0, (connection.method & (PathMethod.Road | PathMethod.Track)) == PathMethod.Track, yield2, ownerTemp3, isTurn, right, gentle, uturn, false, isLeftLimit, isRightLimit, merge.x,merge.y, false, RoadTypes.None))
                                                     {
                                                         createdConnections.Add(key);
                                                         tempMainConnectionKeys.Add(new ConnectionKey(cs.m_Owner.Index, cs.m_LaneData.m_Group, ct.m_Owner.Index, ct.m_LaneData.m_Group));
@@ -1263,12 +1275,19 @@ namespace Traffic.Systems
                                         ConnectPosition targetPosition = targetMainCarConnectPositions[num13];
                                         bool isUnsafe = false;
                                         bool isForbidden = false;
+                                        bool isSkipped = false;
                                         for (int num14 = 0; num14 < tempTargetConnectPositions.Length; num14++)
                                         {
                                             ConnectPosition value = tempTargetConnectPositions[num14];
                                             if (value.m_Owner == targetPosition.m_Owner && value.m_LaneData.m_Group == targetPosition.m_LaneData.m_Group)
                                             {
-                                                if (value.m_ForbiddenCount != 0)
+                                                if (value.m_SkippedCount != 0)
+                                                {
+                                                    isSkipped = true;
+                                                    value.m_SkippedCount = 0;
+                                                    tempTargetConnectPositions[num14] = value;
+                                                }
+                                                else if (value.m_ForbiddenCount != 0)
                                                 {
                                                     isUnsafe = true;
                                                     isForbidden = true;
@@ -1297,7 +1316,7 @@ namespace Traffic.Systems
                                             
                                             bool isTurn = IsTurn(sourceMainCarConnectPos, targetPosition, out bool right, out bool gentle, out bool uturn);
                                             float curviness = -1f;
-                                            if (CreateNodeLane(chunkIndex, ref nodeLaneIndex, ref random4, ref curviness, entity3, laneBuffer, middleConnections, sourceMainCarConnectPos, targetPosition, group, 0, isUnsafe,
+                                            if (CreateNodeLane(chunkIndex, ref nodeLaneIndex, ref random4, ref curviness, ref isSkipped, entity3, laneBuffer, middleConnections, sourceMainCarConnectPos, targetPosition, group, 0, isUnsafe,
                                                 isForbidden, tempComponents.Length != 0, trackOnly: false, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false, isRightLimit: false,
                                                 isMergeLeft: false, isMergeRight: false, fixedTangents: false, RoadTypes.None))
                                             {
@@ -1364,7 +1383,8 @@ namespace Traffic.Systems
                                                             }
                                                             bool isTurn = IsTurn(sourcePosition, targetPosition, out bool right, out bool gentle, out bool uturn);
                                                             float curviness = -1f;
-                                                            if (CreateNodeLane(chunkIndex, ref nodeLaneIndex2, ref random4, ref curviness, entity3, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false,
+                                                            bool isSkipped = false;
+                                                            if (CreateNodeLane(chunkIndex, ref nodeLaneIndex2, ref random4, ref curviness, ref isSkipped, entity3, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false,
                                                                 isTemp: tempComponents.Length != 0 /*todo*/,
                                                                 trackOnly: true, 0, ownerTemp3, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit: false /*todo*/, isRightLimit: false /*todo*/, isMergeLeft: false, isMergeRight: false,
                                                                 fixedTangents: false, RoadTypes.None))
@@ -1426,7 +1446,7 @@ namespace Traffic.Systems
                                 CreateOrphanLanes(chunkIndex, ref random4, entity3, laneBuffer, orphanComponents[entityIndex], position, prefabRefComponents[entityIndex].m_Prefab, ref prevLaneIndex, tempComponents.Length != 0, ownerTemp3);
                             }
                         }
-                        RemoveUnusedOldLanes(chunkIndex, lanes5, laneBuffer.m_OldLanes);
+                        RemoveUnusedOldLanes(chunkIndex, entity3, lanes5, laneBuffer.m_OldLanes);
                         laneBuffer.Clear();
                     }
                     createdConnections.Dispose();
@@ -1713,6 +1733,7 @@ namespace Traffic.Systems
                     bool flag5 = num2 == 1 && sourceBuffer.Length >= 1 && targetBuffer.Length >= 1;
                     float curviness = -1f;
                     bool isUnsafe = roadPassThrough != 0 || (isDeadEnd && (nextLaneIndex < 0 || flag3 || flag4));
+                    bool isSkipped = false;
                     for (int j = 0; j < num7; j++)
                     {
                         int num9 = math.select(j, num7 - j - 1, m_LeftHandTraffic);
@@ -1748,14 +1769,14 @@ namespace Traffic.Systems
                             Bezier4x3 bezier4x = NetUtils.FitCurve(sourcePosition.m_Position, sourcePosition.m_Tangent, -targetPosition.m_Tangent, position);
                             sourcePosition.m_Tangent = bezier4x.b - bezier4x.a;
                             targetPosition.m_Tangent = MathUtils.Normalize(targetPosition.m_Tangent, targetPosition.m_Tangent.xz);
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, laneGroup, (ushort)num9, isUnsafe,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, laneGroup, (ushort)num9, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a, b, isMergeLeft: false,
                                 isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
                         else
                         {
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, (ushort)num9, isUnsafe,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, (ushort)num9, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a, b, isMergeLeft: false,
                                 isMergeRight: false, fixedTangents: false, roadPassThrough);
                         }
@@ -1773,7 +1794,7 @@ namespace Traffic.Systems
                         connectPosition2.m_LaneData.m_Flags = (lane.m_LaneData.m_Flags & (LaneFlags.Road | LaneFlags.Track | LaneFlags.PublicOnly | LaneFlags.HasAuxiliary));
                         connectPosition2.m_LaneData.m_Flags |= LaneFlags.Master;
                         curviness = -1f;
-                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, 0, isUnsafe, isForbidden: false,
+                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, connectPosition, connectPosition2, laneGroup, 0, isUnsafe, isForbidden: false,
                             isTemp, trackOnly: false, 0, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false, isMergeLeft: false,
                             isMergeRight: false, fixedTangents: false, roadPassThrough);
                     }
@@ -1783,7 +1804,8 @@ namespace Traffic.Systems
                     if (flag3)
                     {
                         bool flag6 = flag2;
-						int yield = math.select(0, 1, totalSourceCount >= 2);
+                        int yield = math.select(0, 1, totalSourceCount >= 2);
+                        isSkipped = false;
                         for (int k = 0; k < num7; k++)
                         {
                             int num12 = math.select(k, num7 - k - 1, m_LeftHandTraffic);
@@ -1816,7 +1838,7 @@ namespace Traffic.Systems
                             curve.m_Bezier = bezier4x2;
                             curve.m_Length = 1f;
                             curviness = NetUtils.CalculateStartCurviness(curve, m_NetLaneData[sourcePosition2.m_LaneData.m_Lane].m_Width);
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition2, targetPosition2, laneGroup, (ushort)num12, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition2, targetPosition2, laneGroup, (ushort)num12, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, yield, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, a2, b2, isMergeLeft: false,
                                 isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
@@ -1835,7 +1857,7 @@ namespace Traffic.Systems
                             ConnectPosition targetPosition3 = connectPosition2;
                             PresetCurve(ref sourcePosition3, ref targetPosition3, middlePosition, centerPosition, float6, num15, 0f, num / (float)num2, 2f);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition3, targetPosition3, laneGroup, 0, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition3, targetPosition3, laneGroup, 0, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, yield, ownerTemp, isTurn: false, isRight: false, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
                                 isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
@@ -1844,7 +1866,8 @@ namespace Traffic.Systems
                     if (flag4)
                     {
                         bool flag7 = flag;
-						int yield2 = math.select(0, -1, totalSourceCount >= 2);
+                        int yield2 = math.select(0, -1, totalSourceCount >= 2);
+                        isSkipped = false;
                         for (int l = 0; l < targetBuffer.Length; l++)
                         {
                             int num16 = math.select(l, targetBuffer.Length - l - 1, m_LeftHandTraffic);
@@ -1877,7 +1900,7 @@ namespace Traffic.Systems
                             curve.m_Bezier = bezier4x3;
                             curve.m_Length = 1f;
                             curviness = NetUtils.CalculateEndCurviness(curve, m_NetLaneData[targetPosition4.m_LaneData.m_Lane].m_Width);
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition4, targetPosition4, laneGroup, (ushort)num16, isUnsafe,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition4, targetPosition4, laneGroup, (ushort)num16, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, yield2, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, a3, b3, isUnsafe && m_LeftHandTraffic,
                                 isUnsafe && !m_LeftHandTraffic, fixedTangents: true, roadPassThrough);
                         }
@@ -1896,7 +1919,7 @@ namespace Traffic.Systems
                             ConnectPosition targetPosition5 = nextMainPosition;
                             PresetCurve(ref sourcePosition5, ref targetPosition5, middlePosition, centerPosition, float6, num19, num / (float)num2, 0f, 2f);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition5, targetPosition5, laneGroup, 0, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition5, targetPosition5, laneGroup, 0, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, yield2, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: true, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
                                 isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
@@ -1904,9 +1927,9 @@ namespace Traffic.Systems
                     }
                     if (flag5)
                     {
-						bool flag8 = false;
+                        bool flag8 = false;
                         bool flag9 = false;
-						int yield3 = math.select(0, 1, totalSourceCount >= 2);
+                        int yield3 = math.select(0, 1, totalSourceCount >= 2);
                         float x3 = middleRadius + ((float)totalLaneCount - 0.5f) * spaceForLanes / (float)totalLaneCount;
                         x3 = math.lerp(x3, math.max(x3, num11), 0.5f);
                         float2 float7 = m_LeftHandTraffic ? MathUtils.RotateRight(float3, num * ((float)i - 0.75f) / (float)num2) : MathUtils.RotateLeft(float3, num * ((float)i - 0.75f) / (float)num2);
@@ -1944,6 +1967,8 @@ namespace Traffic.Systems
                         float3 centerPosition3 = middlePosition;
                         centerPosition3.y = math.lerp(centerPosition.y, connectPosition2.m_Position.y, 0.5f);
                         centerPosition3.xz += float8 * x3;
+                        isSkipped = false;
+                        bool isSkipped2 = false;
                         for (int m = 0; m < targetBuffer.Length; m++)
                         {
                             int num22 = math.select(m, targetBuffer.Length - m - 1, m_LeftHandTraffic);
@@ -1963,7 +1988,7 @@ namespace Traffic.Systems
                                 targetPosition6.m_Tangent = -targetPosition6.m_Tangent;
                                 PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition2, centerTangent, x3, 0f, num * 0.5f / (float)num2, 2f);
                                 curviness = -1f;
-                                CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, (ushort)num22, isUnsafe: false,
+                                CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, (ushort)num22, isUnsafe: false,
                                     isForbidden: false, isTemp, trackOnly: false, yield3, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a4, b4, isMergeLeft: false,
                                     isMergeRight: false, fixedTangents: true, roadPassThrough);
                             }
@@ -1979,7 +2004,7 @@ namespace Traffic.Systems
                             PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition3, centerTangent2, x3, num * 0.5f / (float)num2, 0f, 2f);
                             isUnsafe = (num21 != 0);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, (ushort)num22, isUnsafe,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped2, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, (ushort)num22, isUnsafe,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, a5, b5, isUnsafe && !m_LeftHandTraffic,
                                 isUnsafe && m_LeftHandTraffic, fixedTangents: true, roadPassThrough);
                         }
@@ -1990,17 +2015,17 @@ namespace Traffic.Systems
                             targetPosition6.m_Tangent = -targetPosition6.m_Tangent;
                             PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition2, centerTangent, x3, 0f, num * 0.5f / (float)num2, 2f);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, 0, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup, 0, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, yield3, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
                                 isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
-						if (flag9)
+                        if (flag9)
                         {
                             connectPosition3 = connectPosition4;
                             targetPosition6 = nextMainPosition;
                             PresetCurve(ref connectPosition3, ref targetPosition6, middlePosition, centerPosition3, centerTangent2, x3, num * 0.5f / (float)num2, 0f, 2f);
                             curviness = -1f;
-                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, 0, isUnsafe: false,
+                            CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped2, owner, laneBuffer, middleConnections, connectPosition3, targetPosition6, laneGroup + 1, 0, isUnsafe: false,
                                 isForbidden: false, isTemp, trackOnly: false, 0, ownerTemp, isTurn: true, isRight: !m_LeftHandTraffic, isGentle: false, isUTurn: false, isRoundabout: true, isLeftLimit: false, isRightLimit: false,
                                 isMergeLeft: false, isMergeRight: false, fixedTangents: true, roadPassThrough);
                         }
@@ -2145,71 +2170,147 @@ namespace Traffic.Systems
                 return result;
             }
 
-            private void FillOldLaneBuffer(DynamicBuffer<SubLane> lanes, NativeParallelHashMap<LaneKey, Entity> laneBuffer) {
-                for (int i = 0; i < lanes.Length; i++)
+            private unsafe void FillOldLaneBuffer(bool isEdge, bool isNode, Entity owner, DynamicBuffer<SubLane> lanes, NativeHashMap<LaneKey, Entity> laneBuffer)
+            {
+                StackList<PathNode> stackList = stackalloc PathNode[256];
+                StackList<PathNode> stackList2 = stackalloc PathNode[256];
+                byte* tempArray = stackalloc byte[256];
+                StackList<bool> stackList3 = new Span<bool>(tempArray, 256);
+                if (isNode)
                 {
-                    Entity subLane = lanes[i].m_SubLane;
-                    if (!m_SecondaryLaneData.HasComponent(subLane))
+                    EdgeIterator edgeIterator = new EdgeIterator(Entity.Null, owner, m_Edges, m_EdgeData, m_TempData, m_HiddenData);
+                    EdgeIteratorValue value;
+                    while (edgeIterator.GetNext(out value))
                     {
-                        LaneFlags laneFlags = (LaneFlags)0;
-                        if (m_MasterLaneData.HasComponent(subLane))
+                        if (!m_SubLanes.TryGetBuffer(value.m_Edge, out DynamicBuffer<SubLane> bufferData))
                         {
-                            laneFlags |= LaneFlags.Master;
+                            continue;
                         }
-                        if (m_SlaveLaneData.HasComponent(subLane))
+                        float rhs = math.select(0f, 1f, value.m_End);
+                        int num = math.select(0, 4, value.m_End);
+                        for (int i = 0; i < bufferData.Length; i++)
                         {
-                            laneFlags |= LaneFlags.Slave;
+                            Entity subLane = bufferData[i].m_SubLane;
+                            if ((bufferData[i].m_PathMethods & (PathMethod.Pedestrian | PathMethod.Road)) == 0 || m_SecondaryLaneData.HasComponent(subLane) || !m_EdgeLaneData.TryGetComponent(subLane, out EdgeLane componentData))
+                            {
+                                continue;
+                            }
+                            bool2 x = componentData.m_EdgeDelta == rhs;
+                            if (math.any(x))
+                            {
+                                Lane lane = m_LaneData[subLane];
+                                PathNode pathNode = x.x ? lane.m_StartNode : lane.m_EndNode;
+                                PathNode middleNode = lane.m_MiddleNode;
+                                middleNode.SetSegmentIndex((byte)num);
+                                if (!middleNode.Equals(pathNode) && stackList.Length < stackList.Capacity)
+                                {
+                                    pathNode.SetOwner(owner);
+                                    stackList.AddNoResize(pathNode);
+                                    stackList2.AddNoResize(middleNode);
+                                    stackList3.AddNoResize(x.y);
+                                }
+                            }
                         }
-                        LaneKey key = new LaneKey(m_LaneData[subLane], m_PrefabRefData[subLane].m_Prefab, laneFlags);
-                        laneBuffer.TryAdd(key, subLane);
                     }
+                }
+                for (int j = 0; j < lanes.Length; j++)
+                {
+                    Entity subLane2 = lanes[j].m_SubLane;
+                    if (m_SecondaryLaneData.HasComponent(subLane2))
+                    {
+                        continue;
+                    }
+                    LaneFlags laneFlags = (LaneFlags)0;
+                    if (m_MasterLaneData.HasComponent(subLane2))
+                    {
+                        laneFlags |= LaneFlags.Master;
+                    }
+                    if (m_SlaveLaneData.HasComponent(subLane2))
+                    {
+                        laneFlags |= LaneFlags.Slave;
+                    }
+                    Lane lane2 = m_LaneData[subLane2];
+                    if (isEdge)
+                    {
+                        if ((lanes[j].m_PathMethods & (PathMethod.Pedestrian | PathMethod.Road | PathMethod.Track)) != 0 && m_EdgeLaneData.TryGetComponent(subLane2, out EdgeLane componentData2))
+                        {
+                            bool4 @bool = componentData2.m_EdgeDelta.xyxy == new float4(0f, 0f, 1f, 1f);
+                            if (@bool.x | @bool.z)
+                            {
+                                lane2.m_StartNode = lane2.m_MiddleNode;
+                                lane2.m_StartNode.SetSegmentIndex((byte)math.select(0, 4, @bool.z));
+                            }
+                            if (@bool.y | @bool.w)
+                            {
+                                lane2.m_EndNode = lane2.m_MiddleNode;
+                                lane2.m_EndNode.SetSegmentIndex((byte)math.select(0, 4, @bool.w));
+                            }
+                        }
+                    }
+                    else if (isNode)
+                    {
+                        if ((lanes[j].m_PathMethods & PathMethod.Pedestrian) != 0)
+                        {
+                            for (int k = 0; k < stackList.Length; k++)
+                            {
+                                if (stackList[k].Equals(lane2.m_StartNode))
+                                {
+                                    lane2.m_StartNode = new PathNode(lane2.m_StartNode, 0.5f);
+                                }
+                                else if (stackList[k].Equals(lane2.m_EndNode))
+                                {
+                                    lane2.m_EndNode = new PathNode(lane2.m_EndNode, 0.5f);
+                                }
+                            }
+                        }
+                        else if ((lanes[j].m_PathMethods & PathMethod.Road) != 0)
+                        {
+                            for (int l = 0; l < stackList.Length; l++)
+                            {
+                                if (stackList[l].Equals(lane2.m_StartNode) && stackList3[l])
+                                {
+                                    lane2.m_StartNode = stackList2[l];
+                                }
+                                else if (stackList[l].Equals(lane2.m_EndNode) && !stackList3[l])
+                                {
+                                    lane2.m_EndNode = stackList2[l];
+                                }
+                            }
+                        }
+                    }
+                    LaneKey key = new LaneKey(lane2, m_PrefabRefData[subLane2].m_Prefab, laneFlags);
+                    laneBuffer.TryAdd(key, subLane2);
                 }
             }
 
-            private unsafe void RemoveUnusedOldLanes(int jobIndex, DynamicBuffer<SubLane> lanes, NativeParallelHashMap<LaneKey, Entity> laneBuffer)
+            private void RemoveUnusedOldLanes(int jobIndex, Entity owner, DynamicBuffer<SubLane> lanes, NativeHashMap<LaneKey, Entity> laneBuffer)
             {
-                Entity* data = stackalloc Entity[lanes.Length];
-                StackList<Entity> stackList = new Span<Entity>(data, lanes.Length);
-                for (int i = 0; i < lanes.Length; i++)
+                StackList<Entity> stackList = stackalloc Entity[lanes.Length];
+                NativeHashMap<LaneKey, Entity>.Enumerator enumerator = laneBuffer.GetEnumerator();
+                while (enumerator.MoveNext())
                 {
-                    Entity subLane = lanes[i].m_SubLane;
-                    if (!m_SecondaryLaneData.HasComponent(subLane))
-                    {
-                        LaneFlags laneFlags = (LaneFlags)0;
-                        if (m_MasterLaneData.HasComponent(subLane))
-                        {
-                            laneFlags |= LaneFlags.Master;
-                        }
-                        if (m_SlaveLaneData.HasComponent(subLane))
-                        {
-                            laneFlags |= LaneFlags.Slave;
-                        }
-                        LaneKey key = new LaneKey(m_LaneData[subLane], m_PrefabRefData[subLane].m_Prefab, laneFlags);
-                        if (laneBuffer.TryGetValue(key, out Entity _))
-                        {
-							stackList.AddNoResize(subLane);
-                            laneBuffer.Remove(key);
-                        }
-                    }
+                    stackList.AddNoResize(enumerator.Current.Value);
                 }
-				if (stackList.Length != 0)
-				{
-					m_CommandBuffer.RemoveComponent(jobIndex, stackList.AsArray(), in m_AppliedTypes);
-					m_CommandBuffer.AddComponent<Deleted>(jobIndex, stackList.AsArray());
-				}
-			}
+                enumerator.Dispose();
+                laneBuffer.Clear();
+                if (stackList.Length != 0)
+                {
+                    m_CommandBuffer.RemoveComponent(jobIndex, stackList.AsArray(), in m_AppliedTypes);
+                    m_CommandBuffer.AddComponent<Deleted>(jobIndex, stackList.AsArray());
+                }
+            }
 
-			private void UpdateLanes(int jobIndex, NativeList<Entity> laneBuffer)
-			{
-				if (laneBuffer.Length != 0)
-				{
-					m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, laneBuffer.AsArray());
-					m_CommandBuffer.AddComponent<Updated>(jobIndex, laneBuffer.AsArray());
-				}
+            private void UpdateLanes(int jobIndex, NativeList<Entity> laneBuffer)
+            {
+                if (laneBuffer.Length != 0)
+                {
+                    m_CommandBuffer.RemoveComponent<Deleted>(jobIndex, laneBuffer.AsArray());
+                    m_CommandBuffer.AddComponent<Updated>(jobIndex, laneBuffer.AsArray());
+                }
             }
 
             private void CreateEdgeConnectionLanes(int jobIndex, ref int edgeLaneIndex, ref int connectionIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, NativeList<ConnectPosition> sourceBuffer,
-                NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> tempBuffer1, NativeList<ConnectPosition> tempBuffer2, Entity composition, EdgeGeometry geometryData, NetGeometryData prefabGeometryData, Curve curve, bool isTemp,
+                NativeList<ConnectPosition> targetBuffer, NativeList<ConnectPosition> tempBuffer1, NativeList<ConnectPosition> tempBuffer2, Entity composition, EdgeGeometry geometryData, Curve curve, bool isSingleCurve, bool isTemp,
                 Temp ownerTemp
             ) {
                 NetCompositionData prefabCompositionData = m_PrefabCompositionData[composition];
@@ -2244,8 +2345,8 @@ namespace Traffic.Systems
                         {
                             connectionIndex--;
                         }
-                        CreateCarEdgeConnections(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData, prefabCompositionData, prefabGeometryData, compositionData, connectPosition, @float.xy,
-                            connectionIndex++, isSource: true, isTemp, ownerTemp, prefabCompositionLanes, num3);
+                        CreateCarEdgeConnections(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData, prefabCompositionData, compositionData, connectPosition, @float.xy,
+                            connectionIndex++, isSingleCurve, isSource: true, isTemp, ownerTemp, prefabCompositionLanes, num3);
                     }
                 }
                 num = -1;
@@ -2268,8 +2369,8 @@ namespace Traffic.Systems
                         if (num5 != -1)
                         {
                             NetCompositionLane prefabCompositionLaneData = prefabCompositionLanes[num5];
-                            CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, prefabGeometryData, compositionData,
-                                prefabCompositionLaneData, connectPosition2, connectionIndex++, useGroundPosition: false, isSource: false, isTemp, ownerTemp);
+                            CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, compositionData,
+                                prefabCompositionLaneData, connectPosition2, connectionIndex++, isSingleCurve, useGroundPosition: false, isSource: false, isTemp, ownerTemp);
                         }
                     }
                     if ((connectPosition2.m_LaneData.m_Flags & LaneFlags.Road) == 0)
@@ -2287,8 +2388,8 @@ namespace Traffic.Systems
                         {
                             connectionIndex--;
                         }
-                        CreateCarEdgeConnections(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData, prefabCompositionData, prefabGeometryData, compositionData, connectPosition2, float2.xy,
-                            connectionIndex++, isSource: false, isTemp, ownerTemp, prefabCompositionLanes, num6);
+                        CreateCarEdgeConnections(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData, prefabCompositionData, compositionData, connectPosition2, float2.xy,
+                            connectionIndex++, isSingleCurve, isSource: false, isTemp, ownerTemp, prefabCompositionLanes, num6);
                     }
                 }
                 UtilityTypes utilityTypes = FilterUtilityConnectPositions(targetBuffer, tempBuffer1);
@@ -2386,8 +2487,8 @@ namespace Traffic.Systems
                                             utilityLaneData.m_VisualCapacity > utilityLaneData2.m_VisualCapacity);
                                     }
                                 }
-                                CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, prefabGeometryData, compositionData,
-                                    prefabCompositionLaneData2, connectPosition4, connectionIndex++, useGroundPosition, isSource: false, isTemp, ownerTemp);
+                                CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, compositionData,
+                                    prefabCompositionLaneData2, connectPosition4, connectionIndex++, isSingleCurve, useGroundPosition, isSource: false, isTemp, ownerTemp);
                             }
                             tempBuffer2.Clear();
                         }
@@ -2656,7 +2757,7 @@ namespace Traffic.Systems
             }
 
             private void CreateEdgeLanes(int jobIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, Composition composition, Edge edge, EdgeGeometry geometryData,
-                NetGeometryData prefabGeometryData, bool isTemp, Temp ownerTemp
+                Segment combinedSegment, bool isSingleCurve, bool isTemp, Temp ownerTemp
             ) {
                 NetCompositionData prefabCompositionData = m_PrefabCompositionData[composition.m_Edge];
                 CompositionData compositionData = GetCompositionData(composition.m_Edge);
@@ -2716,17 +2817,13 @@ namespace Traffic.Systems
                     FindAnchors(edge.m_End, nativeList2, tempBuffer);
                 }
                 bool hasAuxiliaryLanes = false;
-                if ((prefabGeometryData.m_Flags & (GeometryFlags.StraightEdges | GeometryFlags.SmoothSlopes)) == GeometryFlags.StraightEdges)
+                if (isSingleCurve)
                 {
-                    Segment start = geometryData.m_Start;
-                    start.m_Left = MathUtils.Join(geometryData.m_Start.m_Left, geometryData.m_End.m_Left);
-                    start.m_Right = MathUtils.Join(geometryData.m_Start.m_Right, geometryData.m_End.m_Right);
-                    start.m_Length = geometryData.m_Start.m_Length + geometryData.m_End.m_Length;
                     for (int j = 0; j < prefabCompositionLanes.Length; j++)
                     {
                         NetCompositionLane prefabCompositionLaneData = prefabCompositionLanes[j];
                         hasAuxiliaryLanes |= ((prefabCompositionLaneData.m_Flags & LaneFlags.HasAuxiliary) != 0);
-                        CreateEdgeLane(jobIndex, ref random, owner, laneBuffer, start, prefabCompositionData, compositionData, prefabCompositionLanes, prefabCompositionLaneData, new int2(0, 4), new float2(0f, 1f),
+                        CreateEdgeLane(jobIndex, ref random, owner, laneBuffer, combinedSegment, prefabCompositionData, compositionData, prefabCompositionLanes, prefabCompositionLaneData, new int2(0, 4), new float2(0f, 1f),
                             nativeList, nativeList2, true, isTemp, ownerTemp);
                     }
                 }
@@ -3078,7 +3175,7 @@ namespace Traffic.Systems
             }
 
             private void CreateCarEdgeConnections(int jobIndex, ref int edgeLaneIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, EdgeGeometry geometryData,
-                NetCompositionData prefabCompositionData, NetGeometryData prefabGeometryData, CompositionData compositionData, ConnectPosition connectPosition, float2 offset, int connectionIndex, bool isSource,
+                NetCompositionData prefabCompositionData, CompositionData compositionData, ConnectPosition connectPosition, float2 offset, int connectionIndex, bool isSingleCurve, bool isSource,
                 bool isTemp, Temp ownerTemp, DynamicBuffer<NetCompositionLane> prefabCompositionLanes, int bestIndex
             ) {
                 NetCompositionLane netCompositionLane = prefabCompositionLanes[bestIndex];
@@ -3110,8 +3207,8 @@ namespace Traffic.Systems
                     if (num != -1 && (prefabCompositionLaneData.m_Group != num || (prefabCompositionLaneData.m_Flags & LaneFlags.Slave) == 0))
                     {
                         NetCompositionLane prefabCompositionLaneData2 = prefabCompositionLanes[index];
-                        CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, prefabGeometryData, compositionData,
-                            prefabCompositionLaneData2, connectPosition, connectionIndex, useGroundPosition: false, isSource, isTemp, ownerTemp);
+                        CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, compositionData,
+                            prefabCompositionLaneData2, connectPosition, connectionIndex, isSingleCurve, useGroundPosition: false, isSource, isTemp, ownerTemp);
                         num = -1;
                         num2 = float.MaxValue;
                     }
@@ -3127,15 +3224,15 @@ namespace Traffic.Systems
                     }
                     else
                     {
-                        CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, prefabGeometryData, compositionData,
-                            prefabCompositionLaneData, connectPosition, connectionIndex, useGroundPosition: false, isSource, isTemp, ownerTemp);
+                        CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, compositionData,
+                            prefabCompositionLaneData, connectPosition, connectionIndex, isSingleCurve, useGroundPosition: false, isSource, isTemp, ownerTemp);
                     }
                 }
                 if (num != -1)
                 {
                     NetCompositionLane prefabCompositionLaneData3 = prefabCompositionLanes[index];
-                    CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, prefabGeometryData, compositionData,
-                        prefabCompositionLaneData3, connectPosition, connectionIndex, useGroundPosition: false, isSource, isTemp, ownerTemp);
+                    CreateEdgeConnectionLane(jobIndex, ref edgeLaneIndex, ref random, owner, laneBuffer, geometryData.m_Start, geometryData.m_End, prefabCompositionData, compositionData,
+                        prefabCompositionLaneData3, connectPosition, connectionIndex, isSingleCurve, useGroundPosition: false, isSource, isTemp, ownerTemp);
                 }
             }
 
@@ -3542,6 +3639,7 @@ namespace Traffic.Systems
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
+                    m_CommandBuffer.SetComponent(jobIndex, item, lane);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
@@ -3657,8 +3755,8 @@ namespace Traffic.Systems
             }
 
             private void CreateEdgeConnectionLane(int jobIndex, ref int edgeLaneIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, Segment startSegment, Segment endSegment,
-                NetCompositionData prefabCompositionData, NetGeometryData prefabGeometryData, CompositionData compositionData, NetCompositionLane prefabCompositionLaneData, ConnectPosition connectPosition,
-                int connectionIndex, bool useGroundPosition, bool isSource, bool isTemp, Temp ownerTemp
+                NetCompositionData prefabCompositionData, CompositionData compositionData, NetCompositionLane prefabCompositionLaneData, ConnectPosition connectPosition,
+                int connectionIndex, bool isSingleCurve, bool useGroundPosition, bool isSource, bool isTemp, Temp ownerTemp
             ) {
                 float t = prefabCompositionLaneData.m_Position.x / math.max(1f, prefabCompositionData.m_Width) + 0.5f;
                 Owner component = default(Owner);
@@ -3674,20 +3772,23 @@ namespace Traffic.Systems
                 }
                 PrefabRef component2 = new PrefabRef(connectPosition.m_LaneData.m_Lane);
                 CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
-                bool flag = (prefabGeometryData.m_Flags & (GeometryFlags.StraightEdges | GeometryFlags.SmoothSlopes)) == GeometryFlags.StraightEdges;
-                bool flag2 = false;
+                bool flag = false;
                 Bezier4x3 bezier4x = default(Bezier4x3);
                 Bezier4x3 bezier4x2 = default(Bezier4x3);
                 Bezier4x3 curve;
                 byte b;
                 float t2;
-                if (flag)
+                if (isSingleCurve)
                 {
                     curve = MathUtils.Lerp(MathUtils.Join(startSegment.m_Left, endSegment.m_Left), MathUtils.Join(startSegment.m_Right, endSegment.m_Right), t);
                     curve.a.y += prefabCompositionLaneData.m_Position.y;
                     curve.b.y += prefabCompositionLaneData.m_Position.y;
                     curve.c.y += prefabCompositionLaneData.m_Position.y;
                     curve.d.y += prefabCompositionLaneData.m_Position.y;
+                    if ((prefabCompositionLaneData.m_Flags & (LaneFlags.Road | LaneFlags.Pedestrian | LaneFlags.Parking | LaneFlags.Track)) != 0 && (prefabCompositionLaneData.m_Flags & LaneFlags.Invert) != 0)
+                    {
+                        curve = MathUtils.Invert(curve);
+                    }
                     b = 2;
                     MathUtils.Distance(curve, connectPosition.m_Position, out t2);
                 }
@@ -3707,7 +3808,7 @@ namespace Traffic.Systems
                     {
                         bezier4x = MathUtils.Invert(bezier4x);
                         bezier4x2 = MathUtils.Invert(bezier4x2);
-                        flag2 = !flag2;
+                        flag = !flag;
                     }
                     float t3;
                     float num = MathUtils.Distance(bezier4x, connectPosition.m_Position, out t3);
@@ -3716,7 +3817,7 @@ namespace Traffic.Systems
                         curve = bezier4x2;
                         b = 3;
                         t2 = t4;
-                        flag2 = !flag2;
+                        flag = !flag;
                     }
                     else
                     {
@@ -3752,7 +3853,7 @@ namespace Traffic.Systems
                     if (isSource)
                     {
                         Bounds1 t5 = new Bounds1(t2, 1f);
-                        if (!MathUtils.ClampLength(curve, ref t5, ref length) && !flag && !flag2)
+                        if (!MathUtils.ClampLength(curve, ref t5, ref length) && !isSingleCurve && !flag)
                         {
                             length = num2 - length;
                             if (b == 1)
@@ -3773,7 +3874,7 @@ namespace Traffic.Systems
                     else
                     {
                         Bounds1 t6 = new Bounds1(0f, t2);
-                        if (!MathUtils.ClampLengthInverse(curve, ref t6, ref length) && !flag && flag2)
+                        if (!MathUtils.ClampLengthInverse(curve, ref t6, ref length) && !isSingleCurve && flag)
                         {
                             length = num2 - length;
                             if (b == 1)
@@ -3921,6 +4022,7 @@ namespace Traffic.Systems
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
+                    m_CommandBuffer.SetComponent(jobIndex, item, lane);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve2);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
@@ -4670,6 +4772,7 @@ namespace Traffic.Systems
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
+                    m_CommandBuffer.SetComponent(jobIndex, item, laneData);
                     m_CommandBuffer.SetComponent(jobIndex, item, curveData);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
@@ -4942,19 +5045,21 @@ namespace Traffic.Systems
                 NativeList<ConnectPosition> tempBuffer2, ref int groupIndex
             ) {
                 EdgeIterator edgeIterator = new EdgeIterator(Entity.Null, owner, m_Edges, m_EdgeData, m_TempData, m_HiddenData);
-                EdgeIteratorValue value;
-                while (edgeIterator.GetNext(out value))
+                StackList<EdgeIteratorValueSorted> list = stackalloc EdgeIteratorValueSorted[edgeIterator.GetMaxCount()];
+                edgeIterator.AddSorted(ref m_BuildOrderData, ref list);
+                for (int i = 0; i < list.Length; i++)
                 {
-                    Logger.DebugLaneSystem($"(GetMiddleConnections) Iterating edges of ({owner}): {value.m_Edge} isTemp: {m_TempData.HasComponent(value.m_Edge)} isEnd: {value.m_End} isMiddle: {value.m_Middle}");
-                    DynamicBuffer<ConnectedNode> dynamicBuffer = m_Nodes[value.m_Edge];
-                    for (int i = 0; i < dynamicBuffer.Length; i++)
+                    EdgeIteratorValueSorted edgeIteratorValueSorted = list[i];
+                    Logger.DebugLaneSystem($"(GetMiddleConnections) Iterating edges of ({owner}): {edgeIteratorValueSorted.m_Edge} isTemp: {m_TempData.HasComponent(edgeIteratorValueSorted.m_Edge)} isEnd: {edgeIteratorValueSorted.m_End} isMiddle: {edgeIteratorValueSorted.m_Middle}");
+                    DynamicBuffer<ConnectedNode> dynamicBuffer = m_Nodes[edgeIteratorValueSorted.m_Edge];
+                    for (int j = 0; j < dynamicBuffer.Length; j++)
                     {
-                        ConnectedNode connectedNode = dynamicBuffer[i];
+                        ConnectedNode connectedNode = dynamicBuffer[j];
                         GetMiddleConnectionCurves(connectedNode.m_Node, tempEdgeTargets);
                         bool flag = false;
-                        for (int j = 0; j < tempEdgeTargets.Length; j++)
+                        for (int k = 0; k < tempEdgeTargets.Length; k++)
                         {
-                            EdgeTarget edgeTarget = tempEdgeTargets[j];
+                            EdgeTarget edgeTarget = tempEdgeTargets[k];
                             if (edgeTarget.m_StartNode == owner || edgeTarget.m_StartNode == original || edgeTarget.m_EndNode == owner || edgeTarget.m_EndNode == original)
                             {
                                 flag = true;
@@ -4981,9 +5086,9 @@ namespace Traffic.Systems
                         if (entity != Entity.Null)
                         {
                             flag = false;
-                            for (int k = 0; k < middleConnections.Length; k++)
+                            for (int l = 0; l < middleConnections.Length; l++)
                             {
-                                if (middleConnections[k].m_ConnectPosition.m_Owner == entity)
+                                if (middleConnections[l].m_ConnectPosition.m_Owner == entity)
                                 {
                                     flag = true;
                                     break;
@@ -4992,29 +5097,29 @@ namespace Traffic.Systems
                             if (!flag)
                             {
                                 groupIndex = groupIndex2;
-                                for (int l = 0; l < tempBuffer1.Length; l++)
+                                for (int m = 0; m < tempBuffer1.Length; m++)
+                                {
+                                    MiddleConnection value = default(MiddleConnection);
+                                    value.m_ConnectPosition = tempBuffer1[m];
+                                    value.m_ConnectPosition.m_IsSideConnection = true;
+                                    value.m_SourceEdge = edgeIteratorValueSorted.m_Edge;
+                                    value.m_SourceNode = connectedNode.m_Node;
+                                    value.m_SortIndex = middleConnections.Length;
+                                    value.m_Distance = float.MaxValue;
+                                    value.m_IsSource = true;
+                                    middleConnections.Add(in value);
+                                }
+                                for (int n = 0; n < tempBuffer2.Length; n++)
                                 {
                                     MiddleConnection value2 = default(MiddleConnection);
-                                    value2.m_ConnectPosition = tempBuffer1[l];
+                                    value2.m_ConnectPosition = tempBuffer2[n];
                                     value2.m_ConnectPosition.m_IsSideConnection = true;
-                                    value2.m_SourceEdge = value.m_Edge;
+                                    value2.m_SourceEdge = edgeIteratorValueSorted.m_Edge;
                                     value2.m_SourceNode = connectedNode.m_Node;
                                     value2.m_SortIndex = middleConnections.Length;
                                     value2.m_Distance = float.MaxValue;
-                                    value2.m_IsSource = true;
+                                    value2.m_IsSource = false;
                                     middleConnections.Add(in value2);
-                                }
-                                for (int m = 0; m < tempBuffer2.Length; m++)
-                                {
-                                    MiddleConnection value3 = default(MiddleConnection);
-                                    value3.m_ConnectPosition = tempBuffer2[m];
-                                    value3.m_ConnectPosition.m_IsSideConnection = true;
-                                    value3.m_SourceEdge = value.m_Edge;
-                                    value3.m_SourceNode = connectedNode.m_Node;
-                                    value3.m_SortIndex = middleConnections.Length;
-                                    value3.m_Distance = float.MaxValue;
-                                    value3.m_IsSource = false;
-                                    middleConnections.Add(in value3);
                                 }
                             }
                         }
@@ -5056,11 +5161,13 @@ namespace Traffic.Systems
                 PrefabRef prefabRef = m_PrefabRefData[owner];
                 NetGeometryData prefabGeometryData = m_PrefabGeometryData[prefabRef.m_Prefab];
                 EdgeIterator edgeIterator = new EdgeIterator(Entity.Null, owner, m_Edges, m_EdgeData, m_TempData, m_HiddenData);
-                EdgeIteratorValue value;
-                while (edgeIterator.GetNext(out value))
+                StackList<EdgeIteratorValueSorted> list = stackalloc EdgeIteratorValueSorted[edgeIterator.GetMaxCount()];
+                edgeIterator.AddSorted(ref m_BuildOrderData, ref list);
+                for (int i = 0; i < list.Length; i++)
                 {
-                    Logger.DebugLaneSystem($"(GetNodeConnectPos) Iterating edges of ({owner}): {value.m_Edge} isTemp: {m_TempData.HasComponent(value.m_Edge)} isEnd: {value.m_End} isMiddle: {value.m_Middle}");
-                    GetNodeConnectPositions(owner, value.m_Edge, value.m_End, groupIndex++, curvePosition, elevation, prefabGeometryData, sourceBuffer, targetBuffer, includeAnchored, ref middleRadius, ref roundaboutSize, ref anchorPrefabs);
+                    EdgeIteratorValueSorted edgeIteratorValueSorted = list[i];
+                    Logger.DebugLaneSystem($"(GetNodeConnectPos) Iterating edges of ({owner}): {edgeIteratorValueSorted.m_Edge} isTemp: {m_TempData.HasComponent(edgeIteratorValueSorted.m_Edge)} isEnd: {edgeIteratorValueSorted.m_End} isMiddle: {edgeIteratorValueSorted.m_Middle}");
+                    GetNodeConnectPositions(owner, edgeIteratorValueSorted.m_Edge, edgeIteratorValueSorted.m_End, groupIndex++, curvePosition, elevation, prefabGeometryData, sourceBuffer, targetBuffer, includeAnchored, ref middleRadius, ref roundaboutSize, ref anchorPrefabs);
                     hasConnectedEdges = true;
                 }
                 
@@ -5073,9 +5180,9 @@ namespace Traffic.Systems
                     }
                     DynamicBuffer<DefaultNetLane> dynamicBuffer = m_DefaultNetLanes[prefabRef.m_Prefab];
                     LaneFlags laneFlags = (!includeAnchored) ? LaneFlags.FindAnchor : ((LaneFlags)0);
-                    for (int i = 0; i < dynamicBuffer.Length; i++)
+                    for (int j = 0; j < dynamicBuffer.Length; j++)
                     {
-                        NetCompositionLane laneData = new NetCompositionLane(dynamicBuffer[i]);
+                        NetCompositionLane laneData = new NetCompositionLane(dynamicBuffer[j]);
                         if ((laneData.m_Flags & LaneFlags.Utility) == 0 || ((laneData.m_Flags & laneFlags) != 0 && IsAnchored(owner, ref anchorPrefabs, laneData.m_Lane)))
                         {
                             continue;
@@ -5087,45 +5194,45 @@ namespace Traffic.Systems
                             float num = laneData.m_Position.x / math.max(1f, prefabGeometryData.m_DefaultWidth) + 0.5f;
                             float3 y = node.m_Position + math.rotate(node.m_Rotation, new float3(prefabGeometryData.m_DefaultWidth * -0.5f, 0f, 0f));
                             float3 position = math.lerp(node.m_Position + math.rotate(node.m_Rotation, new float3(prefabGeometryData.m_DefaultWidth * 0.5f, 0f, 0f)), y, num);
-                            ConnectPosition value2 = default(ConnectPosition);
-                            value2.m_LaneData = laneData;
-                            value2.m_Owner = owner;
-                            value2.m_Position = position;
-                            value2.m_Position.y += laneData.m_Position.y;
-                            value2.m_Tangent = math.forward(node.m_Rotation);
-                            value2.m_Tangent = -MathUtils.Normalize(value2.m_Tangent, value2.m_Tangent.xz);
-                            value2.m_Tangent.y = math.clamp(value2.m_Tangent.y, -1f, 1f);
-                            value2.m_GroupIndex = (ushort)(laneData.m_Group | (groupIndex << 8));
-                            value2.m_CurvePosition = curvePosition;
-                            value2.m_BaseHeight = position.y;
-                            value2.m_Elevation = math.lerp(elevation.x, elevation.y, 0.5f);
-                            value2.m_Order = num;
+                            ConnectPosition value = default(ConnectPosition);
+                            value.m_LaneData = laneData;
+                            value.m_Owner = owner;
+                            value.m_Position = position;
+                            value.m_Position.y += laneData.m_Position.y;
+                            value.m_Tangent = math.forward(node.m_Rotation);
+                            value.m_Tangent = -MathUtils.Normalize(value.m_Tangent, value.m_Tangent.xz);
+                            value.m_Tangent.y = math.clamp(value.m_Tangent.y, -1f, 1f);
+                            value.m_GroupIndex = (ushort)(laneData.m_Group | (groupIndex << 8));
+                            value.m_CurvePosition = curvePosition;
+                            value.m_BaseHeight = position.y;
+                            value.m_Elevation = math.lerp(elevation.x, elevation.y, 0.5f);
+                            value.m_Order = num;
                             if ((laneData.m_Flags & LaneFlags.Track) != 0)
                             {
                                 TrackLaneData trackLaneData = m_TrackLaneData[laneData.m_Lane];
-                                value2.m_TrackTypes = trackLaneData.m_TrackTypes;
+                                value.m_TrackTypes = trackLaneData.m_TrackTypes;
                             }
                             if ((laneData.m_Flags & LaneFlags.Utility) != 0)
                             {
                                 UtilityLaneData utilityLaneData = m_UtilityLaneData[laneData.m_Lane];
-                                value2.m_UtilityTypes = utilityLaneData.m_UtilityTypes;
+                                value.m_UtilityTypes = utilityLaneData.m_UtilityTypes;
                             }
                             if ((laneData.m_Flags & (LaneFlags.Pedestrian | LaneFlags.Utility)) != 0)
                             {
-                                targetBuffer.Add(in value2);
+                                targetBuffer.Add(in value);
                             }
                             else if ((laneData.m_Flags & LaneFlags.Twoway) != 0)
                             {
-                                targetBuffer.Add(in value2);
-                                sourceBuffer.Add(in value2);
+                                targetBuffer.Add(in value);
+                                sourceBuffer.Add(in value);
                             }
                             else if (!flag2)
                             {
-                                targetBuffer.Add(in value2);
+                                targetBuffer.Add(in value);
                             }
                             else
                             {
-                                sourceBuffer.Add(in value2);
+                                sourceBuffer.Add(in value);
                             }
                         }
                     }
@@ -5253,15 +5360,7 @@ namespace Traffic.Systems
                             NetCompositionLane laneData = netCompositionLanes[num];
                             laneData.m_Position.x = math.select(0f - laneData.m_Position.x, laneData.m_Position.x, isEnd);
                             float order = laneData.m_Position.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
-                            Lane lane = m_LaneData[subLane];
-                            if (y)
-                            {
-                                laneData.m_Index = (byte)(lane.m_EndNode.GetLaneIndex() & 0xFF);
-                            }
-                            else
-                            {
-                                laneData.m_Index = (byte)(lane.m_StartNode.GetLaneIndex() & 0xFF);
-                            }
+                            laneData.m_Index = (byte)(m_LaneData[subLane].m_MiddleNode.GetLaneIndex() & 0xFF);
                             ConnectPosition value = default(ConnectPosition);
                             value.m_LaneData = laneData;
                             value.m_Owner = edge;
@@ -6195,12 +6294,13 @@ namespace Traffic.Systems
                                 continue;
                             }
                             float curviness = -1f;
+                            bool isSkipped = false;
                             int priority = yield;
                             if (priorities.Count > 0 && priorities.TryGetValue(sourcePosition3.m_LaneData.m_Index, out int p))
                             {
                                 priority = p;
                             }
-                            if (CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition3, connectPosition11, group, (ushort)laneIndex, isUnsafe, isForbidden, isTemp, trackOnly: false, priority, ownerTemp,
+                            if (CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition3, connectPosition11, group, (ushort)laneIndex, isUnsafe, isForbidden, isTemp, trackOnly: false, priority, ownerTemp,
                                 isTurn, isRight, isGentle, isUTurn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft, isMergeRight, fixedTangents: false, roadPassThrough))
                             {
                                 Logger.DebugLaneSystem($"Added Node Lane connections {new ConnectionKey(sourcePosition3, connectPosition11).GetString()} [ {sourcePosition3.m_GroupIndex}[{sourcePosition3.m_GroupIndex >> 8}] ({sourcePosition3.m_LaneData.m_Group}) | {connectPosition11.m_GroupIndex}[{connectPosition11.m_GroupIndex >> 8}] ({connectPosition11.m_LaneData.m_Group}) ] G: [{(byte)(group)}|{(byte)(group >> 8)}] | [{(byte)(group >> 16)}|{(byte)(group >> 24)}] <= {group}");
@@ -6208,7 +6308,12 @@ namespace Traffic.Systems
                                 createdGroups.Add(new ConnectionKey(sourcePosition3.m_Owner.Index, sourcePosition3.m_LaneData.m_Group, connectPosition11.m_Owner.Index, connectPosition11.m_LaneData.m_Group));
                                 // Logger.DebugLaneSystem("Adding to created! (CreateNodeCarLanes)");
                             }
-                            if (isForbidden)
+                            if (isSkipped)
+                            {
+                                connectPosition11.m_SkippedCount++;
+                                targetBuffer[num72] = connectPosition11;
+                            }
+                            else if (isForbidden)
                             {
                                 connectPosition11.m_UnsafeCount++;
                                 connectPosition11.m_ForbiddenCount++;
@@ -6328,8 +6433,9 @@ namespace Traffic.Systems
                         bool gentle;
                         bool uturn;
                         bool isTurn = IsTurn(sourcePosition, targetPosition, out right, out gentle, out uturn);
+                        bool isSkipped = false;
                         float curviness = -1f;
-                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false, isTemp,
+                        CreateNodeLane(jobIndex, ref nodeLaneIndex, ref random, ref curviness, ref isSkipped, owner, laneBuffer, middleConnections, sourcePosition, targetPosition, 0u, 0, isUnsafe: false, isForbidden: false, isTemp,
                             trackOnly: true, 0, ownerTemp, isTurn, right, gentle, uturn, isRoundabout: false, isLeftLimit, isRightLimit, isMergeLeft: false, isMergeRight: false, fixedTangents: false, RoadTypes.None);
                     }
                 }
@@ -6486,7 +6592,7 @@ namespace Traffic.Systems
                 return true;
             }
 
-            private bool CreateNodeLane(int jobIndex, ref int nodeLaneIndex, ref Unity.Mathematics.Random random, ref float curviness, Entity owner, LaneBuffer laneBuffer, NativeList<MiddleConnection> middleConnections,
+            private bool CreateNodeLane(int jobIndex, ref int nodeLaneIndex, ref Unity.Mathematics.Random random, ref float curviness, ref bool isSkipped, Entity owner, LaneBuffer laneBuffer, NativeList<MiddleConnection> middleConnections,
                 ConnectPosition sourcePosition, ConnectPosition targetPosition, uint group, ushort laneIndex, bool isUnsafe, bool isForbidden, bool isTemp, bool trackOnly, int yield, Temp ownerTemp, bool isTurn,
                 bool isRight, bool isGentle, bool isUTurn, bool isRoundabout, bool isLeftLimit, bool isRightLimit, bool isMergeLeft, bool isMergeRight, bool fixedTangents, RoadTypes roadPassThrough
             ) {
@@ -6665,7 +6771,8 @@ namespace Traffic.Systems
                         }
                     }
                     Curve curve = default(Curve);
-                    if (math.distance(sourcePosition.m_Position, targetPosition.m_Position) >= 0.01f)
+                    bool shouldSkipLane = false;
+                    if (math.distance(sourcePosition.m_Position, targetPosition.m_Position) >= 0.1f)
                     {
                         if (fixedTangents)
                         {
@@ -6680,11 +6787,12 @@ namespace Traffic.Systems
                     else
                     {
                         curve.m_Bezier = NetUtils.StraightCurve(sourcePosition.m_Position, targetPosition.m_Position);
+                        shouldSkipLane = true;
                     }
                     ModifyCurveHeight(ref curve.m_Bezier, sourcePosition.m_BaseHeight, targetPosition.m_BaseHeight, netCompositionData, netCompositionData2);
                     UtilityLane component3 = default(UtilityLane);
                     HangingLane component4 = default(HangingLane);
-                    bool flag = false;
+                    bool hasHangingLane = false;
                     if ((laneFlags & LaneFlags.Utility) != 0)
                     {
                         UtilityLaneData utilityLaneData = m_UtilityLaneData[prefabRef.m_Prefab];
@@ -6696,7 +6804,7 @@ namespace Traffic.Systems
                             curve.m_Bezier.b.y -= num4;
                             curve.m_Bezier.c.y -= num4;
                             component4.m_Distances = 0.1f;
-                            flag = true;
+                            hasHangingLane = true;
                         }
                         if ((laneFlags & LaneFlags.FindAnchor) != 0)
                         {
@@ -6744,7 +6852,7 @@ namespace Traffic.Systems
                             curviness = NetUtils.CalculateCurviness(curve, m_NetLaneData[prefabRef.m_Prefab].m_Width);
                         }
                         component5.m_Curviness = curviness;
-                        bool flag3 = (sourcePosition.m_CompositionData.m_RoadFlags & targetPosition.m_CompositionData.m_RoadFlags & Game.Prefabs.RoadFlags.UseHighwayRules) != 0;
+                        bool flag4 = (sourcePosition.m_CompositionData.m_RoadFlags & targetPosition.m_CompositionData.m_RoadFlags & Game.Prefabs.RoadFlags.UseHighwayRules) != 0;
                         if (isUnsafe)
                         {
                             component5.m_Flags |= CarLaneFlags.Unsafe;
@@ -6765,7 +6873,7 @@ namespace Traffic.Systems
                         {
                             component5.m_Flags |= CarLaneFlags.RightLimit;
                         }
-                        if (flag3)
+                        if (flag4)
                         {
                             component5.m_Flags |= CarLaneFlags.Highway;
                         }
@@ -6803,7 +6911,7 @@ namespace Traffic.Systems
                             {
                                 component5.m_CarriagewayGroup = sourcePosition.m_LaneData.m_Carriageway;
                             }
-                            if (flag3)
+                            if (flag4)
                             {
                                 if (m_PrefabCompositionData.HasComponent(sourcePosition.m_EdgeComposition) &&
                                     (m_PrefabCompositionData[sourcePosition.m_EdgeComposition].m_State & (CompositionState.HasForwardRoadLanes | CompositionState.HasBackwardRoadLanes | CompositionState.Multilane)) ==
@@ -6818,7 +6926,7 @@ namespace Traffic.Systems
                                     component5.m_Flags |= CarLaneFlags.ForbidPassing;
                                 }
                             }
-                            if (component5.m_Curviness > math.select(math.PI / 180f, math.PI / 360f, flag3))
+                            if (component5.m_Curviness > math.select(math.PI / 180f, math.PI / 360f, flag4))
                             {
                                 component5.m_Flags |= CarLaneFlags.ForbidPassing;
                             }
@@ -6843,23 +6951,28 @@ namespace Traffic.Systems
                         {
                             case 1:
                                 component5.m_Flags |= CarLaneFlags.Yield;
+                                shouldSkipLane = false;
                                 break;
                             case 2:
                                 component5.m_Flags |= CarLaneFlags.Stop;
+                                shouldSkipLane = false;
                                 break;
                             case -1:
                                 component5.m_Flags |= CarLaneFlags.RightOfWay;
+                                shouldSkipLane = false;
                                 break;
                         }
                         if ((netCompositionData.m_Flags.m_General & CompositionFlags.General.TrafficLights) != 0)
                         {
                             component5.m_Flags |= CarLaneFlags.TrafficLights;
                             hasTrafficLights = true;
+                            shouldSkipLane = false;
                         }
                         if ((netCompositionData.m_Flags.m_General & CompositionFlags.General.LevelCrossing) != 0)
                         {
                             component5.m_Flags |= CarLaneFlags.LevelCrossing;
                             hasTrafficLights = true;
+                            shouldSkipLane = false;
                         }
                     }
                     TrackLane component6 = default(TrackLane);
@@ -6878,10 +6991,10 @@ namespace Traffic.Systems
                         if ((sourcePosition.m_LaneData.m_Flags & targetPosition.m_LaneData.m_Flags & LaneFlags.Twoway) != 0)
                         {
                             bool num5 = sourcePosition.m_IsEnd == ((sourcePosition.m_LaneData.m_Flags & LaneFlags.Invert) == 0);
-                            bool flag4 = targetPosition.m_IsEnd == ((targetPosition.m_LaneData.m_Flags & LaneFlags.Invert) == 0);
-                            if (num5 != flag4)
+                            bool flag5 = targetPosition.m_IsEnd == ((targetPosition.m_LaneData.m_Flags & LaneFlags.Invert) == 0);
+                            if (num5 != flag5)
                             {
-                                if (flag4)
+                                if (flag5)
                                 {
                                     return false;
                                 }
@@ -6902,13 +7015,15 @@ namespace Traffic.Systems
                         if ((netCompositionData.m_Flags.m_General & CompositionFlags.General.TrafficLights) != 0)
                         {
                             hasTrafficLights = true;
+                            shouldSkipLane = false;
                         }
                         if ((netCompositionData.m_Flags.m_General & CompositionFlags.General.LevelCrossing) != 0)
                         {
                             component6.m_Flags |= TrackLaneFlags.LevelCrossing;
                             hasTrafficLights = true;
+                            shouldSkipLane = false;
                         }
-						if (((netCompositionData.m_Flags.m_Left | netCompositionData.m_Flags.m_Right | netCompositionData2.m_Flags.m_Left | netCompositionData2.m_Flags.m_Right) & (CompositionFlags.Side.PrimaryStop | CompositionFlags.Side.SecondaryStop)) != 0)
+                        if (((netCompositionData.m_Flags.m_Left | netCompositionData.m_Flags.m_Right | netCompositionData2.m_Flags.m_Left | netCompositionData2.m_Flags.m_Right) & (CompositionFlags.Side.PrimaryStop | CompositionFlags.Side.SecondaryStop)) != 0)
                         {
                             component6.m_Flags |= TrackLaneFlags.Station;
                         }
@@ -6925,6 +7040,7 @@ namespace Traffic.Systems
                         num6 = (ushort)nodeLaneIndex++;
                         lane.m_MiddleNode = new PathNode(owner, num6);
                         lane.m_EndNode = new PathNode(owner, (ushort)nodeLaneIndex++);
+                        shouldSkipLane = false;
                     }
                     else
                     {
@@ -7040,6 +7156,25 @@ namespace Traffic.Systems
                             }
                         }
                     }
+                    if ((laneFlags & LaneFlags.Master) != 0)
+                    {
+                        shouldSkipLane = isSkipped;
+                    }
+                    else if (i == 0)
+                    {
+                        isSkipped |= shouldSkipLane;
+                    }
+                    if (shouldSkipLane)
+                    {
+                        if (isTemp)
+                        {
+                            lane.m_StartNode = new PathNode(lane.m_StartNode, secondaryNode: true);
+                            lane.m_MiddleNode = new PathNode(lane.m_MiddleNode, secondaryNode: true);
+                            lane.m_EndNode = new PathNode(lane.m_EndNode, secondaryNode: true);
+                        }
+                        m_SkipLaneQueue.Enqueue(lane);
+                        continue;
+                    }
                     LaneKey laneKey = new LaneKey(lane, prefabRef.m_Prefab, laneFlags);
                     LaneKey laneKey2 = laneKey;
                     if (isTemp)
@@ -7057,6 +7192,7 @@ namespace Traffic.Systems
                     if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                     {
                         laneBuffer.m_OldLanes.Remove(laneKey);
+                        m_CommandBuffer.SetComponent(jobIndex, item, lane);
                         m_CommandBuffer.SetComponent(jobIndex, item, component2);
                         m_CommandBuffer.SetComponent(jobIndex, item, curve);
                         if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
@@ -7082,7 +7218,7 @@ namespace Traffic.Systems
                         {
                             m_CommandBuffer.SetComponent(jobIndex, item, component3);
                         }
-                        if (flag)
+                        if (hasHangingLane)
                         {
                             m_CommandBuffer.AddComponent(jobIndex, item, component4);
                         }
@@ -7136,9 +7272,8 @@ namespace Traffic.Systems
                         }
                         continue;
                     }
-                    EntityArchetype entityArchetype = default(EntityArchetype);
                     NetLaneArchetypeData netLaneArchetypeData = m_PrefabLaneArchetypeData[prefabRef.m_Prefab];
-                    entityArchetype = (((laneFlags & LaneFlags.Slave) != 0)
+                    EntityArchetype entityArchetype = (((laneFlags & LaneFlags.Slave) != 0)
                         ? netLaneArchetypeData.m_NodeSlaveArchetype
                         : (((laneFlags & LaneFlags.Master) == 0) ? netLaneArchetypeData.m_NodeLaneArchetype : netLaneArchetypeData.m_NodeMasterArchetype));
                     Entity e = m_CommandBuffer.CreateEntity(jobIndex, entityArchetype);
@@ -7162,7 +7297,7 @@ namespace Traffic.Systems
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, component3);
                     }
-                    if (flag)
+                    if (hasHangingLane)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, component4);
                     }
@@ -7434,6 +7569,7 @@ namespace Traffic.Systems
                 component2.m_Prefab = connectPosition1.m_LaneData.m_Lane;
                 CheckPrefab(ref component2.m_Prefab, ref random, out Unity.Mathematics.Random outRandom, laneBuffer);
                 NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
+                bool flag = math.distance(connectPosition1.m_Position, connectPosition2.m_Position) < 0.1f;
                 Curve curve = default(Curve);
                 if (connectPosition1.m_Tangent.Equals(default(float3)))
                 {
@@ -7478,6 +7614,10 @@ namespace Traffic.Systems
                         }
                     }
                 }
+                if (flag)
+                {
+                    return;
+                }
                 LaneKey laneKey = new LaneKey(lane, component2.m_Prefab, (LaneFlags)0);
                 LaneKey laneKey2 = laneKey;
                 if (isTemp)
@@ -7495,6 +7635,7 @@ namespace Traffic.Systems
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
+                    m_CommandBuffer.SetComponent(jobIndex, item, lane);
                     m_CommandBuffer.SetComponent(jobIndex, item, curve);
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
@@ -7563,38 +7704,106 @@ namespace Traffic.Systems
                     return;
                 }
                 StackList<int2> stackList = stackalloc int2[num];
+                Bounds1 bounds = new Bounds1(float.MaxValue, 0f);
                 int num2 = -1;
+                int num3 = -1;
+                int num4 = 0;
                 bool flag = false;
-                int num3 = 0;
+                bool flag2 = false;
+                int num5 = 0;
                 Segment left = default(Segment);
-                while (num3 < buffer.Length)
+                while (num5 < buffer.Length)
                 {
-                    ConnectPosition targetPosition = buffer[num3];
+                    ConnectPosition connectPosition2 = buffer[num5];
                     int j;
-                    for (j = num3 + 1; j < buffer.Length && !(buffer[j].m_Owner != targetPosition.m_Owner); j++) { }
-                    ConnectPosition connectPosition2 = buffer[j - 1];
-                    if (connectPosition2.m_IsSideConnection)
+                    for (j = num5 + 1; j < buffer.Length && !(buffer[j].m_Owner != connectPosition2.m_Owner); j++) { }
+                    if (buffer[j - 1].m_IsSideConnection)
                     {
-                        num3 = j;
+                        num5 = j;
                         continue;
                     }
-                    int num4 = nodeLaneIndex;
-                    bool flag2 = j == num3 + 1;
-                    if (FindNextRightLane(connectPosition2, buffer, out int2 result))
+                    if (m_PrefabCompositionCrosswalks.TryGetBuffer(connectPosition2.m_NodeComposition, out DynamicBuffer<NetCompositionCrosswalk> bufferData))
+                    {
+                        if (connectPosition2.m_SegmentIndex != 0)
+                        {
+                            EndNodeGeometry endNodeGeometry = m_EndNodeGeometryData[connectPosition2.m_Owner];
+                            if (endNodeGeometry.m_Geometry.m_MiddleRadius > 0f)
+                            {
+                                left = endNodeGeometry.m_Geometry.m_Left;
+                            }
+                            else
+                            {
+                                left.m_Left = endNodeGeometry.m_Geometry.m_Left.m_Left;
+                                left.m_Right = endNodeGeometry.m_Geometry.m_Right.m_Right;
+                                left.m_Length = new float2(endNodeGeometry.m_Geometry.m_Left.m_Length.x, endNodeGeometry.m_Geometry.m_Right.m_Length.y);
+                            }
+                        }
+                        else
+                        {
+                            StartNodeGeometry startNodeGeometry = m_StartNodeGeometryData[connectPosition2.m_Owner];
+                            if (startNodeGeometry.m_Geometry.m_MiddleRadius > 0f)
+                            {
+                                left = startNodeGeometry.m_Geometry.m_Left;
+                            }
+                            else
+                            {
+                                left.m_Left = startNodeGeometry.m_Geometry.m_Left.m_Left;
+                                left.m_Right = startNodeGeometry.m_Geometry.m_Right.m_Right;
+                                left.m_Length = new float2(startNodeGeometry.m_Geometry.m_Left.m_Length.x, startNodeGeometry.m_Geometry.m_Right.m_Length.y);
+                            }
+                        }
+                        NetCompositionData netCompositionData = m_PrefabCompositionData[connectPosition2.m_NodeComposition];
+                        if (bufferData.Length >= 1)
+                        {
+                            flag |= ((netCompositionData.m_Flags.m_General & CompositionFlags.General.Crosswalk) != 0);
+                            float3 start = bufferData[0].m_Start;
+                            float3 end = bufferData[bufferData.Length - 1].m_End;
+                            float s = start.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
+                            float s2 = end.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
+                            float3 x = math.lerp(left.m_Left.a, left.m_Right.a, s);
+                            end = math.lerp(left.m_Left.a, left.m_Right.a, s2);
+                            float num6 = math.distance(x, end);
+                            if (num6 < bounds.min)
+                            {
+                                num2 = num5;
+                            }
+                            bounds |= num6;
+                        }
+                        flag2 |= math.any(left.m_Length >= left.m_Length.yx * 4f + 0.1f);
+                        num4++;
+                    }
+                    num5 = j;
+                }
+                num5 = 0;
+                Segment left2 = default(Segment);
+                while (num5 < buffer.Length)
+                {
+                    ConnectPosition targetPosition = buffer[num5];
+                    int k;
+                    for (k = num5 + 1; k < buffer.Length && !(buffer[k].m_Owner != targetPosition.m_Owner); k++) { }
+                    ConnectPosition connectPosition3 = buffer[k - 1];
+                    if (connectPosition3.m_IsSideConnection)
+                    {
+                        num5 = k;
+                        continue;
+                    }
+                    int num7 = nodeLaneIndex;
+                    bool flag3 = k == num5 + 1;
+                    if (FindNextRightLane(connectPosition3, buffer, out int2 result))
                     {
                         ConnectPosition targetPosition2 = buffer[result.x];
-                        bool flag3 = result.y == result.x + 1;
-                        int num5 = 0;
+                        bool flag4 = result.y == result.x + 1;
+                        int num8 = 0;
                         while (targetPosition2.m_IsSideConnection)
                         {
-                            if (++num5 > buffer.Length)
+                            if (++num8 > buffer.Length)
                             {
                                 tempBuffer2.Clear();
                                 return;
                             }
-                            for (int k = result.x; k < result.y; k++)
+                            for (int l = result.x; l < result.y; l++)
                             {
-                                ConnectPosition value = buffer[k];
+                                ConnectPosition value = buffer[l];
                                 tempBuffer2.Add(in value);
                             }
                             int index = result.y - 1;
@@ -7607,143 +7816,176 @@ namespace Traffic.Systems
                         }
                         if (num > 2)
                         {
-                            CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition2, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
+                            CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition3, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
                         }
                         else if (num == 2)
                         {
-                            if (connectPosition2.m_Owner.Index == targetPosition2.m_Owner.Index)
+                            if (connectPosition3.m_Owner.Index == targetPosition2.m_Owner.Index)
                             {
-                                CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition2, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
+                                CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition3, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
                             }
-                            else if (connectPosition2.m_Owner.Index < targetPosition2.m_Owner.Index || (flag2 && flag3 && middleRadius > 0f))
+                            else if (connectPosition3.m_Owner.Index < targetPosition2.m_Owner.Index || (flag3 && flag4 && middleRadius > 0f))
                             {
-                                CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition2, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
+                                CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition3, targetPosition2, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
                             }
                         }
-                        if (flag2)
+                        if (flag3)
                         {
-                            stackList.AddNoResize(new int2(num3, result.x));
+                            stackList.AddNoResize(new int2(num5, result.x));
                         }
                     }
                     if (num == 1 && middleRadius > 0f)
                     {
-                        CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition2, targetPosition, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
+                        CreateNodePedestrianLanes(jobIndex, ref nodeLaneIndex, ref random, owner, laneBuffer, connectPosition3, targetPosition, tempBuffer2, isTemp, ownerTemp, middlePosition, middleRadius, roundaboutSize);
                     }
                     tempBuffer2.Clear();
-                    if (m_PrefabCompositionCrosswalks.HasBuffer(targetPosition.m_NodeComposition))
+                    if (m_PrefabCompositionCrosswalks.TryGetBuffer(targetPosition.m_NodeComposition, out DynamicBuffer<NetCompositionCrosswalk> bufferData2))
                     {
                         if (targetPosition.m_SegmentIndex != 0)
                         {
-                            EndNodeGeometry endNodeGeometry = m_EndNodeGeometryData[targetPosition.m_Owner];
-                            if (endNodeGeometry.m_Geometry.m_MiddleRadius > 0f)
+                            EndNodeGeometry endNodeGeometry2 = m_EndNodeGeometryData[targetPosition.m_Owner];
+                            if (endNodeGeometry2.m_Geometry.m_MiddleRadius > 0f)
                             {
-                                left = endNodeGeometry.m_Geometry.m_Left;
+                                left2 = endNodeGeometry2.m_Geometry.m_Left;
                             }
                             else
                             {
-                                left.m_Left = endNodeGeometry.m_Geometry.m_Left.m_Left;
-                                left.m_Right = endNodeGeometry.m_Geometry.m_Right.m_Right;
+                                left2.m_Left = endNodeGeometry2.m_Geometry.m_Left.m_Left;
+                                left2.m_Right = endNodeGeometry2.m_Geometry.m_Right.m_Right;
+                                left2.m_Length = new float2(endNodeGeometry2.m_Geometry.m_Left.m_Length.x, endNodeGeometry2.m_Geometry.m_Right.m_Length.y);
                             }
                         }
                         else
                         {
-                            StartNodeGeometry startNodeGeometry = m_StartNodeGeometryData[targetPosition.m_Owner];
-                            if (startNodeGeometry.m_Geometry.m_MiddleRadius > 0f)
+                            StartNodeGeometry startNodeGeometry2 = m_StartNodeGeometryData[targetPosition.m_Owner];
+                            if (startNodeGeometry2.m_Geometry.m_MiddleRadius > 0f)
                             {
-                                left = startNodeGeometry.m_Geometry.m_Left;
+                                left2 = startNodeGeometry2.m_Geometry.m_Left;
                             }
                             else
                             {
-                                left.m_Left = startNodeGeometry.m_Geometry.m_Left.m_Left;
-                                left.m_Right = startNodeGeometry.m_Geometry.m_Right.m_Right;
+                                left2.m_Left = startNodeGeometry2.m_Geometry.m_Left.m_Left;
+                                left2.m_Right = startNodeGeometry2.m_Geometry.m_Right.m_Right;
+                                left2.m_Length = new float2(startNodeGeometry2.m_Geometry.m_Left.m_Length.x, startNodeGeometry2.m_Geometry.m_Right.m_Length.y);
                             }
                         }
-                        NetCompositionData netCompositionData = m_PrefabCompositionData[targetPosition.m_NodeComposition];
-                        DynamicBuffer<NetCompositionCrosswalk> dynamicBuffer = m_PrefabCompositionCrosswalks[targetPosition.m_NodeComposition];
-                        bool flag4 = (netCompositionData.m_Flags.m_General & (CompositionFlags.General.DeadEnd | CompositionFlags.General.Intersection | CompositionFlags.General.Crosswalk)) == CompositionFlags.General.Crosswalk;
-                        if (flag4 && num2 == -1)
+                        NetCompositionData netCompositionData2 = m_PrefabCompositionData[targetPosition.m_NodeComposition];
+                        bool flag5 = false;
+                        if (num4 == 2)
                         {
-                            num2 = num4;
-                            num3 = j;
+                            if ((netCompositionData2.m_Flags.m_General & (CompositionFlags.General.DeadEnd | CompositionFlags.General.Intersection | CompositionFlags.General.LevelCrossing)) == 0)
+                            {
+                                if ((netCompositionData2.m_Flags.m_General & CompositionFlags.General.Crosswalk) != 0 || !flag2)
+                                {
+                                    flag5 = true;
+                                }
+                            }
+                            else if ((netCompositionData2.m_Flags.m_General & (CompositionFlags.General.DeadEnd | CompositionFlags.General.LevelCrossing)) == 0)
+                            {
+                                if (!flag && !flag2)
+                                {
+                                    if (bounds.max > bounds.min + 0.1f)
+                                    {
+                                        if (num5 != num2)
+                                        {
+                                            num5 = k;
+                                            continue;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        flag5 = true;
+                                    }
+                                }
+                                else if (flag && (netCompositionData2.m_Flags.m_General & CompositionFlags.General.Crosswalk) == 0)
+                                {
+                                    num5 = k;
+                                    continue;
+                                }
+                            }
+                        }
+                        if (flag5 && num3 == -1)
+                        {
+                            num3 = num7;
+                            num5 = k;
                             continue;
                         }
-                        if (dynamicBuffer.Length >= 1)
+                        if (bufferData2.Length >= 1)
                         {
-                            tempBuffer.ResizeUninitialized(dynamicBuffer.Length + 1);
-                            flag = ((netCompositionData.m_Flags.m_General & CompositionFlags.General.Crosswalk) != 0);
-                            for (int l = 0; l < tempBuffer.Length; l++)
+                            tempBuffer.ResizeUninitialized(bufferData2.Length + 1);
+                            for (int m = 0; m < tempBuffer.Length; m++)
                             {
-                                float3 @float = (l != 0) ? ((l != tempBuffer.Length - 1) ? math.lerp(dynamicBuffer[l - 1].m_End, dynamicBuffer[l].m_Start, 0.5f) : dynamicBuffer[l - 1].m_End) : dynamicBuffer[l].m_Start;
-                                float s = @float.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
+                                float3 @float = (m != 0) ? ((m != tempBuffer.Length - 1) ? math.lerp(bufferData2[m - 1].m_End, bufferData2[m].m_Start, 0.5f) : bufferData2[m - 1].m_End) : bufferData2[m].m_Start;
+                                float s3 = @float.x / math.max(1f, netCompositionData2.m_Width) + 0.5f;
                                 ConnectPosition value2 = default(ConnectPosition);
-                                value2.m_Position = math.lerp(left.m_Left.a, left.m_Right.a, s);
+                                value2.m_Position = math.lerp(left2.m_Left.a, left2.m_Right.a, s3);
                                 value2.m_Position.y += @float.y;
-                                tempBuffer[l] = value2;
+                                tempBuffer[m] = value2;
                             }
-                            for (int m = num3; m < j; m++)
+                            for (int n = num5; n < k; n++)
                             {
-                                ConnectPosition value3 = buffer[m];
-                                float num6 = float.MaxValue;
+                                ConnectPosition value3 = buffer[n];
+                                float num9 = float.MaxValue;
                                 int index2 = 0;
-                                for (int n = 0; n < tempBuffer.Length; n++)
+                                for (int num10 = 0; num10 < tempBuffer.Length; num10++)
                                 {
-                                    ConnectPosition connectPosition3 = tempBuffer[n];
-                                    if (connectPosition3.m_Owner == Entity.Null)
+                                    ConnectPosition connectPosition4 = tempBuffer[num10];
+                                    if (connectPosition4.m_Owner == Entity.Null)
                                     {
-                                        float num7 = math.lengthsq(value3.m_Position - connectPosition3.m_Position);
-                                        if (num7 < num6)
+                                        float num11 = math.lengthsq(value3.m_Position - connectPosition4.m_Position);
+                                        if (num11 < num9)
                                         {
-                                            num6 = num7;
-                                            index2 = n;
+                                            num9 = num11;
+                                            index2 = num10;
                                         }
                                     }
                                 }
                                 tempBuffer[index2] = value3;
                             }
-                            for (int num8 = 0; num8 < tempBuffer.Length; num8++)
+                            for (int num12 = 0; num12 < tempBuffer.Length; num12++)
                             {
-                                ConnectPosition value4 = tempBuffer[num8];
+                                ConnectPosition value4 = tempBuffer[num12];
                                 if (value4.m_Owner == Entity.Null)
                                 {
                                     value4.m_Owner = owner;
                                     value4.m_NodeComposition = targetPosition.m_NodeComposition;
                                     value4.m_EdgeComposition = targetPosition.m_EdgeComposition;
                                     value4.m_Tangent = targetPosition.m_Tangent;
-                                    tempBuffer[num8] = value4;
+                                    tempBuffer[num12] = value4;
                                 }
                             }
                             PathNode pathNode = default(PathNode);
                             PathNode endPathNode = default(PathNode);
-                            for (int num9 = 0; num9 < dynamicBuffer.Length; num9++)
+                            for (int num13 = 0; num13 < bufferData2.Length; num13++)
                             {
-                                NetCompositionCrosswalk netCompositionCrosswalk = dynamicBuffer[num9];
-                                ConnectPosition sourcePosition = tempBuffer[num9];
-                                ConnectPosition targetPosition3 = tempBuffer[num9 + 1];
-                                float s2 = netCompositionCrosswalk.m_Start.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
-                                float s3 = netCompositionCrosswalk.m_End.x / math.max(1f, netCompositionData.m_Width) + 0.5f;
-                                if (flag4)
+                                NetCompositionCrosswalk netCompositionCrosswalk = bufferData2[num13];
+                                ConnectPosition sourcePosition = tempBuffer[num13];
+                                ConnectPosition targetPosition3 = tempBuffer[num13 + 1];
+                                float s4 = netCompositionCrosswalk.m_Start.x / math.max(1f, netCompositionData2.m_Width) + 0.5f;
+                                float s5 = netCompositionCrosswalk.m_End.x / math.max(1f, netCompositionData2.m_Width) + 0.5f;
+                                if (flag5)
                                 {
-                                    sourcePosition.m_Position = math.lerp(left.m_Left.d, left.m_Right.d, s2);
-                                    targetPosition3.m_Position = math.lerp(left.m_Left.d, left.m_Right.d, s3);
-                                    if (num9 == 0)
+                                    sourcePosition.m_Position = math.lerp(left2.m_Left.d, left2.m_Right.d, s4);
+                                    targetPosition3.m_Position = math.lerp(left2.m_Left.d, left2.m_Right.d, s5);
+                                    if (num13 == 0)
                                     {
                                         sourcePosition.m_Owner = owner;
-                                        pathNode = new PathNode(owner, (ushort)num2, 0.5f);
+                                        pathNode = new PathNode(owner, (ushort)num3, 0.5f);
                                         endPathNode = pathNode;
                                     }
-                                    if (num9 == dynamicBuffer.Length - 1)
+                                    if (num13 == bufferData2.Length - 1)
                                     {
                                         targetPosition3.m_Owner = owner;
-                                        endPathNode = new PathNode(owner, (ushort)num4, 0.5f);
+                                        endPathNode = new PathNode(owner, (ushort)num7, 0.5f);
                                     }
                                 }
                                 else
                                 {
-                                    sourcePosition.m_Position = math.lerp(left.m_Left.a, left.m_Right.a, s2);
-                                    targetPosition3.m_Position = math.lerp(left.m_Left.a, left.m_Right.a, s3);
+                                    sourcePosition.m_Position = math.lerp(left2.m_Left.a, left2.m_Right.a, s4);
+                                    targetPosition3.m_Position = math.lerp(left2.m_Left.a, left2.m_Right.a, s5);
                                     sourcePosition.m_Position += sourcePosition.m_Tangent * netCompositionCrosswalk.m_Start.z;
                                     targetPosition3.m_Position += targetPosition3.m_Tangent * netCompositionCrosswalk.m_End.z;
-                                    if (num9 == 0 && sourcePosition.m_Owner == owner)
+                                    if (num13 == 0 && sourcePosition.m_Owner == owner)
                                     {
                                         pathNode = new PathNode(owner, (ushort)nodeLaneIndex++);
                                         endPathNode = pathNode;
@@ -7760,18 +8002,18 @@ namespace Traffic.Systems
                             }
                         }
                     }
-                    num3 = j;
+                    num5 = k;
                 }
                 if (flag || !(middleRadius <= 0f))
                 {
                     return;
                 }
-                for (int num10 = 1; num10 < stackList.Length; num10++)
+                for (int num14 = 1; num14 < stackList.Length; num14++)
                 {
-                    int2 lhs = stackList[num10];
-                    for (int num11 = 0; num11 < num10; num11++)
+                    int2 lhs = stackList[num14];
+                    for (int num15 = 0; num15 < num14; num15++)
                     {
-                        int2 @int = stackList[num11];
+                        int2 @int = stackList[num15];
                         if (math.all(lhs != @int.yx))
                         {
                             ConnectPosition sourcePosition2 = buffer[lhs.x];
@@ -8051,6 +8293,7 @@ namespace Traffic.Systems
                 NodeLane component4 = default(NodeLane);
                 Curve component5 = default(Curve);
                 float2 lhs = 0f;
+                bool flag2 = false;
                 NetLaneData netLaneData = m_NetLaneData[component2.m_Prefab];
                 if (m_NetLaneData.HasComponent(sourcePosition.m_LaneData.m_Lane))
                 {
@@ -8092,7 +8335,7 @@ namespace Traffic.Systems
                     {
                         return;
                     }
-                    if (math.distance(sourcePosition.m_Position, targetPosition.m_Position) >= 0.01f)
+                    if (math.distance(sourcePosition.m_Position, targetPosition.m_Position) >= 0.1f)
                     {
                         if (fixedTangents)
                         {
@@ -8107,6 +8350,7 @@ namespace Traffic.Systems
                     else
                     {
                         component5.m_Bezier = NetUtils.StraightCurve(sourcePosition.m_Position, targetPosition.m_Position);
+                        flag2 = true;
                     }
                     if (isSideConnection)
                     {
@@ -8124,6 +8368,17 @@ namespace Traffic.Systems
                 if ((sourcePosition.m_LaneData.m_Flags & targetPosition.m_LaneData.m_Flags & LaneFlags.OnWater) != 0)
                 {
                     component3.m_Flags |= PedestrianLaneFlags.OnWater;
+                }
+                if (flag2)
+                {
+                    if (isTemp)
+                    {
+                        lane.m_StartNode = new PathNode(lane.m_StartNode, secondaryNode: true);
+                        lane.m_MiddleNode = new PathNode(lane.m_MiddleNode, secondaryNode: true);
+                        lane.m_EndNode = new PathNode(lane.m_EndNode, secondaryNode: true);
+                    }
+                    m_SkipLaneQueue.Enqueue(lane);
+                    return;
                 }
                 LaneKey laneKey = new LaneKey(lane, component2.m_Prefab, (LaneFlags)0);
                 LaneKey laneKey2 = laneKey;
@@ -8143,6 +8398,7 @@ namespace Traffic.Systems
                 if (laneBuffer.m_OldLanes.TryGetValue(laneKey, out Entity item))
                 {
                     laneBuffer.m_OldLanes.Remove(laneKey);
+                    m_CommandBuffer.SetComponent(jobIndex, item, lane);
                     m_CommandBuffer.SetComponent(jobIndex, item, component4);
                     m_CommandBuffer.SetComponent(jobIndex, item, component5);
                     m_CommandBuffer.SetComponent(jobIndex, item, component3);

@@ -4,14 +4,16 @@ using Game.Pathfind;
 using Game.Prefabs;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+#if WITH_BURST
 using Unity.Burst;
+#endif
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Edge = Game.Net.Edge;
 
-namespace Traffic.Systems.DataMigration
+namespace Traffic.Systems.Serialization
 {
     public partial class TrafficDataMigrationSystem
     {

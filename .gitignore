@@ -4,3 +4,4 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 Traffic.sln.DotSettings.user
+/UI/node_modules

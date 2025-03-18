@@ -1,6 +1,6 @@
 ﻿using System;
 using Colossal.Serialization.Entities;
-using Traffic.Systems.DataMigration;
+using TrafficDataMigrationSystem = Traffic.Systems.Serialization.TrafficDataMigrationSystem;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -30,6 +30,12 @@ namespace Traffic.Components.LaneConnections
                 return (laneIndex * 397) ^ edgeEntity.GetHashCode();
             }
         }
+        #if SERIALIZATION
+        public override string ToString()
+        {
+            return $"MLC: ({laneIndex}), cag: {carriagewayAndGroup} pos: {lanePosition} edge: {edgeEntity} mc: {modifiedConnections}";
+        }
+        #endif
 
         public void Serialize<TWriter>(TWriter writer) where TWriter : IWriter
         {

@@ -1,6 +1,7 @@
 ﻿using Game.Net;
 using Game.Pathfind;
 using Game.Prefabs;
+using Traffic.Components.LaneConnections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Edge = Game.Net.Edge;
@@ -104,6 +105,19 @@ namespace Traffic.Systems.Helpers
                 }
             }
             return Entity.Null;
+        }
+
+        public static bool IsReferencedByModifiedLaneConnectionItem(Entity modifiedLaneConnectionEntity, in DynamicBuffer<ModifiedLaneConnections> connections)
+        {
+            foreach (ModifiedLaneConnections connection in connections)
+            {
+                if (connection.modifiedConnections == modifiedLaneConnectionEntity)
+                {
+                    return true;
+                }
+            }
+            
+            return false;
         }
     }
 }

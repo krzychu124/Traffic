@@ -96,7 +96,7 @@ namespace Traffic.UISystems
             get { return _affectedIntersections.Count > 0; }
         }
 
-        private List<Entity> AffectedIntersections
+        internal List<Entity> AffectedIntersections
         {
             get { return _affectedIntersections; }
         }
@@ -141,7 +141,7 @@ namespace Traffic.UISystems
             }
         }
 
-        private void ModSettingsApplied(Setting setting)
+        internal void ModSettingsApplied(Setting setting)
         {
             Logger.Info($"Mod settings has been applied ({UnityEngine.Time.frameCount})");
             _keyBindings = new ModKeyBinds();
@@ -261,7 +261,7 @@ namespace Traffic.UISystems
             }
         }
 
-        protected override void OnGamePreload(Purpose purpose, GameMode mode)
+        protected override void OnGameLoadingComplete(Purpose purpose, GameMode mode)
         {
             bool isGameOrEditor = mode == GameMode.Game || mode == GameMode.Editor;
             _toggleLaneConnectorToolAction.shouldBeEnabled = isGameOrEditor;
@@ -269,7 +269,7 @@ namespace Traffic.UISystems
             _applyAction.shouldBeEnabled = isGameOrEditor;
             _cancelAction.shouldBeEnabled = isGameOrEditor;
             _resetIntersectionAction.shouldBeEnabled = isGameOrEditor;
-            Logger.Info($"OnGamePreload: {purpose} | {mode}");
+            Logger.Info($"OnGameLoadingComplete: {purpose} | {mode}");
             if (isGameOrEditor)
             {
                 ModSettingsApplied(ModSettings.Instance);

@@ -18,7 +18,7 @@ namespace Traffic
     using Traffic.Debug;
     using Traffic.Rendering;
     using Traffic.Systems;
-    using Traffic.Systems.DataMigration;
+    using Traffic.Systems.Serialization;
     using Traffic.Systems.ModCompatibility;
     using Traffic.Systems.PrioritySigns;
     using Traffic.Tools;
@@ -49,6 +49,7 @@ namespace Traffic
 
         public void OnLoad(UpdateSystem updateSystem)
         {
+            
             Logger.Info($"{nameof(OnLoad)}, version: {InformationalVersion}");
             TrySearchingForIncompatibleTLEOnBepinEx();
             Settings = new ModSettings(this, false);
@@ -110,8 +111,8 @@ namespace Traffic
             GameManager.instance.RegisterUpdater(TLECompatibilityFix);
             GameManager.instance.RegisterUpdater(RoadBuilderCompatibilityHandler);
             GameManager.instance.RegisterUpdater(ListEnabledMods);
-            // NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
-
+            GameManager.instance.RegisterUpdater(UpdateUIBindings);
+            // Unity.Collections.NativeLeakDetection.Mode = Unity.Collections.NativeLeakDetectionMode.EnabledWithStackTrace;
 #if LOCALIZATION_EXPORT
             Localization.LocalizationExport(this, Settings);
 #endif
@@ -125,11 +126,18 @@ namespace Traffic
             Settings = null;
         }
 
+        private static void UpdateUIBindings()
+        {
+            Logger.Info("Force update UI bindings");
+            ModUISystem uiSystem = World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<ModUISystem>();
+            uiSystem.ModSettingsApplied(ModSettings.Instance);
+        }
+
         private static void TLECompatibilityFix()
         {
             if (IsTLEEnabled)
             {
-                Logger.Info($"Detected TLE installed and enabled!");
+                Logger.Info("Detected TLE installed and enabled!");
                 try
                 {
                     Type type = null;

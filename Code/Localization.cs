@@ -9,7 +9,9 @@ namespace Traffic
     public partial class Localization
     {
         internal static readonly Dictionary<string, Tuple<string, string, IDictionarySource>> LocaleSources = new Dictionary<string, Tuple<string, string, IDictionarySource>>();
-        internal static int languageSourceVersion = 0;
+        private static int _languageSourceVersion;
+
+        internal static int LanguageSourceVersion => _languageSourceVersion;
 
         public static string GetToolTooltipLocaleID(string tool, string value)
         {

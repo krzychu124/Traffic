@@ -1,6 +1,7 @@
 ﻿#if DEBUG
 #define DEBUG_TOOL
 #endif
+using System.Runtime.CompilerServices;
 using Colossal.Collections;
 using Colossal.Mathematics;
 using Game.Common;
@@ -156,7 +157,7 @@ namespace Traffic.Helpers
             [ReadOnly] public NativeArray<Entity>.ReadOnly entities;
             [ReadOnly] public float fovTan;
             [ReadOnly] public CustomRaycastInput input;
-            public NativeAccumulator<RaycastResult>.ParallelWriter results;
+            [WriteOnly] public NativeAccumulator<RaycastResult>.ParallelWriter results;
 
             public void Execute(int index) {
                 Entity entity = entities[index];
@@ -191,7 +192,8 @@ namespace Traffic.Helpers
                 }
             }
             
-            internal static float GetMinLaneRadius(float fovTan, float cameraDistance)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static float GetMinLaneRadius(float fovTan, float cameraDistance)
             {
                 return cameraDistance * fovTan * 0.01f;
             }

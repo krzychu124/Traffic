@@ -57,7 +57,7 @@ namespace Traffic
                             $"{_translations.GetValueOrDefault(GetLanguageNameLocaleID(), _localeId)}", 
                             $"{coverage}",
                             this);
-                        languageSourceVersion++;
+                        _languageSourceVersion++;
                     }
                     catch (Exception e)
                     {

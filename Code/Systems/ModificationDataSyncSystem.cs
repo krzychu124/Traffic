@@ -20,24 +20,20 @@ namespace Traffic.Systems
         protected override void OnCreate() {
             base.OnCreate();
             _modificationBarrier = World.GetOrCreateSystemManaged<ModificationBarrier4B>();
-            _query = GetEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<ModifiedLaneConnections>(), ComponentType.ReadOnly<Node>(), ComponentType.ReadOnly<Deleted>() },
-                None = new[] { ComponentType.ReadOnly<Temp>(), }
-            });
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<ModifiedLaneConnections, Node, Deleted>()
+                .WithNone<Temp>()
+                .Build();
             RequireForUpdate(_query);
         }
 
         protected override void OnUpdate() {
-            SyncModificationDataJob job = new SyncModificationDataJob()
+            JobHandle jobHandle = new SyncModificationDataJob()
             {
                 entityType = SystemAPI.GetEntityTypeHandle(),
-                tempType = SystemAPI.GetComponentTypeHandle<Temp>(true),
-                deletedType = SystemAPI.GetComponentTypeHandle<Deleted>(true),
                 modifiedLaneConnectionsType = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                 commandBuffer = _modificationBarrier.CreateCommandBuffer().AsParallelWriter(),
-            };
-            JobHandle jobHandle = job.Schedule(_query, Dependency);
+            }.Schedule(_query, Dependency);
             _modificationBarrier.AddJobHandleForProducer(jobHandle);
             Dependency = jobHandle;
         }

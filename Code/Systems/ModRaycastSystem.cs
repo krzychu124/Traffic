@@ -98,15 +98,14 @@ namespace Traffic.Systems
             NativeAccumulator<RaycastResult> accumulator = new NativeAccumulator<RaycastResult>(Allocator.TempJob);
             if ((input.typeMask & TypeMask.Lanes) != 0)
             {
-                RaycastJobs.RaycastLaneHandles raycastLaneHandles = new RaycastJobs.RaycastLaneHandles()
+                JobHandle jobHandleLaneHandle = new RaycastJobs.RaycastLaneHandles()
                 {
                     fovTan = input.fovTan,
                     laneHandleData = SystemAPI.GetComponentLookup<LaneHandle>(true),
                     input = input,
                     entities = entities.AsReadOnly(),
                     results = accumulator.AsParallelWriter(),
-                };
-                JobHandle jobHandleLaneHandle =  raycastLaneHandles.Schedule(entities, 1, Dependency);
+                }.Schedule(entities, 1, Dependency);
                 jobHandleLaneHandle.Complete();
             }
             else

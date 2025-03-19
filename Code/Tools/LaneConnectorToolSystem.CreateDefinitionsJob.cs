@@ -271,8 +271,8 @@ namespace Traffic.Tools
 
                 if (!found)
                 {
-                    Logger.DebugTool($"NOT_FOUND: s: {sourceConnector.edge} t: {targetConnector.edge} index: {sourceConnector.laneIndex}; {targetConnector.laneIndex}");
-                    PathMethod method = stateModifier == StateModifier.AnyConnector
+                    Logger.DebugTool($"NOT_FOUND: s: {sourceConnector.edge} t: {targetConnector.edge} index: {sourceConnector.laneIndex}; {targetConnector.laneIndex} || sm:({stateModifier}) scT{sourceConnector.connectionType} | tcT{targetConnector.connectionType}");
+                    PathMethod method = (stateModifier & StateModifier.AnyConnector) != 0
                         ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
                         : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
                     bool notAllowed = sourceConnector.edge == targetConnector.edge && (method & PathMethod.Track) != 0;
@@ -394,7 +394,7 @@ namespace Traffic.Tools
                             sourceConnector.edge == modifiedConnections.edgeEntity &&
                             sourceConnector.laneIndex == modifiedConnections.laneIndex)
                         {
-                            PathMethod method = stateModifier == StateModifier.AnyConnector
+                            PathMethod method = (stateModifier & StateModifier.AnyConnector) != 0
                                 ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
                                 : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
 
@@ -405,7 +405,7 @@ namespace Traffic.Tools
                                 laneIndexMap,
                                 new float3x2(sourceConnector.lanePosition, targetConnector.lanePosition),
                                 new int4(sourceConnector.carriagewayAndGroupIndex, targetConnector.carriagewayAndGroupIndex),
-                                stateModifier == StateModifier.AnyConnector
+                                (stateModifier & StateModifier.AnyConnector) != 0
                                     ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
                                     : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
                                 (stateModifier & StateModifier.MakeUnsafe) != 0,

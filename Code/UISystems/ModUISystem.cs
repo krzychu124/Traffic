@@ -258,6 +258,7 @@ namespace Traffic.UISystems
             if (!_affectedIntersections.Contains(e))
             {
                 _affectedIntersections.Add(e);
+                _affectedIntersectionsBinding?.TriggerUpdate();
             }
         }
 

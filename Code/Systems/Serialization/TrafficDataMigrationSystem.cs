@@ -103,9 +103,19 @@ namespace Traffic.Systems.Serialization
             {
                 using (NativeArray<ArchetypeChunk> chunks = dataOwnersQuery.ToArchetypeChunkArray(Allocator.TempJob))
                 {
+                    ComponentTypeHandle<DataOwner> dataOwnerHandle = SystemAPI.GetComponentTypeHandle<DataOwner>(true);
+                    int counter = 0;
+                    foreach (ArchetypeChunk chunk in chunks)
+                    {
+                        NativeArray<DataOwner> owners = chunk.GetNativeArray(ref dataOwnerHandle);
+                        foreach (DataOwner dataOwner in owners)
+                        {
+                            counter = math.select(counter, counter+1, dataOwner.entity != Entity.Null);
+                        }
+                    }
                     int items = dataOwnersQuery.CalculateEntityCount();
-                    Logger.Serialization($"Allocating NativeParallelMultiHashMap with {items * 4} capacity");
-                    referenceMap = new NativeParallelMultiHashMap<Entity, Entity>(items * 4, Allocator.TempJob);
+                    Logger.Info($"[ValidateLoadedData] Allocating NativeParallelMultiHashMap with {counter * 4} capacity (count: {counter}, item: {items})");
+                    referenceMap = new NativeParallelMultiHashMap<Entity, Entity>(counter * 4, Allocator.TempJob);
                     GetCollectDataOwnerReferencesJob(chunks, referenceMap).Complete();
                 }
             }
@@ -115,7 +125,7 @@ namespace Traffic.Systems.Serialization
             }
 
             Profiler.EndSample();
-            Logger.Info($"Node -> LaneConnection DataOwner map: {referenceMap.Count()}, capacity: {referenceMap.Capacity}");
+            Logger.Info($"[ValidateLoadedData] Node -> LaneConnection DataOwner map: {referenceMap.Count()}, capacity: {referenceMap.Capacity}");
 
             NativeQueue<Entity> affectedEntities = new NativeQueue<Entity>(Allocator.TempJob);
             using (EntityCommandBuffer commandBuffer = new EntityCommandBuffer(Allocator.TempJob))
@@ -135,6 +145,7 @@ namespace Traffic.Systems.Serialization
                     netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
                     roadCompositionData = SystemAPI.GetComponentLookup<RoadComposition>(true),
                     trackCompositionData = SystemAPI.GetComponentLookup<TrackComposition>(true),
+                    trackLaneData = SystemAPI.GetComponentLookup<TrackLaneData>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
                     fakePrefabEntity = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,
                     dataOwnerRefs = referenceMap.AsReadOnly(),
@@ -180,9 +191,19 @@ namespace Traffic.Systems.Serialization
             {
                 using (NativeArray<ArchetypeChunk> nodeChunks = nodesWithLaneConnectionsQuery.ToArchetypeChunkArray(Allocator.TempJob))
                 {
+                    ComponentTypeHandle<DataOwner> dataOwnerHandle = SystemAPI.GetComponentTypeHandle<DataOwner>(true);
+                    int counter = 0;
+                    foreach (ArchetypeChunk chunk in nodeChunks)
+                    {
+                        NativeArray<DataOwner> owners = chunk.GetNativeArray(ref dataOwnerHandle);
+                        foreach (DataOwner dataOwner in owners)
+                        {
+                            counter = math.select(counter, counter+1, dataOwner.entity != Entity.Null);
+                        }
+                    }
                     int items = SystemAPI.QueryBuilder().WithAll<DataOwner>().WithNone<Deleted>().Build().CalculateEntityCount();
-                    Logger.Serialization($"Allocating NativeParallelMultiHashMap with {items * 4} capacity");
-                    referenceMap = new NativeParallelMultiHashMap<Entity, Entity>(items * 4, Allocator.TempJob);
+                    Logger.Info($"[ValidateLoadedDataReferences] Allocating NativeParallelMultiHashMap with {counter * 4} capacity (count: {counter}, item: {items})");
+                    referenceMap = new NativeParallelMultiHashMap<Entity, Entity>(counter * 4, Allocator.TempJob);
                     GetCollectLaneConnectionDataReferencesJob(nodeChunks, referenceMap).Complete();
                 }
             }
@@ -190,7 +211,7 @@ namespace Traffic.Systems.Serialization
             {
                 referenceMap = new NativeParallelMultiHashMap<Entity, Entity>(2, Allocator.TempJob);
             }
-            Logger.Info($"Node -> LaneConnection DataOwner map: {referenceMap.Count()}, capacity: {referenceMap.Capacity}");
+            Logger.Info($"[ValidateLoadedDataReferences] Node -> LaneConnection DataOwner map: {referenceMap.Count()}, capacity: {referenceMap.Capacity} ");
             Profiler.EndSample();
 
             EntityQuery dataOwnerQuery = SystemAPI.QueryBuilder().WithAll<DataOwner>().WithNone<Deleted>().Build();
@@ -345,8 +366,8 @@ namespace Traffic.Systems.Serialization
                     entityTypeHandle = SystemAPI.GetEntityTypeHandle(),
                     laneConnectionsTypeHandle = SystemAPI.GetBufferTypeHandle<ModifiedLaneConnections>(true),
                     chunks = chunks,
-                    referenceMap = referenceMap.AsParallelWriter(),
-                }.ScheduleParallel(chunks.Length, 4, Dependency);
+                    referenceMap = referenceMap,
+                }.Schedule(chunks.Length, Dependency);
             }
             return job;
         }
@@ -368,8 +389,8 @@ namespace Traffic.Systems.Serialization
                     dataOwnerTypeHandle = SystemAPI.GetComponentTypeHandle<DataOwner>(true),
                     laneConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),
                     chunks = chunks,
-                    referenceMap = referenceMap.AsParallelWriter(),
-                }.ScheduleParallel(chunks.Length, 4, Dependency);
+                    referenceMap = referenceMap,
+                }.Schedule(chunks.Length, Dependency);
             }
             return job;
         }
@@ -405,7 +426,7 @@ namespace Traffic.Systems.Serialization
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public BufferTypeHandle<ModifiedLaneConnections> laneConnectionsTypeHandle;
             [ReadOnly] public NativeArray<ArchetypeChunk> chunks;
-            [WriteOnly] public NativeParallelMultiHashMap<Entity, Entity>.ParallelWriter referenceMap;
+            [WriteOnly] public NativeParallelMultiHashMap<Entity, Entity> referenceMap;
 
             public void Execute(int index)
             {
@@ -436,7 +457,7 @@ namespace Traffic.Systems.Serialization
             [ReadOnly] public ComponentTypeHandle<DataOwner> dataOwnerTypeHandle;
             [ReadOnly] public BufferLookup<ModifiedLaneConnections> laneConnectionsBuffer;
             [ReadOnly] public NativeArray<ArchetypeChunk> chunks;
-            [WriteOnly] public NativeParallelMultiHashMap<Entity, Entity>.ParallelWriter referenceMap;
+            [WriteOnly] public NativeParallelMultiHashMap<Entity, Entity> referenceMap;
 
             public void Execute(int index)
             {

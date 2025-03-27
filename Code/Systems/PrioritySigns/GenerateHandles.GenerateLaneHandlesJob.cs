@@ -40,7 +40,6 @@ namespace Traffic.Systems.PrioritySigns
             [ReadOnly] public ComponentLookup<EdgeLane> edgeLaneData;
             [ReadOnly] public ComponentLookup<Hidden> hiddenData;
             [ReadOnly] public ComponentLookup<Lane> laneData;
-            [ReadOnly] public ComponentLookup<LaneHandle> laneHandleData;
             [ReadOnly] public ComponentLookup<MasterLane> masterLaneData;
             [ReadOnly] public ComponentLookup<NetCompositionData> netCompositionData;
             [ReadOnly] public ComponentLookup<NetLaneData> netLaneData;
@@ -57,7 +56,6 @@ namespace Traffic.Systems.PrioritySigns
             {
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 NativeArray<EditIntersection> editIntersections = chunk.GetNativeArray(ref editIntersectionType);
-                BufferAccessor<PriorityHandle> existingPriorityHandles = chunk.GetBufferAccessor(ref priorityHandleType);
                 NativeParallelMultiHashMap<NodeEdgeLaneKey, Connection> connections = new(8, Allocator.Temp);
                 NativeList<PriorityHandle> collectedPriorityHandles = new NativeList<PriorityHandle>(4, Allocator.Temp);
                 NativeList<ValueTuple<Entity, LaneHandle, NativeHashSet<EdgeToEdgeKey>>> generatedLaneHandles = new NativeList<ValueTuple<Entity, LaneHandle, NativeHashSet<EdgeToEdgeKey>>>(2, Allocator.Temp);
@@ -178,13 +176,9 @@ namespace Traffic.Systems.PrioritySigns
                                 }
 
                                 Curve curve = curveData[subLaneEntity];
-                                if (matchingDelta.y)
-                                {
-                                    curve.m_Bezier = MathUtils.Invert(curve.m_Bezier);
-                                }
-
+                                curve.m_Bezier = MathUtils.Invert(curve.m_Bezier);
                                 Lane lane = laneData[subLaneEntity];
-                                PathNode pathNode = edgeValue.m_End ? lane.m_EndNode : lane.m_StartNode;
+                                PathNode pathNode = lane.m_EndNode;
                                 int laneIndex = pathNode.GetLaneIndex() & 0xff;
 
                                 Entity laneHandle = commandBuffer.CreateEntity();

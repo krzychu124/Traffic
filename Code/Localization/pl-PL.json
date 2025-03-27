@@ -118,7 +118,7 @@
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Title": "Usuń połączenia pasów",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveAllConnections].Tooltip.Message": "Usuwa połączenia pasów ruchu, które zostały skonfigurowane przez narzędzie do łączenia pasów ruchu. Pomija połączenia dwukierunkowe, ponieważ nie są one jeszcze obsługiwane.",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Title": "Usuń połączenia do zawracania",
-    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "Usuwa połączenia zawracania z wybranego skrzyżowania, tylko połączenia pasów w obrębie tej samej drogi",
+    "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUTurns].Tooltip.Message": "Usuwa połączenia do zawracania z wybranego skrzyżowania, tylko połączenia pasów w obrębie tej samej drogi",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Title": "Niebezpieczne połączenie",
     "Traffic.UI.Tools[LaneConnector].Toolbox.Action[RemoveUnsafe].Tooltip.Message": "Usuwa niebezpieczne połączenia pasów ruchu z wybranego skrzyżowania.\nNiebezpieczne połączenia pasów ruchu to połączenia o podwyższonym koszcie przy wyszukiwaniu trasy, co oznacza, że połączenie pasa ma niższy priorytet wyboru, jeśli dostępne są inne opcje",
     "TrafficUI.Tools[Priorities].Toolbox.Label.ApplyMode": "Tryb stosowania",

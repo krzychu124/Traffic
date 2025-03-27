@@ -52,7 +52,6 @@ namespace Traffic.Systems.PrioritySigns
                 edgeGeometryData = SystemAPI.GetComponentLookup<EdgeGeometry>(true),
                 hiddenData = SystemAPI.GetComponentLookup<Hidden>(true),
                 laneData = SystemAPI.GetComponentLookup<Lane>(true),
-                laneHandleData = SystemAPI.GetComponentLookup<LaneHandle>(true),
                 masterLaneData = SystemAPI.GetComponentLookup<MasterLane>(true),
                 nodeData = SystemAPI.GetComponentLookup<Node>(true),
                 netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),

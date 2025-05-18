@@ -458,6 +458,38 @@ namespace Traffic.Tools
             return false;
         }
 
+        protected override bool GetRaycastResult(out ControlPoint controlPoint)
+        {
+            if (base.GetRaycastResult(out controlPoint))
+            {
+                return IsCompatibleRaycastResult(controlPoint.m_OriginalEntity);
+            }
+            return false;
+        }
+
+        protected override bool GetRaycastResult(out ControlPoint controlPoint, out bool forceUpdate)
+        {
+            if (base.GetRaycastResult(out controlPoint, out forceUpdate))
+            {
+                return IsCompatibleRaycastResult(controlPoint.m_OriginalEntity);
+            }
+            return false;
+        }
+
+        private bool IsCompatibleRaycastResult(Entity entity)
+        {
+            if (!EntityManager.HasComponent<Node>(entity))
+            {
+                return false;
+            }
+            if (!EntityManager.TryGetBuffer(entity, true, out DynamicBuffer<ConnectedEdge> edges) ||
+                edges.Length < 2)
+            {
+                return false;
+            }
+            return !EntityManager.TryGetComponent(entity, out TrafficLights trafficLights) || (trafficLights.m_Flags & TrafficLightFlags.MoveableBridge) == 0;
+        }
+
         private bool IsApplyAllowed(bool useVanilla = true) {
             if (useVanilla)
             {
@@ -522,9 +554,11 @@ namespace Traffic.Tools
             switch (_state)
             {
                 case State.Default:
-                    if (IsApplyAllowed(useVanilla: false) && GetRaycastResult(out Entity entity, out RaycastHit _) &&
-                        EntityManager.HasComponent<Node>(entity))
+                    if (IsApplyAllowed(useVanilla: false) && 
+                        GetRaycastResult(out ControlPoint cp, out bool forceUpdate) &&
+                        !forceUpdate)
                     {
+                        Entity entity = cp.m_OriginalEntity;
                         Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|Entity: {entity}");
                         applyMode = ApplyMode.None;
                         _state = State.SelectingSourceConnector;

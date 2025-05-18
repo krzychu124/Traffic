@@ -1,5 +1,3 @@
-﻿## v.0.2.7.2
+﻿## v.0.2.8.0
 
-- Priorities: fixed incorrect lane-end selection which led to overlay handle being generated on the wrong segment lane and applying priority on the wrong lane
-- Translations: new language - Português 
-- Translations: updated with the latest version from Crowdin
+_Compatibility fix for the game update 1.3.3f1_

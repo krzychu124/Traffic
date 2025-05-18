@@ -26,17 +26,24 @@ namespace Traffic.Utils
                 );
                 return;
             }
-            EntityQueryDesc originalQueryDesc = originalQuery.GetEntityQueryDesc();
+            EntityQueryDesc[] originalQueryDescs = originalQuery.GetEntityQueryDescs();
             // add ModifiedLaneConnections to force vanilla skip all entities with the buffer component
-            originalQueryDesc.None = originalQueryDesc.None.Append(ComponentType.ReadOnly<ModifiedLaneConnections>()).ToArray();
-            
-            MethodInfo getQueryMethod = typeof(ComponentSystemBase).GetMethod("GetEntityQuery", BindingFlags.Instance | BindingFlags.NonPublic, null, CallingConventions.Any, new Type[]{typeof(EntityQueryDesc[])}, Array.Empty<ParameterModifier>());
-            // generate EntityQuery using LaneSystem
-            EntityQuery modifiedQuery = (EntityQuery)getQueryMethod.Invoke(laneSystem, new object[] { new EntityQueryDesc[] {originalQueryDesc} });
-            // replace current LaneSystem query to use more restrictive
-            queryField.SetValue(laneSystem, modifiedQuery);
-            // add EntityQuery to LaneSystem update check
-            laneSystem.RequireForUpdate(modifiedQuery);
+            ComponentType componentType = ComponentType.ReadOnly<ModifiedLaneConnections>();
+            foreach (EntityQueryDesc originalQueryDesc in originalQueryDescs)
+            {
+                if (originalQueryDesc.None.Contains(componentType))
+                {
+                    continue;
+                }
+                originalQueryDesc.None = originalQueryDesc.None.Append(componentType).ToArray();
+                MethodInfo getQueryMethod = typeof(ComponentSystemBase).GetMethod("GetEntityQuery", BindingFlags.Instance | BindingFlags.NonPublic, null, CallingConventions.Any, new Type[] { typeof(EntityQueryDesc[]) }, Array.Empty<ParameterModifier>());
+                // generate EntityQuery using LaneSystem
+                EntityQuery modifiedQuery = (EntityQuery)getQueryMethod.Invoke(laneSystem, new object[] { new EntityQueryDesc[] { originalQueryDesc } });
+                // replace current LaneSystem query to use more restrictive
+                queryField.SetValue(laneSystem, modifiedQuery);
+                // add EntityQuery to LaneSystem update check
+                laneSystem.RequireForUpdate(modifiedQuery);
+            }
         }
     }
 }

@@ -4,8 +4,20 @@ using Game.Settings;
 namespace Traffic
 {
     
-    [SettingsUIMouseAction(KeyBindAction.ApplyTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"})]
-    [SettingsUIMouseAction(KeyBindAction.CancelTool, ActionType.Button, false, usages:  new []{"Traffic.Tool"})]
+    [SettingsUIMouseAction(
+        KeyBindAction.ApplyTool,
+        ActionType.Button,
+        SettingsUIInputActionAttribute.kDefaultRebindOptions,
+        ModifierOptions.Disallow,
+        false,
+        usages: new[] { ModKeyUsages.ModToolActive })]
+    [SettingsUIMouseAction(
+        KeyBindAction.CancelTool,
+        ActionType.Button,
+        SettingsUIInputActionAttribute.kDefaultRebindOptions,
+        ModifierOptions.Disallow,
+        false,
+        usages: new[] { ModKeyUsages.ModToolActive })]
     [SettingsUIKeyboardAction(KeyBindAction.ToggleLaneConnectorTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
     [SettingsUIKeyboardAction(KeyBindAction.TogglePrioritiesTool, Usages.kDefaultUsage, Usages.kEditorUsage, Usages.kToolUsage)]
     [SettingsUIKeyboardAction(KeyBindAction.RemoveAllConnections, Usages.kToolUsage, ModKeyUsages.LaneConnectorToolActive)]
@@ -164,6 +176,7 @@ namespace Traffic
 
         internal static class ModKeyUsages
         {
+            internal const string ModToolActive = "Traffic.Tool";
             internal const string PrioritiesToolActive = "Traffic.Tool.Priorities";
             internal const string LaneConnectorToolActive = "Traffic.Tool.LaneConnector";
             internal const string SelectedIntersection = "Traffic.Tool.SelectedIntersection";

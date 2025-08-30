@@ -54,6 +54,7 @@ namespace Traffic
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUTurns), "Remove U-Turns" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.RemoveUnsafe), "Remove Unsafe Lane Connections" },
                     { _setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.ResetIntersectionToDefaults), "Reset selected intersection to defaults" },
+                    {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesToggleDisplayMode), "Toggle Priority Display Mode"},
                     {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesPriority), "Use Priority Action"},
                     {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesYield), "Use Yield Action"},
                     {_setting.GetBindingKeyLocaleID(ModSettings.KeyBindAction.PrioritiesStop), "Use Stop Action"},

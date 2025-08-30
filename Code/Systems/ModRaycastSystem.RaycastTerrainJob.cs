@@ -25,7 +25,7 @@ namespace Traffic.Systems
             public void Execute() {
 
                 Line3.Segment segment = input.line;
-                if ((input.typeMask & TypeMask.Terrain) != 0 && TerrainUtils.Raycast(ref terrainData, segment, false, out float t2, out float3 normal))
+                if ((input.typeMask & TypeMask.Terrain) != 0 && TerrainUtils.Raycast(ref terrainData, segment, false, out float t2, out float3 normal, out _))
                 {
                     float3 pos = MathUtils.Position(segment, t2);
                     if (input.heightOverride > 0f)

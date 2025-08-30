@@ -1,6 +1,13 @@
 declare module "cs2/l10n" {
   import { FC, FunctionComponent, MemoExoticComponent } from 'react';
   
+  export interface LocComponent<P = unknown> extends MemoExoticComponent<FunctionComponent<P>> {
+  	renderString: LocStringRenderer<P>;
+  	propsAreEqual: PropsAreEqual<P>;
+  }
+  export type LocStringRenderer<P> = (loc: Localization, props: P) => string;
+  export type PropsAreEqual<P> = (prevProps: P, nextProps: P) => boolean;
+  export type LocReactNode = JSX.Element | string;
   export interface Typed<T extends string> {
   	__Type: T;
   }
@@ -41,7 +48,9 @@ declare module "cs2/l10n" {
   	Temperature = "temperature",
   	NetElevation = "netElevation",
   	ScreenFrequency = "screenFrequency",
-  	Custom = "custom"
+  	Height = "height",
+  	Custom = "custom",
+  	DurationSeconds = "durationSeconds"
   }
   export enum LocElementType {
   	Bounds = "Game.UI.Localization.LocalizedBounds",
@@ -99,15 +108,12 @@ declare module "cs2/l10n" {
   	unitSettings: UnitSettings;
   }
   export function useCachedLocalization(): Localization;
-  export interface LocComponent<P = unknown> extends MemoExoticComponent<FunctionComponent<P>> {
-  	renderString: LocStringRenderer<P>;
-  	propsAreEqual: PropsAreEqual<P>;
-  }
-  export type LocStringRenderer<P> = (loc: Localization, props: P) => string;
-  export type PropsAreEqual<P> = (prevProps: P, nextProps: P) => boolean;
-  export type LocReactNode = JSX.Element | string;
   export interface LocalizedProps {
   	value: LocElement;
+  	transformer?: LocTransformer;
+  }
+  export interface LocTransformer {
+  	(value: string): string;
   }
   export export const Localized: LocComponent<LocalizedProps>;
   export interface LocalizedBoundsProps {

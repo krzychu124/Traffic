@@ -85,7 +85,7 @@ namespace Traffic.Systems.Serialization
                     new MessageDialog("Traffic mod data loading",
                         $"**Traffic** mod couldn't load data from {count} of {allIntersections} intersections.\n\n" +
                         "Use **Traffic's Lane Connector tool** to open loading results dialog for more information.",
-                        LocalizedString.Id("Common.ERROR_DIALOG_CONTINUE")), null);
+                        LocalizedString.Id("Common.ERROR_ACTION[Continue]")), null);
             }
 
             Logger.Info($"{nameof(TrafficDataMigrationSystem)} {(regularValidationOnly ? "validating" : "migrating")} data version {_version} done. Found {count} affected nodes of {allIntersections}");

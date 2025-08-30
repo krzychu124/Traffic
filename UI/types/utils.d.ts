@@ -19,6 +19,7 @@ declare module "cs2/utils" {
   export export function useFormattedLargeNumber(value: number): string;
   export export function useRem(): number;
   export export function useCssLength(length: string): number;
+  export export function preloadImages<T extends Record<string, string> | string[]>(urls: T): T;
   
   export {};
   

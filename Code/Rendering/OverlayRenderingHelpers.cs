@@ -57,7 +57,7 @@ namespace Traffic.Rendering
         public static void DrawEdgeHalfOutline(Segment edgeSegment, ref OverlayRenderSystem.Buffer overlayBuffer, Color color, float lineWidth, bool isDashed = false)
         {
             //start edge line
-            overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth);
+            overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.a, edgeSegment.m_Right.a), lineWidth, float2.zero);
             if (!isDashed)
             {
                 //left edge line
@@ -73,7 +73,7 @@ namespace Traffic.Rendering
                 overlayBuffer.DrawDashedCurve(color, color, 0, 0, edgeSegment.m_Right, lineWidth, 2, 0.4f);
             }
             //middle edge cut line
-            overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth);
+            overlayBuffer.DrawLine(color, color, 0, 0, new Line3.Segment(edgeSegment.m_Left.d, edgeSegment.m_Right.d), lineWidth, float2.zero);
         }
     }
 }

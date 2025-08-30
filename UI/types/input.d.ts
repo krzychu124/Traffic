@@ -1,26 +1,26 @@
 declare module "cs2/input" {
   import React$1 from 'react';
-  import { CSSProperties, ReactNode } from 'react';
+  import { CSSProperties, PropsWithChildren, ReactNode } from 'react';
   
-  /**
-   * Special focus key that disables the focus of the component.
-   */
-  export export const FOCUS_DISABLED: unique symbol;
-  /**
-   * Special focus key that assigns an internally generated, unique focus key to the component.
-   *
-   * This is useful if the component is inside of a `NavigationScope` and there is no need to manually control focus,
-   * or the focus key is defined by a higher level `FocusKeyOverride` component.
-   */
-  export export const FOCUS_AUTO: unique symbol;
-  export type FocusKey = typeof FOCUS_DISABLED | typeof FOCUS_AUTO | UniqueFocusKey;
-  export type UniqueFocusKey = FocusSymbol | string | number;
   export export class FocusSymbol {
   	readonly debugName: string;
   	readonly r: number;
   	constructor(debugName: string);
   	toString(): string;
   }
+  /**
+   * Special focus key that disables the focus of the component.
+   */
+  export export const FOCUS_DISABLED: FocusSymbol;
+  /**
+   * Special focus key that assigns an internally generated, unique focus key to the component.
+   *
+   * This is useful if the component is inside of a `NavigationScope` and there is no need to manually control focus,
+   * or the focus key is defined by a higher level `FocusKeyOverride` component.
+   */
+  export export const FOCUS_AUTO: FocusSymbol;
+  export type FocusKey = typeof FOCUS_DISABLED | typeof FOCUS_AUTO | UniqueFocusKey;
+  export type UniqueFocusKey = FocusSymbol | string | number;
   export export function useUniqueFocusKey(focusKey: FocusKey, debugName: string): UniqueFocusKey | null;
   export interface FocusController {
   	isChildFocused(focusKey: UniqueFocusKey): boolean;
@@ -202,22 +202,52 @@ declare module "cs2/input" {
   export export const focusAnchorBottom: Number2;
   export export const focusAnchorRight: Number2;
   export export function getElementFocusPosition(rect: FocusDOMRect | null, anchor: Number2): Number2 | null;
+  export interface NavigationScopeProps {
+  	focusKey?: FocusKey;
+  	debugName?: string;
+  	focused: UniqueFocusKey | null;
+  	direction?: NavigationDirection;
+  	activation?: FocusActivation;
+  	limits?: FocusLimits;
+  	onFocused?: (focused: boolean) => void;
+  	onChange: (key: UniqueFocusKey | null) => void;
+  	onRefocus?: RefocusHandler;
+  	allowFocusExit?: boolean;
+  	allowLooping?: boolean | "x" | "y";
+  	jumpSections?: boolean;
+  }
+  /**
+   * A stateless component that allows the user to navigate between multiple focusable children with a gamepad.
+   *
+   * The `onRefocus` callback controls what happens when the focus is lost within the scope.
+   *
+   * The focus behavior of the scope can be controlled by the `activation` prop.
+   *
+   * Optionally, a `focusKey` for the component itself can be set.
+   */
+  export export const NavigationScope: ({ focusKey, debugName, focused, direction, activation, limits, children, onFocused, onChange, onRefocus, allowFocusExit, allowLooping, jumpSections, }: React$1.PropsWithChildren<NavigationScopeProps>) => JSX.Element;
+  export type RefocusHandler = (focusController: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
+  export export const refocusClosestKeyIfNoFocus: RefocusHandler;
+  export export const refocusClosestKey: RefocusHandler;
   export interface AutoNavigationScopeProps {
   	focusKey?: FocusKey;
   	initialFocused?: UniqueFocusKey | null;
   	direction?: NavigationDirection;
   	activation?: FocusActivation;
   	limits?: FocusLimits;
-  	onRefocus?: (controller: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
+  	onRefocus?: RefocusHandler;
   	onChange?: (key: UniqueFocusKey | null) => void;
+  	onFocused?: (focused: boolean) => void;
   	allowFocusExit?: boolean;
   	forceFocus?: UniqueFocusKey | null;
   	debugName?: string;
+  	allowLooping?: boolean | "x" | "y";
+  	jumpSections?: boolean;
   }
   /**
    * Automatic navigation in lists, grids and forms.
    */
-  export export const AutoNavigationScope: ({ focusKey, initialFocused, direction, activation, limits, children, onChange, onRefocus, allowFocusExit, forceFocus, debugName }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
+  export export const AutoNavigationScope: ({ onRefocus, onChange, allowFocusExit, allowLooping, debugName, focusKey, forceFocus, initialFocused, ...props }: React$1.PropsWithChildren<AutoNavigationScopeProps>) => JSX.Element;
   export interface FocusBoundaryProps {
   	disabled?: boolean;
   	onFocusChange?: FocusCallback;
@@ -289,7 +319,8 @@ declare module "cs2/input" {
   	openPanel = "open-panel",
   	closePanel = "close-panel",
   	openMenu = "open-menu",
-  	closeMenu = "close-menu"
+  	closeMenu = "close-menu",
+  	clickDisableButton = "click-disable-button"
   }
   export interface PassiveFocusDivProps extends React$1.HTMLAttributes<HTMLDivElement> {
   	onFocusChange?: (focused: boolean) => void;
@@ -354,33 +385,181 @@ declare module "cs2/input" {
    * Optionally, a `focusKey` for the component itself can be set.
    */
   export export const FocusScope: ({ focusKey, debugName, focused, activation, limits, children }: React$1.PropsWithChildren<FocusScopeProps>) => JSX.Element;
-  export interface NavigationScopeProps {
-  	focusKey?: FocusKey;
-  	debugName?: string;
-  	focused: UniqueFocusKey | null;
-  	direction?: NavigationDirection;
-  	activation?: FocusActivation;
-  	limits?: FocusLimits;
-  	onChange: (key: UniqueFocusKey | null) => void;
-  	onRefocus?: (controller: MultiChildFocusController, lastElement: FocusController | null) => UniqueFocusKey | null;
-  	allowFocusExit?: boolean;
-  }
-  /**
-   * A stateless component that allows the user to navigate between multiple focusable children with a gamepad.
-   *
-   * The `onRefocus` callback controls what happens when the focus is lost within the scope.
-   *
-   * The focus behavior of the scope can be controlled by the `activation` prop.
-   *
-   * Optionally, a `focusKey` for the component itself can be set.
-   */
-  export export const NavigationScope: ({ focusKey, debugName, focused, direction, activation, limits, children, onChange, onRefocus, allowFocusExit, }: React$1.PropsWithChildren<NavigationScopeProps>) => JSX.Element;
-  export export function refocusClosestKeyIfNoFocus(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
-  export export function refocusClosestKey(focusController: MultiChildFocusController, lastElement: FocusController | null): UniqueFocusKey | null;
   export interface SelectableFocusBoundaryProps {
   	onSelectedStateChanged?: (selected: boolean) => void;
   }
   export export const SelectableFocusBoundary: ({ onSelectedStateChanged, children }: React$1.PropsWithChildren<SelectableFocusBoundaryProps>) => JSX.Element;
+  export type Action = () => void | boolean;
+  export type Action1D = (value: number) => void | boolean;
+  export type Action2D = (value: Number2) => void | boolean;
+  export interface InputActionsDefinition {
+  	"Move Horizontal": Action1D;
+  	"Change Slider Value": Action1D;
+  	"Change Tool Option": Action1D;
+  	"Change Value": Action1D;
+  	"Change Line Schedule": Action1D;
+  	"Select Popup Button": Action1D;
+  	"Move Vertical": Action1D;
+  	"Switch Radio Station": Action1D;
+  	"Scroll Vertical": Action1D;
+  	"Scroll Assets": Action1D;
+  	"Select": Action;
+  	"Purchase Dev Tree Node": Action;
+  	"Select Chirp Sender": Action;
+  	"Save Game": Action;
+  	"Overwrite Save": Action;
+  	"Confirm": Action;
+  	"Expand Group": Action;
+  	"Collapse Group": Action;
+  	"Select Route": Action;
+  	"Remove Operating District": Action;
+  	"Upgrades Menu": Action;
+  	"Upgrades Menu Secondary": Action;
+  	"Purchase Map Tile": Action;
+  	"Unfollow Citizen": Action;
+  	"Like Chirp": Action;
+  	"Unlike Chirp": Action;
+  	"Enable Info Mode": Action;
+  	"Disable Info Mode": Action;
+  	"Toggle Tool Color Picker": Action;
+  	"Cinematic Mode": Action;
+  	"Photo Mode": Action;
+  	"Focus Citizen": Action;
+  	"Unfocus Citizen": Action;
+  	"Focus Line Panel": Action;
+  	"Focus Occupants Panel": Action;
+  	"Focus Info Panel": Action;
+  	"Quaternary Action": Action;
+  	"Close": Action;
+  	"Back": Action;
+  	"Leave Underground Mode": Action;
+  	"Leave Info View": Action;
+  	"Leave Map Tile View": Action;
+  	"Jump Section": Action1D;
+  	"Switch Tab": Action1D;
+  	"Switch Option Section": Action1D;
+  	"Switch DLC": Action1D;
+  	"Switch Ordering": Action1D;
+  	"Switch Radio Network": Action1D;
+  	"Change Time Scale": Action1D;
+  	"Switch Page": Action1D;
+  	"Default Tool": Action;
+  	"Default Tool UI": Action;
+  	"Tool Options": Action;
+  	"Switch Toolmode": Action;
+  	"Toggle Snapping": Action;
+  	"Toggle Contour Lines": Action;
+  	"Capture Keyframe": Action;
+  	"Reset Property": Action;
+  	"Toggle Property": Action;
+  	"Previous Tutorial Phase": Action;
+  	"Continue Tutorial": Action;
+  	"Finish Tutorial": Action;
+  	"Close Tutorial": Action;
+  	"Focus Tutorial List": Action;
+  	"Start Next Tutorial": Action;
+  	"Pause Simulation": Action;
+  	"Resume Simulation": Action;
+  	"Switch Speed": Action;
+  	"Speed 1": Action;
+  	"Speed 2": Action;
+  	"Speed 3": Action;
+  	"Bulldozer": Action;
+  	"Exit Underground Mode": Action;
+  	"Enter Underground Mode": Action;
+  	"Increase Elevation": Action;
+  	"Decrease Elevation": Action;
+  	"Change Elevation": Action1D;
+  	"Advisor": Action;
+  	"Quicksave": Action;
+  	"Quickload": Action;
+  	"Focus Selected Object": Action;
+  	"Hide UI": Action;
+  	"Map Tile Purchase Panel": Action;
+  	"Info View": Action;
+  	"Progression Panel": Action;
+  	"Economy Panel": Action;
+  	"City Information Panel": Action;
+  	"Statistic Panel": Action;
+  	"Transportation Overview Panel": Action;
+  	"Notification Panel": Action;
+  	"Chirper Panel": Action;
+  	"Lifepath Panel": Action;
+  	"Event Journal Panel": Action;
+  	"Radio Panel": Action;
+  	"Photo Mode Panel": Action;
+  	"Take Photo": Action;
+  	"Relocate Selected Object": Action;
+  	"Toggle Selected Object Active": Action;
+  	"Delete Selected Object": Action;
+  	"Toggle Selected Object Emptying": Action;
+  	"Toggle Selected Lot Edit": Action;
+  	"Toggle Follow Selected Citizen": Action;
+  	"Toggle Traffic Routes": Action;
+  	"Pause Menu": Action;
+  	"Load Game": Action;
+  	"Start Game": Action;
+  	"Save Options": Action;
+  	"Switch User": Action;
+  	"Unset Binding": Action;
+  	"Reset Binding": Action;
+  	"Switch Savegame Location": Action1D;
+  	"Show Advanced": Action;
+  	"Hide Advanced": Action;
+  	"Select Directory": Action;
+  	"Search Options": Action;
+  	"Clear Search": Action;
+  	"Credit Speed": Action1D;
+  	"Debug UI": Action;
+  	"Debug Prefab Tool": Action;
+  	"Debug Change Field": Action1D;
+  	"Debug Multiplier": Action1D;
+  }
+  export type InputAction = keyof InputActionsDefinition;
+  export type InputActionRequest = {
+  	action: InputAction;
+  	actionContext?: string;
+  };
+  export type InputActions = {
+  	[K in InputAction]?: InputActionsDefinition[K] | {
+  		actionContext?: string;
+  		onAction: InputActionsDefinition[K] | null;
+  	} | null;
+  };
+  export interface ButtonTheme {
+  	button: string;
+  	hint: string;
+  }
+  export interface ButtonSounds {
+  	select?: UISound | string | null;
+  	hover?: UISound | string | null;
+  	focus?: UISound | string | null;
+  }
+  export interface ButtonProps extends React$1.ButtonHTMLAttributes<HTMLButtonElement | HTMLDivElement> {
+  	focusKey?: FocusKey;
+  	debugName?: string;
+  	selected?: boolean;
+  	theme?: Partial<ButtonTheme>;
+  	sounds?: ButtonSounds | null;
+  	selectAction?: InputAction;
+  	selectSound?: UISound | string | null;
+  	tooltipLabel?: React$1.ReactNode;
+  	disableHint?: boolean;
+  	/** When the button is clicked or the SELECT button on a gamepad is pressed */
+  	onSelect?: () => void;
+  	as?: "button" | "div";
+  	hintAction?: InputAction;
+  	actionContext?: string;
+  	forceHint?: boolean;
+  	shortcut?: InputAction | InputActionRequest;
+  	allowFocusableChildren?: boolean;
+  }
+  export interface ClassProps {
+  	className?: string;
+  }
+  export interface StyleProps extends ClassProps {
+  	style?: React$1.CSSProperties;
+  }
   export interface ValueBinding<T> {
   	readonly value: T;
   	subscribe(listener?: BindingListener<T>): ValueSubscription<T>;
@@ -402,156 +581,76 @@ declare module "cs2/input" {
   }
   export interface ControlPath {
   	name: string;
-  	group: string;
+  	device: string;
   	displayName?: string;
+  }
+  export enum KeyboardLayout {
+  	AutoDetect = 0,
+  	International = 1
+  }
+  export enum ControlScheme {
+  	keyboardAndMouse = 0,
+  	gamepad = 1
   }
   export enum GamepadType {
   	Xbox = 0,
   	PS = 1
   }
-  export interface ClassProps {
-  	className?: string;
+  export interface InputActionHintsProps extends ClassProps {
+  	disabled?: boolean;
+  	specifiedActions?: string[];
+  	excludedActions?: string[];
+  	labels?: boolean;
+  	buttonAs?: ButtonProps["as"];
+  	delay?: number;
+  	delayIgnoreCounter?: number;
   }
-  export type Action = () => void | boolean;
-  export type Action1D = (value: number) => void | boolean;
-  export type Action2D = (value: Number2) => void | boolean;
-  export interface InputActionsDefinition {
-  	"Move Horizontal": Action1D;
-  	"Change Slider Value": Action1D;
-  	"Change Tool Option": Action1D;
-  	"Change Value": Action1D;
-  	"Move Vertical": Action1D;
-  	"Switch Radio Station": Action1D;
-  	"Scroll Vertical": Action1D;
-  	"Select": Action;
-  	"Purchase Dev Tree Node": Action;
-  	"Select Chirp Sender": Action;
-  	"Save Game": Action;
-  	"Expand Group": Action;
-  	"Collapse Group": Action;
-  	"Select Route": Action;
-  	"Remove Operating District": Action;
-  	"Upgrades Menu": Action;
-  	"Purchase Map Tile": Action;
-  	"Unfollow Citizen": Action;
-  	"Like Chirp": Action;
-  	"Unlike Chirp": Action;
-  	"Enable Info Mode": Action;
-  	"Disable Info Mode": Action;
-  	"Toggle Tool Color Picker": Action;
-  	"Cinematic Mode": Action;
-  	"Photo Mode": Action;
-  	"Back": Action;
-  	"Leave Underground Mode": Action;
-  	"Leave Info View": Action;
-  	"Switch Tab": Action1D;
-  	"Switch Option Section": Action1D;
-  	"Switch DLC": Action1D;
-  	"Switch Ordering": Action1D;
-  	"Switch Radio Network": Action1D;
-  	"Change Time Scale": Action1D;
-  	"Switch Page": Action1D;
-  	"Tool Options": Action;
-  	"Switch Toolmode": Action;
-  	"Toggle Snapping": Action;
-  	"Capture Keyframe": Action;
-  	"Reset Property": Action;
-  	"Toggle Property": Action;
-  	"Previous Tutorial Phase": Action;
-  	"Continue Tutorial": Action;
-  	"Focus Tutorial List": Action;
-  	"Pause Simulation": Action;
-  	"Resume Simulation": Action;
-  	"Switch Speed": Action;
-  	"Speed 1": Action;
-  	"Speed 2": Action;
-  	"Speed 3": Action;
-  	"Bulldozer": Action;
-  	"Change Elevation": Action1D;
-  	"Advisor": Action;
-  	"Quicksave": Action;
-  	"Quickload": Action;
-  	"Focus Selected Object": Action;
-  	"Hide UI": Action;
-  	"Map tile Purchase Panel": Action;
-  	"Info View": Action;
-  	"Progression Panel": Action;
-  	"Economy Panel": Action;
-  	"City Information Panel": Action;
-  	"Statistic Panel": Action;
-  	"Transportation Overview Panel": Action;
-  	"Chirper Panel": Action;
-  	"Lifepath Panel": Action;
-  	"Event Journal Panel": Action;
-  	"Radio Panel": Action;
-  	"Photo Mode Panel": Action;
-  	"Take Photo": Action;
-  	"Pause Menu": Action;
-  	"Load Game": Action;
-  	"Start Game": Action;
-  	"Save Options": Action;
-  	"Switch User": Action;
-  	"Unset Binding": Action;
-  	"Reset Binding": Action;
-  	"Switch Savegame Location": Action1D;
-  	"Show Advanced": Action;
-  	"Hide Advanced": Action;
-  	"Select Directory": Action;
-  	"Search Options": Action;
-  	"Clear Search": Action;
-  	"Debug UI": Action;
-  	"Debug Prefab Tool": Action;
-  	"Debug Change Field": Action1D;
-  	"Debug Multiplier": Action1D;
-  }
-  export type InputAction = keyof InputActionsDefinition;
-  export type InputActions = {
-  	[K in InputAction]?: InputActionsDefinition[K] | null;
-  };
-  export interface ButtonTheme {
-  	button: string;
-  }
-  export interface ButtonSounds {
-  	select?: UISound | string | null;
-  	hover?: UISound | string | null;
-  	focus?: UISound | string | null;
-  }
-  export interface ButtonProps extends React$1.ButtonHTMLAttributes<HTMLButtonElement | HTMLDivElement> {
-  	focusKey?: FocusKey;
-  	debugName?: string;
-  	selected?: boolean;
-  	theme?: Partial<ButtonTheme>;
-  	sounds?: ButtonSounds | null;
-  	selectAction?: InputAction;
-  	selectSound?: UISound | string | null;
-  	tooltipLabel?: React$1.ReactNode;
-  	/** When the button is clicked or the SELECT button on a gamepad is pressed */
-  	onSelect?: () => void;
-  	as?: "button" | "div";
-  }
+  export export const InputActionHints: (props: InputActionHintsProps & React$1.RefAttributes<HTMLDivElement>) => React$1.ReactElement<any, string | React$1.JSXElementConstructor<any>> | null;
+  export export const ActionHintLayout: ({ children, className, ...props }: ButtonProps) => JSX.Element;
+  export export function useGamepadType(): GamepadType;
+  export export function useKeyboardLayout(): KeyboardLayout;
+  export export function useLayoutMap(): Record<string, ControlPath>;
   export enum ShortInputPathOption {
   	FallbackToLong = 1,
   	FallbackToControl = 2
   }
-  export interface InputActionHintsProps extends ClassProps {
-  	disabled?: boolean;
-  	specifiedActions?: string[];
-  	labels?: boolean;
-  	buttonAs?: ButtonProps["as"];
+  export interface InputHintTheme {
+  	hint: string;
+  	button: string;
+  	icon: string;
+  	label: string;
   }
-  export export const InputActionHints: React$1.FC<InputActionHintsProps>;
+  export interface InputHintProps extends ClassProps, StyleProps {
+  	action?: InputAction;
+  	actionContext?: string;
+  	bindingIndex?: number;
+  	active?: boolean;
+  	controlScheme?: ControlScheme;
+  	theme?: Partial<InputHintTheme>;
+  	shortName?: ShortInputPathOption;
+  	showLabel?: boolean;
+  	tooltip?: boolean;
+  	tooltipClassName?: string;
+  }
+  export export const InputHint: ({ action, active, controlScheme, ...props }: InputHintProps) => JSX.Element | null;
+  export export const ActiveControlSchemeInputHint: (props: InputHintProps) => JSX.Element;
+  export export const FocusedInputHint: (props: InputHintProps) => JSX.Element | null;
+  export interface ControlIconsProps extends ClassProps, StyleProps {
+  	modifiers: ControlPath[];
+  	bindings: ControlPath[];
+  	showName?: boolean;
+  	shortName?: ShortInputPathOption;
+  	theme?: Partial<InputHintTheme>;
+  }
+  export export const ControlIcons: ({ modifiers, bindings, showName, shortName, theme, className, style, children }: React$1.PropsWithChildren<ControlIconsProps>) => JSX.Element;
   export interface ControlIconProps extends ClassProps {
   	binding: ControlPath;
   	modifier: boolean;
   	shortName?: ShortInputPathOption;
-  	style?: React$1.CSSProperties;
-  	iconClassName?: string;
-  	buttonClassName?: string;
+  	theme?: InputHintTheme;
   }
   export export const ControlIcon: React$1.FC<ControlIconProps>;
-  export export const ActionHintLayout: ({ children, className, ...props }: ButtonProps) => JSX.Element;
   export export function useInputControlIcon(binding: ControlPath): string | null;
-  export export function useGamepadType(): GamepadType;
   export enum GamepadButton$1 {
   	buttonSouth = 0,
   	buttonEast = 1,
@@ -593,23 +692,27 @@ declare module "cs2/input" {
   export export const InputActionBarrier: React$1.NamedExoticComponent<React$1.PropsWithChildren<InputActionBarrierProps>>;
   export interface InputActionConsumerProps {
   	actions: InputActions | null;
+  	actionContext?: string;
   	disabled?: boolean;
+  	ignoreFocusState?: boolean;
   }
   export export const InputActionConsumer: React$1.NamedExoticComponent<React$1.PropsWithChildren<InputActionConsumerProps>>;
   export interface SingleActionConsumerProps {
+  	action: InputAction;
   	disabled?: boolean;
+  	actionContext?: string;
   	onAction?: () => void;
   }
   /** When the Gamepad "A" button is pressed */
-  export export const SelectConsumer: ({ disabled, children, onAction }: React$1.PropsWithChildren<SingleActionConsumerProps>) => JSX.Element;
-  export interface ExpandConsumerProps extends SingleActionConsumerProps {
+  export export const SelectConsumer: ({ action, ...props }: React$1.PropsWithChildren<Partial<SingleActionConsumerProps>>) => JSX.Element;
+  /** When the Keyboard "ESC" or Gamepad "B" button is pressed */
+  export export const BackConsumer: ({ action, ...props }: React$1.PropsWithChildren<Partial<SingleActionConsumerProps>>) => JSX.Element;
+  export interface ExpandConsumerProps extends Omit<SingleActionConsumerProps, "action"> {
   	expanded: boolean;
   	expandable: boolean;
   }
   /** When the Gamepad "X" button is pressed */
   export export const ExpandConsumer: ({ expanded, expandable, disabled, children, onAction }: React$1.PropsWithChildren<ExpandConsumerProps>) => JSX.Element;
-  /** When the Keyboard "ESC" or Gamepad "B" button is pressed */
-  export export const BackConsumer: ({ disabled, children, onAction }: React$1.PropsWithChildren<SingleActionConsumerProps>) => JSX.Element;
   export interface InputActionEvent {
   	action: InputAction;
   	value: null | number | Number2;
@@ -617,12 +720,21 @@ declare module "cs2/input" {
   export export const inputActionNames$: ValueBinding<(keyof InputActionsDefinition)[]>;
   export export const onInputActionPerformed$: EventBinding<InputActionEvent>;
   export export const onInputActionReleased$: EventBinding<InputActionEvent>;
-  export export function setInputActionPriority(index: number, priority: number): void;
+  export export function setInputActionPriority(action: InputAction, requestId: string | null, priority: number, force: boolean): void;
   export export class InputStack {
   	_items: InputStackItem[];
   	contains(action: InputAction): boolean;
   	indexOf(action: InputAction): number;
-  	push(action: InputAction, callback: Function): void;
+  	lastIndexOf(action: InputAction): number;
+  	findItem(action: InputAction): {
+  		context: string;
+  		index: number;
+  	};
+  	findLastItem(action: InputAction): {
+  		context: string;
+  		index: number;
+  	};
+  	push(action: InputAction, context: string, callback: Function): void;
   	removeWhere(predicate: (action: InputAction) => boolean): void;
   	clear(): void;
   	dispatchInputEvent(action: InputAction, value: any): boolean;
@@ -630,8 +742,9 @@ declare module "cs2/input" {
   }
   export class InputStackItem {
   	readonly action: InputAction;
+  	readonly context: string;
   	readonly callback: Function;
-  	constructor(action: InputAction, callback: Function);
+  	constructor(action: InputAction, context: string, callback: Function);
   }
   export interface InputController {
   	attachChild(controller: InputController): void;
@@ -642,7 +755,12 @@ declare module "cs2/input" {
   export export const defaultInputController: InputController;
   export export const InputContext: React$1.Context<InputController>;
   export type InputStackTransformer = (stack: InputStack) => void;
-  export export function useInputController(enabled: boolean, transformer: InputStackTransformer | null): InputController;
+  export enum InputControllerState {
+  	Disabled = 0,
+  	ActiveOnFocus = 1,
+  	AlwaysActive = 2
+  }
+  export export function useInputController(state: InputControllerState, transformer: InputStackTransformer | null): InputController;
   export export class InputControllerImpl implements InputController {
   	private _parent;
   	private _child;

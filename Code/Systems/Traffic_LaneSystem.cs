@@ -302,7 +302,8 @@ namespace Traffic.Systems
         private ComponentTypeSet m_TempOwnerTypes;
         private ComponentTypeSet m_HideLaneTypes;
 
-        protected override void OnCreate() {
+        protected override void OnCreate()
+        {
             base.OnCreate();
             m_CityConfigurationSystem = base.World.GetOrCreateSystemManaged<CityConfigurationSystem>();
             m_ToolSystem = base.World.GetOrCreateSystemManaged<ToolSystem>();
@@ -2157,7 +2158,9 @@ namespace Traffic.Systems
                 {
                     ConnectPosition connectPosition = buffer[0];
                     NetCompositionData netCompositionData = m_PrefabCompositionData[connectPosition.m_NodeComposition];
-                    float num = connectPosition.m_IsEnd ? netCompositionData.m_RoundaboutSize.y : netCompositionData.m_RoundaboutSize.x;
+                    DynamicBuffer<NetCompositionPiece> pieces = m_PrefabCompositionPieces[connectPosition.m_EdgeComposition];
+                    float2 @float = NetCompositionHelpers.CalculateRoundaboutSize(netCompositionData, pieces);
+                    float num = connectPosition.m_IsEnd ? @float.y : @float.x;
                     float num2 = roundaboutSize - num;
                     for (int i = 0; i < buffer.Length; i++)
                     {
@@ -5301,8 +5304,10 @@ namespace Traffic.Systems
                 {
                     geometry = m_StartNodeGeometryData[edge].m_Geometry;
                 }
+                DynamicBuffer<NetCompositionPiece> pieces = m_PrefabCompositionPieces[composition.m_Edge];
+                float2 @float = NetCompositionHelpers.CalculateRoundaboutSize(netCompositionData2, pieces);
                 middleRadius = math.max(middleRadius, geometry.m_MiddleRadius);
-                roundaboutSize = math.max(roundaboutSize, math.select(netCompositionData2.m_RoundaboutSize.x, netCompositionData2.m_RoundaboutSize.y, isEnd));
+                roundaboutSize = math.max(roundaboutSize, math.select(@float.x, @float.y, isEnd));
                 bool isSideConnection = (netGeometryData.m_MergeLayers & prefabGeometryData.m_MergeLayers) == 0 && (prefabGeometryData.m_MergeLayers & Layer.Road) != 0;
                 LaneFlags laneFlags = (!includeAnchored) ? LaneFlags.FindAnchor : ((LaneFlags)0);
                 if (!m_UpdatedData.HasComponent(edge) && m_SubLanes.HasBuffer(edge))

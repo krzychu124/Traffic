@@ -7,11 +7,11 @@
         <!--The file where mod information which is required for publishing mod on PDX mods are stored-->
         <PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
         <LangVersion>9</LangVersion>
-        <Version>0.2.8.0</Version>
+        <Version>0.2.9.0</Version>
         <Title>Traffic</Title>
         <Authors>krzychu124</Authors>
-        <AssemblyVersion>0.2.8.0</AssemblyVersion>
-        <FileVersion>0.2.8.0</FileVersion>
+        <AssemblyVersion>0.2.9.0</AssemblyVersion>
+        <FileVersion>0.2.9.0</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -307,7 +307,7 @@
     </Target>
 
     <ItemGroup>
-      <PackageReference Include="Reinforced.Typings" Version="1.6.3">
+      <PackageReference Include="Reinforced.Typings" Version="1.6.5">
           <PrivateAssets>true</PrivateAssets>
       </PackageReference>
     </ItemGroup>

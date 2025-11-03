@@ -5,7 +5,6 @@ using Game.Prefabs;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
-using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -20,7 +19,7 @@ namespace Traffic.Systems.LaneConnections
     public partial class GenerateConnectorsSystem
     {
 #if WITH_BURST
-        [BurstCompile]
+        [Unity.Burst.BurstCompile]
 #endif
         private struct GenerateConnectionLanesJob : IJobChunk
         {            
@@ -56,7 +55,7 @@ namespace Traffic.Systems.LaneConnections
                         foreach (SubLane subLane in subLanes)
                         {
                             Entity subLaneEntity = subLane.m_SubLane;
-                            if ((subLane.m_PathMethods & (PathMethod.Road | PathMethod.Track)) == 0 || masterLaneData.HasComponent(subLaneEntity))
+                            if ((subLane.m_PathMethods & (PathMethod.Road | PathMethod.Track | PathMethod.Bicycle)) == 0 || masterLaneData.HasComponent(subLaneEntity))
                             {
                                 continue;
                             }

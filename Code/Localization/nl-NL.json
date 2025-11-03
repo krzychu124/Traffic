@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Verwijder verbinding",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Voltooi verbinding",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "U-Turn trackverbindingen zijn niet toegestaan!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Alleen weg rijkstrookverbindingen",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Alleen spoor verbindingen",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Gemengde rijstrook type verbindingen",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Maak onveilig",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Onveilige wegverbingen",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[verkeer] het ingaan van de rijkstrookverbinding mode om modificaties aan te brengen, gaat er voor zorgen dat alle verboden manoeuvres van verbonden wegen worden verwijderd",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[verkeer] het toepassen van verboden manoeuvre upgrade, zou resulteren in het opnieuw moeten instellen van de rijstrookverbindingen op een nabije kruising",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Verkeer] Het toepassen van de Verkeerslichten-upgrade zal de prioriteitsinstellingen op het geselecteerde kruispunt resetten",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Terugstellen naar standaard",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Actiemodus Wissen",
     "Traffic.UI.Tools[Priorities].Description": "Beheer van prioriteiten voor rijstroken op geselecteerde kruispunten",
-    "Traffic.UI.Tools[LaneConnector].Description": "Beheer van rijstrookverbindingen op geselecteerde kruispunten"
+    "Traffic.UI.Tools[LaneConnector].Description": "Beheer van rijstrookverbindingen op geselecteerde kruispunten",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Alleen weg rijkstrookverbindingen",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Alleen spoor verbindingen",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Gemengde rijstrook type verbindingen",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Onveilige wegverbingen"
 }

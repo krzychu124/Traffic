@@ -104,6 +104,7 @@ namespace Traffic.Tools
                     connectedEdgesBuffer = SystemAPI.GetBufferLookup<ConnectedEdge>(true),
                     lanePriorityBuffer = SystemAPI.GetBufferLookup<LanePriority>(true),
                     subLaneBuffer = SystemAPI.GetBufferLookup<SubLane>(true),
+                    generatedConnectionsBuffer = SystemAPI.GetBufferLookup<GeneratedConnection>(true),
                     tightCurvePrefabEntity = _tightCurveErrorPrefab,
                     leftHandTraffic = _cityConfigurationSystem.leftHandTraffic,
                     priorityToolActive = _toolSystem.activeTool == _priorityToolSystem,

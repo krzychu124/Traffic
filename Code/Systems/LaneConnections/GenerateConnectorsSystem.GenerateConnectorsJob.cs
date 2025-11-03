@@ -36,6 +36,7 @@ namespace Traffic.Systems.LaneConnections
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public ComponentLookup<NetCompositionData> prefabCompositionData;
             [ReadOnly] public ComponentLookup<NetLaneData> prefabNetLaneData;
+            [ReadOnly] public ComponentLookup<CarLaneData> prefabCarLaneData;
             [ReadOnly] public ComponentLookup<TrackLaneData> prefabTrackLaneData;
             [ReadOnly] public ComponentLookup<UtilityLaneData> prefabUtilityLaneData;
             [ReadOnly] public ComponentLookup<SlaveLane> slaveLaneData;
@@ -165,11 +166,16 @@ namespace Traffic.Systems.LaneConnections
                             // sb.AppendLine($"Disconnected: {netLaneData.m_Flags} & {laneFlags2}");
                             continue;
                         }
+                        CarLaneData carLaneData = default(CarLaneData);
                         TrackLaneData trackLaneData = default(TrackLaneData);
                         UtilityLaneData utilityLaneData = default(UtilityLaneData);
                         if ((netLaneData.m_Flags & LaneFlags.Track) != 0)
                         {
                             trackLaneData = prefabTrackLaneData[prefabRef2.m_Prefab];
+                        }
+                        if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
+                        {
+                            carLaneData = prefabCarLaneData[prefabRef2.m_Prefab];
                         }
                         
                         if ((netLaneData.m_Flags & (LaneFlags.Utility | LaneFlags.Pedestrian | LaneFlags.Parking | LaneFlags.ParkingLeft | LaneFlags.ParkingRight)) != 0)
@@ -232,10 +238,6 @@ namespace Traffic.Systems.LaneConnections
                             float3 tangent = MathUtils.StartTangent(curve.m_Bezier);
                             tangent = -MathUtils.Normalize(tangent, tangent.xz);
                             tangent.y = math.clamp(tangent.y, -1f, 1f);
-
-                            var roadTypeGroup = (netLaneData.m_Flags & (LaneFlags.Master | LaneFlags.Road)) == LaneFlags.Road ? 1 : 0;
-                            var trackTypeGroup = (int)trackLaneData.m_TrackTypes << 1;
-                            
                             ConnectPosition value = new ConnectPosition
                             {
                                 edge = edge,
@@ -244,8 +246,7 @@ namespace Traffic.Systems.LaneConnections
                                 position =  curve.m_Bezier.a,
                                 direction = tangent,
                                 isTwoWay = (netLaneData.m_Flags & LaneFlags.Twoway) != 0,
-                                vehicleGroup = (VehicleGroup)(trackTypeGroup | roadTypeGroup), //  |isSubway|isTrain|isTram|isCar|
-                                supportedType = GetConnectionType(netCompositionLaneData.m_Flags),
+                                vehicleGroup = GetVehicleGroup(netLaneData, carLaneData, trackLaneData)
                             };
 
                             if ((netLaneData.m_Flags & LaneFlags.Twoway) != 0)
@@ -270,6 +271,27 @@ namespace Traffic.Systems.LaneConnections
                 // Logger.Debug(sb.ToString());
             }
 
+            private VehicleGroup GetVehicleGroup(NetLaneData netLaneData, CarLaneData carLaneData, TrackLaneData trackLaneData)
+            {
+                VehicleGroup group = VehicleGroup.None;
+                if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
+                {
+                    if ((carLaneData.m_RoadTypes & RoadTypes.Bicycle) != 0)
+                    {
+                        group |= VehicleGroup.Bike;
+                    }
+                    if ((carLaneData.m_RoadTypes & RoadTypes.Car) != 0)
+                    {
+                        group |= VehicleGroup.Car;
+                    }
+                }
+                if ((netLaneData.m_Flags & LaneFlags.Track) != 0)
+                {
+                    group |= (VehicleGroup)((int)trackLaneData.m_TrackTypes << 1);
+                }
+                return group;
+            }
+
             private void CreateConnectors(Entity selectedIntersection, Entity node, NativeList<ConnectPosition> sourceConnectPositions, NativeList<ConnectPosition> targetConnectPositions) {
                 //todo handle two-way connections
                 NativeList<Entity> connectors = new NativeList<Entity>(sourceConnectPositions.Length + targetConnectPositions.Length, Allocator.Temp);
@@ -288,7 +310,6 @@ namespace Traffic.Systems.LaneConnections
                         direction = connectPosition.direction,
                         vehicleGroup = connectPosition.vehicleGroup,
                         connectorType = connectPosition.isTwoWay ? ConnectorType.TwoWay : ConnectorType.Source,
-                        connectionType = connectPosition.supportedType,
                     };
                     commandBuffer.AddComponent<Connector>(entity, connector);
                     commandBuffer.AddComponent(entity, default(Updated));
@@ -311,7 +332,6 @@ namespace Traffic.Systems.LaneConnections
                         direction = connectPosition.direction,
                         vehicleGroup = connectPosition.vehicleGroup,
                         connectorType = connectPosition.isTwoWay ? ConnectorType.TwoWay : ConnectorType.Target,
-                        connectionType = connectPosition.supportedType,
                     };
                     commandBuffer.AddComponent<Connector>(entity, connector);
                     commandBuffer.AddComponent(entity, default(Updated));
@@ -327,24 +347,6 @@ namespace Traffic.Systems.LaneConnections
                 }
 
                 connectors.Dispose();
-            }
-
-            private ConnectionType GetConnectionType(LaneFlags flags) {
-                ConnectionType type = 0;
-                if ((flags & LaneFlags.Road) != 0)
-                {
-                    type |= ConnectionType.Road;
-                }
-                if ((flags & LaneFlags.Track) != 0)
-                {
-                    type |= ConnectionType.Track;
-                }
-                if ((flags & LaneFlags.Utility) != 0)
-                {
-                    type |= ConnectionType.Utility;
-                }
-                
-                return type;
             }
         }
     }

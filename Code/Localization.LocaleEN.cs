@@ -153,13 +153,18 @@ namespace Traffic
                     { GetToolTooltipLocaleID("LaneConnector", nameof(LaneConnectorToolSystem.Tooltip.CompleteConnection)), "Complete Connection" },
                     { GetToolTooltipLocaleID("LaneConnector", nameof(LaneConnectorToolSystem.Tooltip.UTurnTrackNotAllowed)), "U-Turn track connections are not allowed!" },
                     /* lane connector tool state */
-                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.Road)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}"), "Road-only Lane Connectors" },
-                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.Track)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}"), "Track-only Lane Connectors" },
-                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.AnyConnector)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}"), "Mixed Lane Type Connectors" },
+                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.RoadOnly)}"), "Road-only Lane Connectors" },
+                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.TrackOnly)}"), "Track-only Lane Connectors" },
+                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.BikeOnly)}"), "Bike-only Lane Connectors" },
+                    { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.SharedLaneOnly)}"), "Mixed Lane Type Connectors" },
                     { GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.AnyConnector)}, {nameof(LaneConnectorToolSystem.StateModifier.MakeUnsafe)}"), "Make Unsafe" },
                     {
-                        GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.Road)}, {nameof(LaneConnectorToolSystem.StateModifier.FullMatch)}, {nameof(LaneConnectorToolSystem.StateModifier.MakeUnsafe)}"),
+                        GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.RoadOnly)}, {nameof(LaneConnectorToolSystem.StateModifier.MakeUnsafe)}"),
                         "Unsafe Road Lane Connection"
+                    },
+                    {
+                        GetToolTooltipLocaleID("LaneConnector", $"{nameof(LaneConnectorToolSystem.StateModifier.BikeOnly)}, {nameof(LaneConnectorToolSystem.StateModifier.MakeUnsafe)}"),
+                        "Unsafe Bike Lane Connection"
                     },
                     /* general feedback */
                     { GetToolTooltipLocaleID("FeedbackMessage", nameof(FeedbackMessageType.WarnResetForbiddenTurnUpgrades)), "[Traffic] Entering Lane Connection modification mode will remove Forbidden maneuvers from connected roads" },

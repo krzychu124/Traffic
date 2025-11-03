@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Удалить соединение",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Дополнить соединения",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Соединения, позволяющие разворот рельсового транспорта, не допускаются!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Соединители полос движения только для дорог",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Соединители полос только для рельсовых путей",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Соединители смешанного типа",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Сделать небезопасным",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Небезопасное соединение полос движения",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Вход в режим изменения соединений полос удалит запрещенные манёвры из соединенных дорог",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Применение команды обновления Запретных манёвров сбросит соединения на ближайшем перекрёстке",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Обновление светофоров сбросит настройки знаков приоритета на выбранном перекрёстке",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Сбросить до стандартного",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Переключить режим отображения",
     "Traffic.UI.Tools[Priorities].Description": "Изменение знаков приоритета дорожного движения на выбранном перекрёстке",
-    "Traffic.UI.Tools[LaneConnector].Description": "Изменение знаков направления движения по полосам на выбранном перекрёстке"
+    "Traffic.UI.Tools[LaneConnector].Description": "Изменение знаков направления движения по полосам на выбранном перекрёстке",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Соединители полос движения только для дорог",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Соединители полос только для рельсовых путей",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Соединители смешанного типа",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Небезопасное соединение полос движения"
 }

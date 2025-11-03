@@ -8,6 +8,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace Traffic.Rendering
 {
@@ -65,26 +66,26 @@ namespace Traffic.Rendering
                         float diameter = isSource || isTarget ? connectorSize : connectorSize * 1.1f;
                         float outline = isSource || isTarget ? diameter/2f : connectorSize * 0.3f;
                         Connector connector = connectors[j];
-                        if (IsNotMatchingModifier(modifier, connector))
-                        {
-                            continue;
-                        }
-                        if ((isUnsafe && (connector.vehicleGroup & ~VehicleGroup.Car) > 0) ||
-                            (forceRoad && (connector.vehicleGroup & ~VehicleGroup.Car) != 0) ||
-                            (forceTrack && (connector.vehicleGroup & VehicleGroup.Car) != 0))
+                        if ((isUnsafe && (connector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Bike)) == 0) ||
+                            (forceRoad && (connector.vehicleGroup & VehicleGroup.Car) == 0) ||
+                            (forceTrack && (connector.vehicleGroup & VehicleGroup.TrackGroup) == 0))
                         {
                             continue;
                         }
                         
                         if (renderTarget)
                         {
-                            if (sourceConnector.vehicleGroup == VehicleGroup.Car) {
-                                if ((connector.vehicleGroup & VehicleGroup.Car) == 0)
-                                {
-                                    continue;
-                                }
+                            if (sourceConnector.vehicleGroup == VehicleGroup.Car &&
+                                (connector.vehicleGroup & VehicleGroup.Car) == 0)
+                            {
+                                continue;
                             }
-                            else if (sourceConnector.vehicleGroup > VehicleGroup.Car && 
+                            if (sourceConnector.vehicleGroup == VehicleGroup.Bike && 
+                                (sourceConnector.vehicleGroup & connector.vehicleGroup) == 0)
+                            {
+                                continue;
+                            }
+                            if (sourceConnector.vehicleGroup > VehicleGroup.Car && 
                                 (sourceConnector.vehicleGroup & connector.vehicleGroup) == 0)
                             {
                                 continue;
@@ -95,12 +96,9 @@ namespace Traffic.Rendering
                         if ((connector.connectorType & ConnectorType.Source) != 0 && (renderSource || isSource))
                         {
                             overlayBuffer.DrawCircle(
-                                isSource 
-                                    ? colorSet.outlineActiveColor : connector.connectionType == ConnectionType.SharedCarTrack 
-                                        ? colorSet.outlineSourceMixedColor : connector.connectionType == ConnectionType.Track 
-                                            ? colorSet.outlineSourceTrackColor : colorSet.outlineSourceColor,
-                                colorSet.fillSourceColor,
-                                outline,
+                                isSource ? colorSet.outlineActiveColor : CalculateConnectorColor(connector, false, true),
+                                CalculateConnectorColor(connector, true, true),
+                                connector.vehicleGroup == VehicleGroup.Bike ? 0.1f : outline,
                                 0,
                                 new float2(0.0f, 1f),
                                 position,
@@ -109,10 +107,8 @@ namespace Traffic.Rendering
                         else if ((connector.connectorType & ConnectorType.Target) != 0 && renderTarget)
                         {
                             overlayBuffer.DrawCircle(
-                                connector.connectionType == ConnectionType.SharedCarTrack 
-                                    ? colorSet.outlineTargetMixedColor : connector.connectionType == ConnectionType.Track 
-                                        ? colorSet.outlineTargetTrackColor : colorSet.outlineTargetColor,
-                                colorSet.fillTargetColor,
+                                CalculateConnectorColor(connector, false, false),
+                                CalculateConnectorColor(connector, true, false),
                                 outline,
                                 0,
                                 new float2(0.0f, 1f),
@@ -135,12 +131,25 @@ namespace Traffic.Rendering
                 }  
             }
 
-            private bool IsNotMatchingModifier(LaneConnectorToolSystem.StateModifier stateModifier, Connector connector) {
-                return stateModifier == LaneConnectorToolSystem.StateModifier.Track && (connector.connectionType & (ConnectionType.Track)) == 0 ||
-                    stateModifier == LaneConnectorToolSystem.StateModifier.Road && (connector.connectionType & (ConnectionType.Road)) == 0 ||
-                    stateModifier == (LaneConnectorToolSystem.StateModifier.Road | LaneConnectorToolSystem.StateModifier.FullMatch)  && (connector.connectionType & (ConnectionType.Road)) != ConnectionType.Road ||
-                    stateModifier == (LaneConnectorToolSystem.StateModifier.Track | LaneConnectorToolSystem.StateModifier.FullMatch)  && (connector.connectionType & (ConnectionType.Track)) != ConnectionType.Track ||
-                    stateModifier == (LaneConnectorToolSystem.StateModifier.AnyConnector | LaneConnectorToolSystem.StateModifier.FullMatch) && (connector.connectionType & ConnectionType.SharedCarTrack) != ConnectionType.SharedCarTrack;
+            private Color CalculateConnectorColor(Connector connector, bool outline, bool isSource)
+            {
+                if (isSource)
+                {
+                    Color color = (connector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Tram)) == (VehicleGroup.Car | VehicleGroup.Tram) ? colorSet.outlineSourceMixedColor :
+                        (connector.vehicleGroup & VehicleGroup.TrackGroup) != 0 ? colorSet.outlineSourceTrackColor :
+                        connector.vehicleGroup == VehicleGroup.Bike ? colorSet.fillBikeSourceColor : colorSet.outlineSourceColor;
+                    return !outline ? color :
+                        connector.vehicleGroup == VehicleGroup.Bike ? colorSet.outlineBikeSourceColor : colorSet.fillSourceColor;
+                }
+                else
+                {
+                    Color color = (connector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Tram)) == (VehicleGroup.Car | VehicleGroup.Tram) ? colorSet.outlineTargetMixedColor :
+                        (connector.vehicleGroup & VehicleGroup.TrackGroup) != 0 ? colorSet.outlineTargetTrackColor :
+                        connector.vehicleGroup == VehicleGroup.Bike ? colorSet.outlineBikeSourceColor : colorSet.outlineTargetColor;
+                    return !outline
+                        ? color
+                        : colorSet.fillTargetColor;
+                }
             }
         }
     }

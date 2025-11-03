@@ -86,6 +86,8 @@ namespace Traffic.Rendering
                 outlineActiveColor = new Color(1f, 1f, 1f, 0.92f),
                 fillSourceColor =new Color(0f, 0.83f, 1f, 1f),
                 outlineSourceColor = new Color(0f, 0.83f, 1f, 1f),
+                outlineBikeSourceColor = new Color(0f, 1f, 0.43f),
+                fillBikeSourceColor = new Color(1f, 1f, 1f, 0.92f),
                 fillSourceTrackColor = Color.clear,
                 outlineSourceTrackColor = new Color(0.87f, 0.6f, 0.26f, 1f),
                 outlineSourceMixedColor = new Color(0.87f, 0.4f, 0.43f, 1f),
@@ -289,6 +291,8 @@ namespace Traffic.Rendering
             public Color outlineActiveColor;
             public Color fillSourceColor;
             public Color outlineSourceColor;
+            public Color fillBikeSourceColor;
+            public Color outlineBikeSourceColor;
             public Color fillSourceTrackColor;
             public Color outlineSourceTrackColor;
             public Color outlineSourceMixedColor;

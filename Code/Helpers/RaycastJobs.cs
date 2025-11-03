@@ -8,6 +8,7 @@ using Game.Common;
 using Traffic.CommonData;
 using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
+using Traffic.Systems.Helpers;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -81,23 +82,21 @@ namespace Traffic.Helpers
         
             public void Execute(int index) {
                 Entity entity = entities[index];
-                bool isStrict = (input.connectionType & ConnectionType.Strict) != 0;
-                ConnectionType nonStrict = input.connectionType & ~ConnectionType.Strict;
+                bool isStrict = input.isStrict;
                 if (connectorData.TryGetComponent(entity, out Connector connector) &&
                     (connector.connectorType & input.connectorType) != 0 &&
-                    (isStrict ? (connector.vehicleGroup & input.vehicleGroup) == input.vehicleGroup : (connector.vehicleGroup & input.vehicleGroup) != 0) &&
-                    (isStrict ? (connector.connectionType & nonStrict) == nonStrict : (connector.connectionType & nonStrict) != 0))
+                    ConnectionUtils.CanConnect(connector.vehicleGroup, input.vehicleGroup, isStrict))
                 {
                     result.Value = new CustomRaycastResult()
                     {
                         hit = new RaycastHit() { },
                         owner = entity
                     };
-                    Logger.DebugTool($"OK: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}] | nonStr: {nonStrict}");
+                    Logger.DebugTool($"OK: {entity}, {connector.position}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}]");
                 }
                 else
                 {
-                    Logger.DebugTool($"Fail: {entity}, {connector.position}, i: {connector.connectionType} => {input.connectionType} ({(connector.connectionType & input.connectionType) != 0}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}] | nonStr: {nonStrict}");
+                    Logger.DebugTool($"Fail: {entity}, {connector.position}) | {connector.connectorType} => {input.connectorType} ({(connector.connectorType & input.connectorType) != 0}) | [{connector.vehicleGroup} => {input.vehicleGroup}]");
                 }
             }
         }

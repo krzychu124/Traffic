@@ -49,6 +49,7 @@ namespace Traffic.Tools
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdgesBuffer;
             [ReadOnly] public BufferLookup<LanePriority> lanePriorityBuffer;
             [ReadOnly] public BufferLookup<SubLane> subLaneBuffer;
+            [ReadOnly] public BufferLookup<GeneratedConnection> generatedConnectionsBuffer;
             [ReadOnly] public Entity tightCurvePrefabEntity;
             [ReadOnly] public bool priorityToolActive;
             [ReadOnly] public bool leftHandTraffic;
@@ -76,7 +77,7 @@ namespace Traffic.Tools
                         temp.m_Original != Entity.Null && 
                         toolManagedData.HasComponent(temp.m_Original))
                     {
-                        if (CheckForTrackUTurn(entity))
+                        if (CheckForTrackUTurn(entity, modifiedConnectionsBuffer[i]))
                         {
                             commandBuffer.AddComponent<ToolActionBlocked>(entity);
                         }
@@ -357,12 +358,11 @@ namespace Traffic.Tools
                 return false;
             }
 
-            private bool CheckForTrackUTurn(Entity nodeEntity)
+            private bool CheckForTrackUTurn(Entity nodeEntity, DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections)
             {
                 if (tightCurvePrefabEntity != Entity.Null &&
-                    subLaneBuffer.HasBuffer(nodeEntity))
+                    subLaneBuffer.TryGetBuffer(nodeEntity, out DynamicBuffer<SubLane> subLanes))
                 {
-                    DynamicBuffer<SubLane> subLanes = subLaneBuffer[nodeEntity];
                     for (int i = 0; i < subLanes.Length; i++)
                     {
                         SubLane subLane = subLanes[i];
@@ -389,6 +389,23 @@ namespace Traffic.Tools
                                 iconCommandBuffer.Add(subLane.m_SubLane, tightCurvePrefabEntity, position, IconPriority.Warning, IconClusterLayer.Default, (IconFlags)0, Entity.Null, isTemp: true);
                                 commandBuffer.AddComponent(nodeEntity, default(Warning));
                                 commandBuffer.AddComponent(nodeEntity, default(BatchesUpdated));
+                            }
+                        }
+                    }
+                    for (int i = 0; i < modifiedLaneConnections.Length; i++)
+                    {
+                        ModifiedLaneConnections laneEndConnections = modifiedLaneConnections[i];
+                        if (generatedConnectionsBuffer.TryGetBuffer(laneEndConnections.modifiedConnections, out DynamicBuffer<GeneratedConnection> connections) && !connections.IsEmpty)
+                        {
+                            foreach (GeneratedConnection generatedConnection in connections)
+                            {
+                                if ((generatedConnection.method & PathMethod.Track) != 0 &&
+                                    generatedConnection.sourceEntity.Index == generatedConnection.targetEntity.Index)
+                                {
+                                    commandBuffer.AddComponent<Error>(nodeEntity);
+                                    commandBuffer.AddComponent<BatchesUpdated>(nodeEntity);
+                                    return true;
+                                }
                             }
                         }
                     }

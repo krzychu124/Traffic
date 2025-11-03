@@ -15,6 +15,5 @@ namespace Traffic.Components.LaneConnections
         public float3 direction;
         public VehicleGroup vehicleGroup;
         public ConnectorType connectorType;
-        public ConnectionType connectionType;
     }
 }

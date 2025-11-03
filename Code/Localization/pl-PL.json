@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Usuń połączenie",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Ukończ połączenie",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Połączenie do zawracania jest niedozwolone dla pasów ruchu pojazdów szynowych!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Połączenia droga-droga",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Połączenia tory-tory",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Połączenia mieszane",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Połączenie niebezpieczne",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Niebezpieczne połączenie pasów",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Wejście w tryb modyfikacji połączeń pasów usunie niedozwolone kierunki ruchu z połączonych dróg",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Zastosowanie Zakazu skrętu spowoduje zresetowanie połączeń pasów ruch na pobliskim skrzyżowaniu",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Zastosowanie sygnalizacji świetlnej zresetuje ustawienia pierwszeństwa na wybranym skrzyżowaniu",
@@ -138,5 +134,11 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Przywróć domyślne",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Przełącz tryb zastosowania",
     "Traffic.UI.Tools[Priorities].Description": "Zarządzaj pierwszeństwem przejazdu pasów ruchu na wybranym skrzyżowaniu",
-    "Traffic.UI.Tools[LaneConnector].Description": "Zarządzaj połączeniami pasów ruchu na wybranym skrzyżowaniu"
+    "Traffic.UI.Tools[LaneConnector].Description": "Zarządzaj połączeniami pasów ruchu na wybranym skrzyżowaniu",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Połączenia droga-droga",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Połączenia tory-tory",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Połączenia mieszane",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Niebezpieczne połączenie pasów",
+    "Traffic.Tooltip.Tools[LaneConnector][BikeOnly, MakeUnsafe]": "Niebezpieczne połączenie ścieżka rowerowa",
+    "Options.OPTION[Traffic.Traffic.Mod/PrioritiesToggleDisplayMode/binding]": "Tryb wyświetlania priorytetu"
 }

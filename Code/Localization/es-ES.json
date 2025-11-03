@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Quitar conexión",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Completar conexión",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "¡No están permitidos los giros en U en las vías!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Solo conectores de carril de caminos",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Solo conectores de carril de vías",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Conectores de carril mixtos",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Hacer inseguro",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Conexión de carril inseguro",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] El modo de modificación de conexión de carriles, eliminará las maniobras previamente prohibidas de las carreteras conectadas.",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] ¡La aplicación de prohibiciones de giro, restablecerán las conexiones de carriles en las intersecciones cercanas!",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] La aplicación de la mejora de semáforos, restablecerá los ajustes de prioridad en la intersección seleccionada",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Restablecer a Vanilla",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Alternar modo de acción",
     "Traffic.UI.Tools[Priorities].Description": "Gestionar las prioridades de los carriles en la intersección seleccionada",
-    "Traffic.UI.Tools[LaneConnector].Description": "Gestionar la conexión de carriles en la intersección seleccionada"
+    "Traffic.UI.Tools[LaneConnector].Description": "Gestionar la conexión de carriles en la intersección seleccionada",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Solo conectores de carril de caminos",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Solo conectores de carril de vías",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Conectores de carril mixtos",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Conexión de carril inseguro"
 }

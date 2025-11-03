@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Supprimer la connexion",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Compléter la connexion",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Les connexions effectuant des demi-tours en U ne sont pas autorisées !",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Connecteurs de voies de route uniquement",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Connecteurs de voie de piste uniquement",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Tous les connecteurs",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Marquer comme dangereux",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Connexion de voie de route dangereuse",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] L’activation du mode de modification des connexions voies retirera les Manœuvres interdites des routes connectées",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Appliquer les Manœuvres interdites réinitialisera les connexions de voies aux intersections adjacentes",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Appliquer la mise à niveau de feux de signalisation ici va réinitialiser les paramètres de priorité de cette intersection",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Revenir aux paramètres d'origine",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Activer/Désactiver le mode Action",
     "Traffic.UI.Tools[Priorities].Description": "Gérer les priorités des voies à l’intersection sélectionnée.",
-    "Traffic.UI.Tools[LaneConnector].Description": "Gérer les connexions de voies à l’intersection sélectionnée."
+    "Traffic.UI.Tools[LaneConnector].Description": "Gérer les connexions de voies à l’intersection sélectionnée.",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Connecteurs de voies de route uniquement",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Connecteurs de voie de piste uniquement",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Tous les connecteurs",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Connexion de voie de route dangereuse"
 }

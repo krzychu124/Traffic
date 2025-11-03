@@ -5,6 +5,7 @@ using Game.Rendering;
 using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components.LaneConnections;
+using Traffic.Systems.Helpers;
 using Traffic.Tools;
 using Traffic.UISystems;
 using Unity.Burst;
@@ -13,6 +14,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using NetUtils = Game.Net.NetUtils;
 
 namespace Traffic.Rendering
 {
@@ -34,8 +36,9 @@ namespace Traffic.Rendering
             [ReadOnly] public ConnectorColorSet colorSet;
             [ReadOnly] public float connectionWidth;
             public OverlayRenderSystem.Buffer overlayBuffer;
-            
-            public void Execute() {
+
+            public void Execute()
+            {
 
                 Entity connector = Entity.Null;
                 Entity connector2 = Entity.Null;
@@ -64,12 +67,12 @@ namespace Traffic.Rendering
                         connectorNode2 = new PathNode(c2.edge, (ushort)c2.laneIndex);
                         previewConnection = true;
                     }
-                    floatingPosition = state == LaneConnectorToolSystem.State.SelectingTargetConnector && connector != connector2;//TODO bug
+                    floatingPosition = state == LaneConnectorToolSystem.State.SelectingTargetConnector && connector != connector2; //TODO bug
                 }
                 Color dimmMain = state == LaneConnectorToolSystem.State.SelectingTargetConnector ? new Color(1f, 1f, 1f, 1f) : new Color(1f, 1f, 1f, 0.65f);
                 NativeList<ConnectionRenderData> hovered = new NativeList<ConnectionRenderData>(Allocator.Temp);
                 LaneConnectorToolSystem.StateModifier currentModifier = modifier & ~LaneConnectorToolSystem.StateModifier.MakeUnsafe;
-
+                bool makeUnsafe = (modifier & LaneConnectorToolSystem.StateModifier.MakeUnsafe) != 0;
                 Color dimm;
                 for (var index = 0; index < chunks.Length; index++)
                 {
@@ -102,13 +105,16 @@ namespace Traffic.Rendering
                             }
 
                             Color color = (connection.method & PathMethod.Track) != 0 ? colorSet.outlineTwoWayColor :
-                                connection.isForbidden ? new Color(0.81f, 0f, 0.14f, 0.79f) : colorSet.outlineSourceColor;
-                            Color color2 = (connection.method & PathMethod.Track) != 0 ? colorSet.fillTwoWayColor : colorSet.fillSourceColor;
+                                connection.isForbidden ? new Color(0.81f, 0f, 0.14f, 0.79f) :
+                                connection.method == PathMethod.Bicycle ? colorSet.outlineBikeSourceColor : colorSet.outlineSourceColor;
+                            Color color2 = (connection.method & PathMethod.Track) != 0 ? colorSet.fillTwoWayColor :
+                                connection.method == PathMethod.Bicycle ? colorSet.fillBikeSourceColor : colorSet.fillSourceColor;
                             float width = connection.isForbidden ? 0.25f :
                                 connection.isUnsafe ? connectionWidth * 0.8f : connectionWidth;
-                            if (IsNotMatchingModifier(currentModifier, connection) || selectingTarget)
+                            bool isNotMatching = IsNotMatchingModifier(currentModifier, connection, makeUnsafe);
+                            if (isNotMatching || selectingTarget)
                             {
-                                dimm = new Color(1, 1, 1, 0.3f);
+                                dimm = new Color(1, 1, 1, selectingTarget ? 0.3f : 0.2f);
                             }
                             else
                             {
@@ -129,16 +135,20 @@ namespace Traffic.Rendering
                                 color2 = Color.clear;
                                 width = connection.isForbidden ? 0.25f :
                                     connection.isUnsafe ? connectionWidth * 0.9f : connectionWidth * 1.2f;
-                                hovered.Add(new ConnectionRenderData() { bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden });
+                                hovered.Add(new ConnectionRenderData()
+                                {
+                                    bezier = curve, color = color * (isNotMatching? dimm : dimmMain), color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden, isBikeOnly = connection.method == PathMethod.Bicycle
+                                });
                                 continue;
                             }
-                            else if (AreEqual(connectorNode, connection.targetNode))
+                            if (AreEqual(connectorNode, connection.targetNode))
                             {
                                 color = connection.isForbidden ? new Color(1f, 0f, 0.15f, 0.9f) : new Color(0.75f, 0f, 0.34f);
                                 color2 = Color.clear;
                                 width = connection.isForbidden ? 0.25f :
                                     connection.isUnsafe ? connectionWidth * 0.9f : connectionWidth * 1.2f;
-                                hovered.Add(new ConnectionRenderData() { bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden });
+                                hovered.Add(new ConnectionRenderData()
+                                    { bezier = curve, color = color, color2 = color2, width = width, isUnsafe = connection.isUnsafe, isForbidden = connection.isForbidden, isBikeOnly = connection.method == PathMethod.Bicycle });
                                 continue;
                             }
                             if (connection.isUnsafe || connection.isForbidden)
@@ -175,11 +185,11 @@ namespace Traffic.Rendering
                         ConnectionRenderData data = hovered[i];
                         if (data.isUnsafe || data.isForbidden)
                         {
-                            overlayBuffer.DrawDashedCurve(data.color2, data.color, 0f, 0, data.bezier, data.width * 1.2f, 1.4f, 0.6f);
+                            overlayBuffer.DrawDashedCurve(data.color2, data.color, data.isBikeOnly ? 0.1f : 0f, 0, data.bezier, data.width * 1.2f, 1.4f, 0.6f);
                         }
                         else
                         {
-                            overlayBuffer.DrawCurve(data.color2, data.color, 0f, 0, data.bezier, data.width * 1.1f, float2.zero);
+                            overlayBuffer.DrawCurve(data.color2, data.color, data.isBikeOnly ? 0.1f : 0f, 0, data.bezier, data.width * 1.1f, float2.zero);
                         }
                     }
                 }
@@ -187,7 +197,6 @@ namespace Traffic.Rendering
 
                 if (floatingPosition)
                 {
-                    bool isUnsafe = (modifier & LaneConnectorToolSystem.StateModifier.MakeUnsafe) != 0;
                     if (!previewConnection)
                     {
                         Connector startCon = connectorsData[connector];
@@ -200,7 +209,7 @@ namespace Traffic.Rendering
                         float3 middlePos = nodeData[startCon.node].m_Position;
                         cursorPos.y = startCon.position.y;
                         Bezier4x3 floatingBezier = NetUtils.FitCurve(new Line3.Segment(startCon.position, startCon.position + (startCon.direction * 2f)), new Line3.Segment(cursorPos, middlePos));
-                        if (isUnsafe)
+                        if (makeUnsafe)
                         {
                             overlayBuffer.DrawDashedCurve(Color.yellow, Color.yellow, 0f, 0, floatingBezier, connectionWidth, 1.5f, 0.65f);
                         }
@@ -213,7 +222,9 @@ namespace Traffic.Rendering
                     {
                         Connector s = connectorsData[connector];
                         Bezier4x3 connectionBezier = NetUtils.FitCurve(s.position, s.direction, -t.direction, t.position);
-                        if (isUnsafe)
+                        // force unsafe to notify about confirm action result (more accurate visuals, very little drawback)
+                        makeUnsafe |= ConnectionUtils.ForceUnsafe(s.vehicleGroup, t.vehicleGroup);
+                        if (makeUnsafe)
                         {
                             overlayBuffer.DrawDashedCurve(new Color(0.38f, 1f, 0f), new Color(0.38f, 1f, 0f), 0f, 0, connectionBezier, connectionWidth, 1.5f, 0.65f);
                         }
@@ -225,16 +236,20 @@ namespace Traffic.Rendering
                 }
             }
 
-            private bool IsNotMatchingModifier(LaneConnectorToolSystem.StateModifier stateModifier, Connection connection) {
-                return stateModifier == LaneConnectorToolSystem.StateModifier.Track && (connection.method & (PathMethod.Road | PathMethod.Track)) != PathMethod.Track ||
-                    stateModifier == LaneConnectorToolSystem.StateModifier.Road && (connection.method & (PathMethod.Road | PathMethod.Track)) != PathMethod.Road ||
-                    stateModifier == (LaneConnectorToolSystem.StateModifier.AnyConnector | LaneConnectorToolSystem.StateModifier.FullMatch) && (connection.method & (PathMethod.Road | PathMethod.Track)) != (PathMethod.Road | PathMethod.Track);
+            private bool IsNotMatchingModifier(LaneConnectorToolSystem.StateModifier stateModifier, Connection connection, bool makeUnsafe)
+            {
+                return ((stateModifier & (LaneConnectorToolSystem.StateModifier.Road | LaneConnectorToolSystem.StateModifier.FullMatch)) == (LaneConnectorToolSystem.StateModifier.Road | LaneConnectorToolSystem.StateModifier.FullMatch) &&
+                    (connection.method & PathMethod.Road) == 0) ||
+                    ((stateModifier & (LaneConnectorToolSystem.StateModifier.Track | LaneConnectorToolSystem.StateModifier.FullMatch)) == (LaneConnectorToolSystem.StateModifier.Track | LaneConnectorToolSystem.StateModifier.FullMatch) &&
+                    (connection.method & PathMethod.Track) == 0) ||
+                    (makeUnsafe && (connection.method & (PathMethod.Road | PathMethod.Bicycle)) == 0);
             }
 
-            private bool AreEqual(PathNode node1, PathNode node2) {
+            private bool AreEqual(PathNode node1, PathNode node2)
+            {
                 return node1.OwnerEquals(node2) && (node1.GetLaneIndex() & 0xff) == (node2.GetLaneIndex() & 0xff);
             }
-            
+
             private struct ConnectionRenderData
             {
                 public Color color;
@@ -243,6 +258,7 @@ namespace Traffic.Rendering
                 public float width;
                 public bool isUnsafe;
                 public bool isForbidden;
+                public bool isBikeOnly;
             }
         }
     }

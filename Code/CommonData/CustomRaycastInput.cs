@@ -12,7 +12,7 @@ namespace Traffic.CommonData
         public float fovTan;
         public TypeMask typeMask;
         public VehicleGroup vehicleGroup;
-        public ConnectionType connectionType;
+        public bool isStrict;
         public ConnectorType connectorType;
     }
 }

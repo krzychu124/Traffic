@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Verbindung entfernen",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Verbindung fertigstellen",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Verbindungen für Kehrtwenden sind für Schienenverbindungen verboten!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Nur Straßenverbindungen",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Nur Schienen-Verbindungen",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Gemischte Verbindungstypen",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Unsicher machen",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Unsichere Straßenbahnverbindung",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Beim Wechsel in den Bearbeitungsmodus für Verbindungen werden verbotene Manöver von verbundenen Straßen entfernt",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Die Anwendung des Verbotene-Manöver-Upgrades wird die Verbindungen an einer nahe gelegenen Kreuzung zurücksetzen",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Das Setzen von Ampeln wird die Vorfahrtseinstellungen an der ausgewählten Kreuzung zurücksetzen",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Auf Vanilla zurücksetzen",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Aktivierungsmodus umschalten",
     "Traffic.UI.Tools[Priorities].Description": "Bearbeite Vorfahrtsregeln an der ausgewählten Kreuzungen",
-    "Traffic.UI.Tools[LaneConnector].Description": "Bearbeite Verbindungen/Fahrspuren an der ausgewählten Kreuzung"
+    "Traffic.UI.Tools[LaneConnector].Description": "Bearbeite Verbindungen/Fahrspuren an der ausgewählten Kreuzung",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Nur Straßenverbindungen",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Nur Schienen-Verbindungen",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Gemischte Verbindungstypen",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Unsichere Straßenbahnverbindung"
 }

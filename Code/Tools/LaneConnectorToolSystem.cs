@@ -16,6 +16,7 @@ using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
 using Traffic.Systems;
+using Traffic.Systems.Helpers;
 using Traffic.UISystems;
 using Unity.Burst;
 using Unity.Collections;
@@ -72,9 +73,14 @@ namespace Traffic.Tools
             None,
             Road = 1,
             Track = 1 << 1,
-            AnyConnector = Road | Track,
-            FullMatch = 1 << 2,
-            MakeUnsafe = 1 << 3,
+            Bike = 1 << 2,
+            AnyConnector = Road | Track | Bike,
+            FullMatch = 1 << 3,
+            BikeOnly = Bike | FullMatch,
+            RoadOnly = Road | FullMatch,
+            TrackOnly = Track | FullMatch,
+            SharedLaneOnly = Road | Track | BikeOnly,
+            MakeUnsafe = 1 << 4,
         }
 
         public enum Tooltip
@@ -271,10 +277,6 @@ namespace Traffic.Tools
             
             _modRaycastSystem.Enabled = true;
             _validationSystem.Enabled = false;
-            
-            //main actions
-            // _applyAction.shouldBeEnabled = true;
-            // _secondaryApplyAction.shouldBeEnabled = true;
         }
 
         protected override void OnStopRunning() {
@@ -296,12 +298,123 @@ namespace Traffic.Tools
         public override void InitializeRaycast() {
             base.InitializeRaycast();
 
+            InitializeStateModifier();
+            InitializeCustomRaycastInput();
+        }
+
+        private void InitializeCustomRaycastInput()
+        {
+            if (_mainCamera && _state > State.Default)
+            {
+                ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
+                CustomRaycastInput input;
+                float posHitRadius = math.lerp(0.8f, 1.7f, math.clamp((overlayParameters.laneConnectorSize - 0.5f) / 1.5f, 0, 1f));
+                input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
+                input.fovTan = math.tan(math.radians(_mainCamera.fieldOfView) * 0.5f);
+                input.offset = new float3(posHitRadius, 0, posHitRadius);
+                input.heightOverride = 0;
+                input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
+                input.connectorType = _state switch
+                {
+                    State.SelectingSourceConnector => ConnectorType.Source,
+                    State.SelectingTargetConnector => ConnectorType.Target,
+                    _ => ConnectorType.Source | ConnectorType.Target
+                };
+                StateModifier mod = _stateModifiers & ~StateModifier.MakeUnsafe;
+                
+                input.vehicleGroup = VehicleGroup.None;
+                input.isStrict = (_stateModifiers & StateModifier.FullMatch) != 0;
+                if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
+                    EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
+                {
+                    input.heightOverride = sourceConnector.position.y;
+
+                    if (mod == (StateModifier.Road | StateModifier.Track | StateModifier.FullMatch))
+                    {
+                        input.vehicleGroup = (sourceConnector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Tram));
+                    }
+                    else if (mod == StateModifier.TrackOnly)
+                    {
+                        input.vehicleGroup = (sourceConnector.vehicleGroup & VehicleGroup.TrackGroup);
+                    }
+                    else if (mod == StateModifier.RoadOnly)
+                    {
+                        input.vehicleGroup = sourceConnector.vehicleGroup & VehicleGroup.Car;
+                    }
+                    else
+                    {
+                        input.vehicleGroup = sourceConnector.vehicleGroup;
+                    }
+                    
+                    if ((_stateModifiers & StateModifier.MakeUnsafe) != 0)
+                    {
+                        input.vehicleGroup = sourceConnector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Bike);
+                    }
+                }
+                else
+                {
+                    switch (mod)
+                    {
+                        case StateModifier.AnyConnector:
+                            input.vehicleGroup = VehicleGroup.All;
+                            break;
+                        case StateModifier.Road:
+                            input.vehicleGroup = VehicleGroup.Car;
+                            break;
+                        case StateModifier.Track:
+                            input.vehicleGroup = VehicleGroup.TrackGroup;
+                            break;
+                        case StateModifier.Bike:
+                            input.vehicleGroup = VehicleGroup.Bike;
+                            break;
+                        case StateModifier.SharedLaneOnly:
+                            input.vehicleGroup = VehicleGroup.Car | VehicleGroup.Tram;
+                            break;
+                        case StateModifier.RoadOnly:
+                            input.vehicleGroup = VehicleGroup.Car;
+                            break;
+                        case StateModifier.BikeOnly:
+                            input.vehicleGroup = VehicleGroup.Bike;
+                            break;
+                        case StateModifier.TrackOnly:
+                            input.isStrict = false;
+                            input.vehicleGroup = VehicleGroup.TrackGroup;
+                            break;
+                        default:
+                            input.vehicleGroup = VehicleGroup.None;
+                            break;
+                    }
+                    if ((_stateModifiers & StateModifier.MakeUnsafe) != StateModifier.None)
+                    {
+                        input.vehicleGroup &= ~(VehicleGroup.TrackGroup);
+                    }
+                }
+                _modRaycastSystem.SetInput(input);
+            }
+            
+            if (Underground)
+            {
+                m_ToolRaycastSystem.collisionMask = CollisionMask.Underground;
+            }
+            else
+            {
+                m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
+            }
+            m_ToolRaycastSystem.typeMask = (TypeMask.Net);
+            m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
+            m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.TrainTrack | Layer.TramTrack | Layer.SubwayTrack | Layer.PublicTransportRoad;
+            m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
+            m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
+        }
+
+        private void InitializeStateModifier()
+        {
             if (_state == State.SelectingSourceConnector)
             {
                 StateModifier prev = _stateModifiers & ~StateModifier.MakeUnsafe;
                 if (Keyboard.current.ctrlKey.isPressed)
                 {
-                    _stateModifiers = StateModifier.Track | StateModifier.FullMatch;
+                    _stateModifiers = StateModifier.TrackOnly;
                     if (Keyboard.current.shiftKey.isPressed)
                     {
                         _stateModifiers = StateModifier.AnyConnector | StateModifier.FullMatch;
@@ -312,7 +425,7 @@ namespace Traffic.Tools
                     _stateModifiers = StateModifier.AnyConnector;
                     if (Keyboard.current.shiftKey.isPressed)
                     {
-                        _stateModifiers = StateModifier.Road | StateModifier.FullMatch;
+                        _stateModifiers = StateModifier.RoadOnly;
                     }
                 }
 
@@ -333,7 +446,8 @@ namespace Traffic.Tools
                 if (Keyboard.current.altKey.isPressed && 
                     _controlPoints.Length > 0 &&
                     EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector) &&
-                    sourceConnector.vehicleGroup == VehicleGroup.Car)
+                    //allow only car or bike
+                    ConnectionUtils.UnsafeAllowed(sourceConnector.vehicleGroup, _stateModifiers & ~StateModifier.MakeUnsafe))
                 {
                     _stateModifiers |= StateModifier.MakeUnsafe;
                 }
@@ -350,85 +464,6 @@ namespace Traffic.Tools
             {
                 _stateModifiers = StateModifier.AnyConnector;
             }
-
-            if (_mainCamera && _state > State.Default)
-            {
-                ToolOverlayParameterData overlayParameters = SystemAPI.GetSingleton<ToolOverlayParameterData>();
-                CustomRaycastInput input;
-                float posHitRadius = math.lerp(0.8f, 1.7f, math.clamp((overlayParameters.laneConnectorSize - 0.5f) / 1.5f, 0, 1f));
-                input.line = ToolRaycastSystem.CalculateRaycastLine(_mainCamera);
-                input.fovTan = math.tan(math.radians(_mainCamera.fieldOfView) * 0.5f);
-                input.offset = new float3(posHitRadius, 0, posHitRadius);
-                input.heightOverride = 0;
-                input.typeMask = _state == State.SelectingTargetConnector ? TypeMask.Terrain : TypeMask.None;
-                input.connectorType = _state switch
-                {
-                    State.SelectingSourceConnector => ConnectorType.Source,
-                    State.SelectingTargetConnector => ConnectorType.Target,
-                    _ => ConnectorType.Source | ConnectorType.Target
-                };
-                StateModifier mod = _stateModifiers & ~StateModifier.MakeUnsafe;
-                
-                input.vehicleGroup = VehicleGroup.None;
-                if (_state == State.SelectingTargetConnector && _controlPoints.Length > 0 &&
-                    EntityManager.TryGetComponent(_controlPoints[0].m_OriginalEntity, out Connector sourceConnector))
-                {
-                    input.heightOverride = sourceConnector.position.y;
-                    
-                    if ((_stateModifiers & StateModifier.MakeUnsafe) != 0)
-                    {
-                        input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Strict);
-                        input.vehicleGroup = sourceConnector.vehicleGroup & VehicleGroup.Car;
-                    }
-                    else
-                    {
-                        input.connectionType = sourceConnector.connectionType & (ConnectionType.Road | ConnectionType.Track | ConnectionType.Strict);
-                        input.vehicleGroup = sourceConnector.vehicleGroup;
-                    }
-                }
-                else
-                {
-                    input.vehicleGroup = mod switch
-                    {
-                        StateModifier.AnyConnector => VehicleGroup.Car | VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
-                        StateModifier.Road => VehicleGroup.Car,
-                        StateModifier.Track => VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
-                        StateModifier.AnyConnector | StateModifier.FullMatch => VehicleGroup.Car | VehicleGroup.Tram,
-                        StateModifier.Road | StateModifier.FullMatch => VehicleGroup.Car,
-                        StateModifier.Track | StateModifier.FullMatch => VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram,
-                        _ => VehicleGroup.None,
-                    };
-                    input.connectionType = mod switch
-                    {
-                        0 => ConnectionType.All,
-                        StateModifier.AnyConnector | StateModifier.FullMatch => ConnectionType.SharedCarTrack | ConnectionType.Strict,
-                        StateModifier.Track | StateModifier.FullMatch => ConnectionType.Track,
-                        StateModifier.Road | StateModifier.FullMatch => ConnectionType.Road | ConnectionType.Strict,
-                        _ => ConnectionType.All
-                    };
-                    if ((_stateModifiers & StateModifier.MakeUnsafe) != StateModifier.None)
-                    {
-                        input.vehicleGroup &= ~(VehicleGroup.Subway | VehicleGroup.Train | VehicleGroup.Tram);
-                        input.connectionType &= ~ConnectionType.Track;
-                        input.connectionType |= ConnectionType.Strict;
-                    }
-                }
-                _modRaycastSystem.SetInput(input);
-            }
-            
-            if (Underground)
-            {
-                m_ToolRaycastSystem.collisionMask = CollisionMask.Underground;
-            }
-            else
-            {
-                m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
-            }
-            m_ToolRaycastSystem.typeMask = (TypeMask.Net);
-            m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
-            m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.TrainTrack | Layer.TramTrack | Layer.SubwayTrack | Layer.PublicTransportRoad;
-            m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
-            m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
         }
 
         private bool GetCustomRaycastResult(out ControlPoint controlPoint) {
@@ -604,7 +639,7 @@ namespace Traffic.Tools
                     {
                         if (GetCustomRaycastResult(out ControlPoint controlPoint) && EntityManager.TryGetComponent(controlPoint.m_OriginalEntity, out Connector connector))
                         {
-                            Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Hit: {controlPoint.m_OriginalEntity} | {connector.connectionType}");
+                            Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|SelectTarget| Hit: {controlPoint.m_OriginalEntity} | {connector.vehicleGroup}");
                             if (connector.connectorType == ConnectorType.Target)
                             {
                                 if (_controlPoints.Length > 0)

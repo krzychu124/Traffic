@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Видалити З'єднання",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Завершити З’єднання",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Розворотні з'єднання на рейкових шляхах не дозволені!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "З'єднання на Автошляхах",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "З'єднання на Рейкових Шляхах",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Змішані З'єднання Смуг",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Зробити Небезпечним",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Небезпечне З'єднання Дорожніх Смуг",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Режим редагування з'єднання смуг руху вилучить всі Заборонені маневри з найближчих доріг",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Застосування функції оновлення Заборонених маневрів скине з'єднання смуг руху на найближчому перехресті",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Застосування оновлення світлофорів скине налаштування пріоритетів на обраному перехресті",
@@ -136,5 +132,9 @@
     "Traffic.UI.Tools[Priorities].Toolbox.Action[ToggleApplyMode].Tooltip.Message": "Перемикання між режимами застосування",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Message": "Скидає лінії з'єднань на вибраному перехресті до оригінальної конфігурації",
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Скинути у Первісний Стан",
-    "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Режим дії"
+    "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Режим дії",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "З'єднання на Автошляхах",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "З'єднання на Рейкових Шляхах",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Змішані З'єднання Смуг",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Небезпечне З'єднання Дорожніх Смуг"
 }

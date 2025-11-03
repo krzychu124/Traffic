@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "接続を削除",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "接続を完了",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Uターントラック接続は許可されていません！",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "道路専用レーンコネクタ",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "トラック専用レーンコネクタ",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "混合タイプレーンコネクタ",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "安全でないようにする",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "危険な道路レーン接続",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] レーン接続変更モードに入ると、接続されている道路から禁止された操作が削除されます",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 操作禁止のアップグレードを適用すると、近くの交差点でレーン接続がリセットされます",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] トラフィックライトアップグレードを適用すると、選択した交差点の優先設定がリセットされます",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "バニラにリセット",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "動作モードの切り替え",
     "Traffic.UI.Tools[Priorities].Description": "選択された交差点でレーンの優先度を管理",
-    "Traffic.UI.Tools[LaneConnector].Description": "選択された交差点でレーンの接続を管理"
+    "Traffic.UI.Tools[LaneConnector].Description": "選択された交差点でレーンの接続を管理",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "道路専用レーンコネクタ",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "トラック専用レーンコネクタ",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "混合タイプレーンコネクタ",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "危険な道路レーン接続"
 }

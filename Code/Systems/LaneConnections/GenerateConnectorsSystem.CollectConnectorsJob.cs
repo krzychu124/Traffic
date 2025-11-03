@@ -26,7 +26,7 @@ namespace Traffic.Systems.LaneConnections
                 {
                     Entity e = entities[i];
                     Connector connector = connectors[i];
-                    Logger.DebugConnections($"Add connector ({e}): [{connector.connectorType}], [{connector.connectionType}] [{connector.node}]({connector.edge}) index: {connector.laneIndex} group: {connector.vehicleGroup} pos: {connector.position} || lanePos: {connector.lanePosition}");
+                    Logger.DebugConnections($"Add connector ({e}): [{connector.connectorType}], [{connector.node}]({connector.edge}) index: {connector.laneIndex} group: {connector.vehicleGroup} pos: {connector.position} || lanePos: {connector.lanePosition}");
                     resultMap.Add(new NodeEdgeLaneKey(connector.node.Index, connector.edge.Index, connector.laneIndex), e);
                 }
             }

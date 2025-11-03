@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Remover Ligação",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Completar Ligação",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Não são permitidas inversões de marcha!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Apenas Conexões em Estradas",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Apenas Conexões em Caminhos de Ferro",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Conexões de Tipos Variados",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Criar Ligação Perigosa",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Ligação de Estrada Perigosa",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Entrar no modo de modificação de ligação de faixas irá remover as manobras proibidas das estradas ligadas",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Aplicar a atualização de manobras proibidas irá redefinir as ligações de faixas numa interseção próxima",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Aplicar a atualização de semáforos irá redefinir as definições de prioridade na interseção selecionada",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Remover Personalizações",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Alternar modo de visualização",
     "Traffic.UI.Tools[Priorities].Description": "Gerir as prioridades de faixas na interseção selecionada",
-    "Traffic.UI.Tools[LaneConnector].Description": "Gerir a conexão de faixas deste cruzamento"
+    "Traffic.UI.Tools[LaneConnector].Description": "Gerir a conexão de faixas deste cruzamento",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Apenas Conexões em Estradas",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Apenas Conexões em Caminhos de Ferro",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Conexões de Tipos Variados",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Ligação de Estrada Perigosa"
 }

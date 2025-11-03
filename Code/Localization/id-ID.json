@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Hapus Koneksi",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Selesai Koneksi",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Lintasan Putar-Balik U tidak diperbolehkan!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Konektor Lajur Khusus Jalan",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Konektor Jalur Khusus Lintasan",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Konektor Jenis Jalur Campuran",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Buat Tidak aman",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Konektor Jalur Jalan Tidak Aman",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Masuk ke mode modifikasi Koneksi Lajur akan menghapus manuver terlarang dari jalan yang terhubung",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Menerapkan peningkatan manuver terlarang akan mengatur ulang koneksi lajur di persimpangan terdekat",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Menerapkan upgrade Lampu Lalu Lintas akan mengatur ulang pengaturan Prioritas di persimpangan yang dipilih",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Atur Ulang ke Asli",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Alihkan Mode Aksi",
     "Traffic.UI.Tools[Priorities].Description": "Kelola jalur prioritas di persimpangan yang dipilih",
-    "Traffic.UI.Tools[LaneConnector].Description": "Kelola koneksi jalur di persimpangan yang dipilih"
+    "Traffic.UI.Tools[LaneConnector].Description": "Kelola koneksi jalur di persimpangan yang dipilih",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Konektor Lajur Khusus Jalan",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Konektor Jalur Khusus Lintasan",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Konektor Jenis Jalur Campuran",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Konektor Jalur Jalan Tidak Aman"
 }

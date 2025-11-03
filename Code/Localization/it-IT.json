@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Elimina la connessione",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Completa la connessione",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Curva a U non disponibile!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Connessioni stradali",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Connessioni ferroviarie (tram treni e Metropolitana)",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Connessioni miste",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Rendi non sicuro",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Connessioni non sicure",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] L'accesso alla modalità di modifica dell'intersezione rimuoverà le manovre vietate dalle strade collegate!",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] L'applicazione della Manovra vietata ripristinerà le connessioni di corsia in un intersezione vicina!",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] L'applicazione dei semafori ripristinerà le impostazioni delle precedenze nell'intersezione selezionata",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Ripristina le connessioni originali",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Cambia modalità di visualizzazione",
     "Traffic.UI.Tools[Priorities].Description": "Gestisci le precedenze nell'intersezione selezionata",
-    "Traffic.UI.Tools[LaneConnector].Description": "Gestisci le connessioni delle corsie nell'intersezione selezionata"
+    "Traffic.UI.Tools[LaneConnector].Description": "Gestisci le connessioni delle corsie nell'intersezione selezionata",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Connessioni stradali",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Connessioni ferroviarie (tram treni e Metropolitana)",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Connessioni miste",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Connessioni non sicure"
 }

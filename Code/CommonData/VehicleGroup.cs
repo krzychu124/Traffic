@@ -11,5 +11,8 @@ namespace Traffic.CommonData
         Train = 1 << 1,
         Tram = 1 << 2,
         Subway = 1 << 3,
+        TrackGroup = Train | Tram | Subway,
+        Bike = 1 << 4,
+        All = Car | Train | Tram | Subway | Bike
     }
 }

@@ -9,6 +9,7 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
+using Traffic.Systems.Helpers;
 using Traffic.Tools.Helpers;
 using Traffic.UISystems;
 using Unity.Burst;
@@ -17,6 +18,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
+using NetUtils = Game.Net.NetUtils;
 
 namespace Traffic.Tools
 {
@@ -162,7 +164,7 @@ namespace Traffic.Tools
                         }
                         if (!connectionExists &&
                             nextConnector.edge == firstConnector.edge &&
-                            firstConnector.vehicleGroup > VehicleGroup.Car)
+                            (firstConnector.vehicleGroup & (VehicleGroup.Car | VehicleGroup.Bike)) == 0)
                         {
                             tooltip.value = Tooltip.UTurnTrackNotAllowed;
                         }
@@ -264,17 +266,15 @@ namespace Traffic.Tools
                         connection.method,
                         connection.isUnsafe,
                         connection.curve,
-                        ConnectionFlags.Create | ConnectionFlags.Essential
+                        notAllowed ? ConnectionFlags.Highlight : ConnectionFlags.Create | ConnectionFlags.Essential
                     );
                     tempLaneConnections.Add(tempConnection);
                 }
 
                 if (!found)
                 {
-                    Logger.DebugTool($"NOT_FOUND: s: {sourceConnector.edge} t: {targetConnector.edge} index: {sourceConnector.laneIndex}; {targetConnector.laneIndex} || sm:({stateModifier}) scT{sourceConnector.connectionType} | tcT{targetConnector.connectionType}");
-                    PathMethod method = (stateModifier & StateModifier.AnyConnector) != 0
-                        ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                        : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
+                    Logger.DebugTool($"NOT_FOUND: s: {sourceConnector.edge} t: {targetConnector.edge} index: {sourceConnector.laneIndex}; {targetConnector.laneIndex} || sm:({stateModifier})");
+                    PathMethod method = ConnectionUtils.CalculatePathMethod(sourceConnector.vehicleGroup, targetConnector.vehicleGroup, (stateModifier & ~StateModifier.MakeUnsafe));
                     bool notAllowed = sourceConnector.edge == targetConnector.edge && (method & PathMethod.Track) != 0;
                     TempLaneConnection connection = new TempLaneConnection(
                         sourceConnector.edge,
@@ -283,7 +283,7 @@ namespace Traffic.Tools
                         new float3x2(sourceConnector.lanePosition, targetConnector.lanePosition),
                         new int4(sourceConnector.carriagewayAndGroupIndex, targetConnector.carriagewayAndGroupIndex),
                         method,
-                        (stateModifier & StateModifier.MakeUnsafe) != 0,
+                        ConnectionUtils.ForceUnsafe(sourceConnector.vehicleGroup, targetConnector.vehicleGroup) || (stateModifier & StateModifier.MakeUnsafe) != 0,
                         NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
                         notAllowed ? ConnectionFlags.Highlight : ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
                     );
@@ -394,10 +394,7 @@ namespace Traffic.Tools
                             sourceConnector.edge == modifiedConnections.edgeEntity &&
                             sourceConnector.laneIndex == modifiedConnections.laneIndex)
                         {
-                            PathMethod method = (stateModifier & StateModifier.AnyConnector) != 0
-                                ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                                : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe);
-
+                            PathMethod method = ConnectionUtils.CalculatePathMethod(sourceConnector.vehicleGroup, targetConnector.vehicleGroup, (stateModifier & ~StateModifier.MakeUnsafe));
                             bool notAllowed = sourceConnector.edge == targetConnector.edge && (method & PathMethod.Track) != 0;
                             TempLaneConnection connection = new TempLaneConnection(
                                 sourceConnector.edge,
@@ -405,10 +402,8 @@ namespace Traffic.Tools
                                 laneIndexMap,
                                 new float3x2(sourceConnector.lanePosition, targetConnector.lanePosition),
                                 new int4(sourceConnector.carriagewayAndGroupIndex, targetConnector.carriagewayAndGroupIndex),
-                                (stateModifier & StateModifier.AnyConnector) != 0
-                                    ? DetectConnectionPathMethod(sourceConnector.connectionType, targetConnector.connectionType)
-                                    : StateModifierToPathMethod(stateModifier & ~StateModifier.MakeUnsafe),
-                                (stateModifier & StateModifier.MakeUnsafe) != 0,
+                                method,
+                                ConnectionUtils.ForceUnsafe(sourceConnector.vehicleGroup, targetConnector.vehicleGroup) || (stateModifier & StateModifier.MakeUnsafe) != 0,
                                 NetUtils.FitCurve(sourceConnector.position, sourceConnector.direction, -targetConnector.direction, targetConnector.position),
                                 notAllowed ? ConnectionFlags.Highlight : ConnectionFlags.Create | ConnectionFlags.Essential | ConnectionFlags.Highlight
                             );
@@ -424,45 +419,6 @@ namespace Traffic.Tools
                     laneConnections[i] = tempLaneConnections[i];
                 }
                 tempLaneConnections.Dispose();
-            }
-
-            private PathMethod StateModifierToPathMethod(StateModifier modifier) {
-                PathMethod method = 0;
-                switch (modifier)
-                {
-                    case StateModifier.AnyConnector:
-                    case StateModifier.AnyConnector | StateModifier.FullMatch:
-                        method = PathMethod.Road | PathMethod.Track;
-                        break;
-                    case StateModifier.Road:
-                    case StateModifier.Road | StateModifier.FullMatch:
-                        method = PathMethod.Road;
-                        break;
-                    case StateModifier.Track:
-                    case StateModifier.Track | StateModifier.FullMatch:
-                        method = PathMethod.Track;
-                        break;
-                }
-                return method;
-            }
-
-            private PathMethod DetectConnectionPathMethod(ConnectionType source, ConnectionType target) {
-                ConnectionType shared = source & target & ConnectionType.SharedCarTrack;
-                switch (shared)
-                {
-
-                    case ConnectionType.Road:
-                        return PathMethod.Road;
-                    case ConnectionType.Track:
-                        return PathMethod.Track;
-                    case ConnectionType.Utility:
-                        return 0;
-                    case ConnectionType.SharedCarTrack:
-                        return PathMethod.Road | PathMethod.Track;
-                    // case ConnectionType.All:
-                        // return PathMethod.Road | PathMethod.Track;
-                }
-                return 0;
             }
 
             private void FilterBySource(Connector sourceConnector, DynamicBuffer<LaneConnection> connections, NativeList<Connection> results) {

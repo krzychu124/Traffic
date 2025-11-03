@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "연결 제거",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "연결 완료",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "철로는 유턴 연결이 허가되지 않습니다!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "도로 전용 차로 연결",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "철로 전용 선로 연결",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "혼합 선로 유형 연결",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "안전하지 않은 차로 연결",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "안전하지 않은 차로 연결",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] 차로 연결 수정 모드로 들어가면 연결된 도로에 금지된 행동이 제거됩니다.",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 금지행동 업그레이드를 적용하면 근처 교차로 차로 연결이 재설정됩니다.",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] 신호등 업그레이드를 적용하면 선택한 교차로의 통행 우선 설정이 재설정됩니다.",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "바닐라로 초기화",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "차로 선택 모드",
     "Traffic.UI.Tools[Priorities].Description": "선택한 교차로에서 차로 우선순위 관리",
-    "Traffic.UI.Tools[LaneConnector].Description": "선택한 교차로에서 차로 연결 관리"
+    "Traffic.UI.Tools[LaneConnector].Description": "선택한 교차로에서 차로 연결 관리",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "도로 전용 차로 연결",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "철로 전용 선로 연결",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "혼합 선로 유형 연결",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "안전하지 않은 차로 연결"
 }

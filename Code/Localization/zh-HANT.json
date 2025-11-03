@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "移除連線",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "完成連線",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "無法建立迴轉車道！",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "道路車道連線工具",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "軌道車道連線工具",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "任意車道連接點類型",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "設為不安全",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "不安全的車道連線",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] 進入車道連接模式將會移除所有相關道路現有的禁止行駛升級標記。",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 應用禁止行駛升級標記將會重設附近路口的車道連線。",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] 升級交通燈會重設相關路口的優先設定",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "重置為遊戲預設車道連線",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "切換顯示模式",
     "Traffic.UI.Tools[Priorities].Description": "管理選定路口的車道優先權",
-    "Traffic.UI.Tools[LaneConnector].Description": "管理選定路口的車道連接"
+    "Traffic.UI.Tools[LaneConnector].Description": "管理選定路口的車道連接",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "道路車道連線工具",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "軌道車道連線工具",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "任意車道連接點類型",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的車道連線"
 }

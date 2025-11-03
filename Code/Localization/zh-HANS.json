@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "移除连线",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "完成连线",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "无法创建掉头车道！",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "道路车道连线工具",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "轨道车道连线工具",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "任意车道连接点类型",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "设为不安全",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "不安全的车道连线",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] 进入车道连接模式将会移除所有相关道路的现有的禁止行驶升级标记",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] 应用禁止行驶升级标记将会重设附近路口的车道连线",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] 应用红绿灯升级将会重设此路口的优先级设置",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "重设为原版车道连线",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "切换显示模式",
     "Traffic.UI.Tools[Priorities].Description": "管理所选路口的车道优先级",
-    "Traffic.UI.Tools[LaneConnector].Description": "管理所选路口的车道连接"
+    "Traffic.UI.Tools[LaneConnector].Description": "管理所选路口的车道连接",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "道路车道连线工具",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "轨道车道连线工具",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "任意车道连接点类型",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的车道连线"
 }

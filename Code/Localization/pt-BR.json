@@ -90,11 +90,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RemoveConnection]": "Remover Conexão",
     "Traffic.Tooltip.Tools[LaneConnector][CompleteConnection]": "Completar Conexão",
     "Traffic.Tooltip.Tools[LaneConnector][UTurnTrackNotAllowed]": "Conexões de Retorno em trilhos não são permitidos!",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch]": "Conectores somente de Vias",
-    "Traffic.Tooltip.Tools[LaneConnector][Track, FullMatch]": "Conectores somente de Trilhos",
-    "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, FullMatch]": "Conectores de Faixas Mistas",
     "Traffic.Tooltip.Tools[LaneConnector][AnyConnector, MakeUnsafe]": "Tornar Inseguro",
-    "Traffic.Tooltip.Tools[LaneConnector][Road, FullMatch, MakeUnsafe]": "Conexão Insegura de Vias",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetForbiddenTurnUpgrades]": "[Traffic] Entrar no modo de edição de Conexão de Faixas removerá Manobras Proibidas das ruas conectadas",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnForbiddenTurnApply]": "[Traffic] Aplicar melhoria de Manobra Proibida redefinirá conexões de faixa em uma interseção próxima",
     "Traffic.Tooltip.Tools[FeedbackMessage][WarnResetPrioritiesTrafficLightsApply]": "[Traffic] Aplicar melhorias de semáforos redefinirá as configurações de Prioridade na interseção selecionada",
@@ -138,5 +134,9 @@
     "Traffic.UI.Tools[CurrentTool].Toolbox.Action[ResetToVanilla].Tooltip.Title": "Redefinir para o Padrão",
     "Options.OPTION[Traffic.Traffic.Mod.ModSettings.PrioritiesToggleDisplayModeAction]": "Alternar Modo de Ação",
     "Traffic.UI.Tools[Priorities].Description": "Gerenciar prioridades de faixa na interseção selecionada",
-    "Traffic.UI.Tools[LaneConnector].Description": "Gerenciar conexão de faixa na interseção selecionada"
+    "Traffic.UI.Tools[LaneConnector].Description": "Gerenciar conexão de faixa na interseção selecionada",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "Conectores somente de Vias",
+    "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "Conectores somente de Trilhos",
+    "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "Conectores de Faixas Mistas",
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "Conexão Insegura de Vias"
 }

@@ -48,13 +48,19 @@ namespace Traffic.Systems.Helpers
 
         public static bool ForceUnsafe(VehicleGroup fromGroup, VehicleGroup toGroup)
         {
-            return (toGroup & VehicleGroup.Bike) != 0 && (fromGroup & (VehicleGroup.Bike | VehicleGroup.Car)) != (toGroup & (VehicleGroup.Bike | VehicleGroup.Car));
+            VehicleGroup fromIgnoreTrack = fromGroup & ~VehicleGroup.TrackGroup;
+            if (fromIgnoreTrack == VehicleGroup.None)
+            {
+                return false;
+            }
+            VehicleGroup toIgnoreTrack = toGroup & ~VehicleGroup.TrackGroup;
+            return (toIgnoreTrack & VehicleGroup.Bike) != 0 && (fromIgnoreTrack & VehicleGroup.Highway) == 0 && (fromIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car)) != (toIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car));
         }
 
         public static bool UnsafeAllowed(VehicleGroup group, LaneConnectorToolSystem.StateModifier modifier)
         {
             return (modifier == LaneConnectorToolSystem.StateModifier.RoadOnly && (group & (VehicleGroup.Bike | VehicleGroup.Car)) != 0) || 
-                (group == (group & (VehicleGroup.Car | VehicleGroup.Bike)));
+                (group == (group & (VehicleGroup.Car | VehicleGroup.Bike | VehicleGroup.Highway)));
         }
     }
 }

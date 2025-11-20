@@ -1,10 +1,5 @@
-﻿## v.0.2.10.0
+﻿## v.0.2.10.1
 
-_Compatibility fix for the game update 1.4.2f1_
-- Lane Connector Tool:
-  - bicycle lane support,
-  - improved support for Road/Track-only connections and proper lane prefab selection
-  - creating unsafe road-only connections between mixed lanes(Car+Tram) is now possible
-  - improved detection of connection type when creating connection between non-equal type lanes
-  - improved connection and connector overlays when type modifier is active (unsafe, road/tram-only)
-  - improved validation and detection of U-turn train connections
+- Fixed incorrect lane connection synchronization when applying/removing bike lane upgrades (affected intersections with random bike connections must be manually reset)
+- Improved the rule for enforcing unsafe connections when connecting lanes where only one is allowed for bikes.
+- Improved clearing unsaved data to run between save game loads in the same session

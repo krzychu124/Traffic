@@ -11,6 +11,7 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using CarLane = Game.Net.CarLane;
 using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
 using SecondaryLane = Game.Net.SecondaryLane;
 using SubLane = Game.Net.SubLane;
@@ -39,6 +40,7 @@ namespace Traffic.Systems.LaneConnections
             [ReadOnly] public ComponentLookup<CarLaneData> prefabCarLaneData;
             [ReadOnly] public ComponentLookup<TrackLaneData> prefabTrackLaneData;
             [ReadOnly] public ComponentLookup<UtilityLaneData> prefabUtilityLaneData;
+            [ReadOnly] public ComponentLookup<CarLane> carLaneComponentData;
             [ReadOnly] public ComponentLookup<SlaveLane> slaveLaneData;
             [ReadOnly] public ComponentLookup<MasterLane> masterLaneData;
             [ReadOnly] public ComponentLookup<EdgeLane> edgeLaneData;
@@ -169,6 +171,7 @@ namespace Traffic.Systems.LaneConnections
                         CarLaneData carLaneData = default(CarLaneData);
                         TrackLaneData trackLaneData = default(TrackLaneData);
                         UtilityLaneData utilityLaneData = default(UtilityLaneData);
+                        bool isHighway = false;
                         if ((netLaneData.m_Flags & LaneFlags.Track) != 0)
                         {
                             trackLaneData = prefabTrackLaneData[prefabRef2.m_Prefab];
@@ -176,6 +179,10 @@ namespace Traffic.Systems.LaneConnections
                         if ((netLaneData.m_Flags & LaneFlags.Road) != 0)
                         {
                             carLaneData = prefabCarLaneData[prefabRef2.m_Prefab];
+                            if (carLaneComponentData.TryGetComponent(subLane, out CarLane carLane))
+                            {
+                                isHighway = (carLane.m_Flags & CarLaneFlags.Highway) != 0;
+                            }
                         }
                         
                         if ((netLaneData.m_Flags & (LaneFlags.Utility | LaneFlags.Pedestrian | LaneFlags.Parking | LaneFlags.ParkingLeft | LaneFlags.ParkingRight)) != 0)
@@ -246,6 +253,7 @@ namespace Traffic.Systems.LaneConnections
                                 position =  curve.m_Bezier.a,
                                 direction = tangent,
                                 isTwoWay = (netLaneData.m_Flags & LaneFlags.Twoway) != 0,
+                                isHighway = isHighway,
                                 vehicleGroup = GetVehicleGroup(netLaneData, carLaneData, trackLaneData)
                             };
 
@@ -308,7 +316,7 @@ namespace Traffic.Systems.LaneConnections
                         carriagewayAndGroupIndex = new int2(connectPosition.compositionLane.m_Carriageway, connectPosition.compositionLane.m_Group),
                         position = connectPosition.position,
                         direction = connectPosition.direction,
-                        vehicleGroup = connectPosition.vehicleGroup,
+                        vehicleGroup = connectPosition.vehicleGroup | (connectPosition.isHighway ? VehicleGroup.Highway : VehicleGroup.None),
                         connectorType = connectPosition.isTwoWay ? ConnectorType.TwoWay : ConnectorType.Source,
                     };
                     commandBuffer.AddComponent<Connector>(entity, connector);

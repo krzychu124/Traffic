@@ -59,6 +59,7 @@ namespace Traffic.Systems.LaneConnections
                 prefabCarLaneData = SystemAPI.GetComponentLookup<CarLaneData>(true),
                 prefabTrackLaneData = SystemAPI.GetComponentLookup<TrackLaneData>(true),
                 prefabUtilityLaneData = SystemAPI.GetComponentLookup<UtilityLaneData>(true),
+                carLaneComponentData = SystemAPI.GetComponentLookup<CarLane>(true),
                 slaveLaneData = SystemAPI.GetComponentLookup<SlaveLane>(true),
                 masterLaneData = SystemAPI.GetComponentLookup<MasterLane>(true),
                 edgeLaneData = SystemAPI.GetComponentLookup<EdgeLane>(true),
@@ -118,6 +119,7 @@ namespace Traffic.Systems.LaneConnections
             public float3 position;
             public float3 direction;
             public bool isTwoWay;
+            public bool isHighway;
             public VehicleGroup vehicleGroup;
             // public ConnectionType supportedType;
         }

@@ -99,6 +99,7 @@ namespace Traffic
             updateSystem.UpdateAt<LaneConnectorToolTooltipSystem>(SystemUpdatePhase.UITooltip);
 
             updateSystem.UpdateBefore<PreDeserialize<ModDefaultsSystem>>(SystemUpdatePhase.Deserialize);
+            updateSystem.UpdateBefore<TrafficDataClearSystem>(SystemUpdatePhase.Deserialize);
 #if DEBUG
             updateSystem.UpdateAt<NetworkDebugUISystem>(SystemUpdatePhase.UIUpdate);
 #endif

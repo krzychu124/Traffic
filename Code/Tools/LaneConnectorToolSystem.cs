@@ -812,7 +812,7 @@ namespace Traffic.Tools
             }
             if (_lastControlPoint.m_OriginalEntity.Equals(controlPoint2.m_OriginalEntity))
             {
-                Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] TheSame: {_lastControlPoint.m_OriginalEntity}, force: {forceUpdate}");
+                // Logger.DebugTool($"[Update {UnityEngine.Time.frameCount}] TheSame: {_lastControlPoint.m_OriginalEntity}, force: {forceUpdate}");
                  // improve Vanilla OriginalDeleted result for custom objects lifetime (fix bug)
                 //  if (forceUpdate || minorChange)
                 // {

@@ -424,7 +424,7 @@ namespace Traffic.Systems.LaneConnections
                 if (oPrefab == tPrefab)
                 {
                     CompositionFlags.Side importantFlags = CompositionFlags.Side.ForbidLeftTurn | CompositionFlags.Side.ForbidStraight | CompositionFlags.Side.ForbidRightTurn | CompositionFlags.Side.PrimaryTrack | CompositionFlags.Side.SecondaryTrack |
-                        CompositionFlags.Side.TertiaryTrack | CompositionFlags.Side.QuaternaryTrack;
+                        CompositionFlags.Side.TertiaryTrack | CompositionFlags.Side.QuaternaryTrack | CompositionFlags.Side.PrimaryLane | CompositionFlags.Side.SecondaryLane;
                     // same prefab, same edge direction
                     // check road composition
                     NetCompositionData origEdgeNetCompositionData = netCompositionData[originalComposition.m_Edge];

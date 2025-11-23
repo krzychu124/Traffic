@@ -145,6 +145,8 @@ namespace Traffic.Systems.Serialization
                     netCompositionData = SystemAPI.GetComponentLookup<NetCompositionData>(true),
                     roadCompositionData = SystemAPI.GetComponentLookup<RoadComposition>(true),
                     trackCompositionData = SystemAPI.GetComponentLookup<TrackComposition>(true),
+                    carLaneData = SystemAPI.GetComponentLookup<CarLaneData>(true),
+                    netLaneData = SystemAPI.GetComponentLookup<NetLaneData>(true),
                     trackLaneData = SystemAPI.GetComponentLookup<TrackLaneData>(true),
                     prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
                     fakePrefabEntity = Traffic.Systems.ModDefaultsSystem.FakePrefabRef,

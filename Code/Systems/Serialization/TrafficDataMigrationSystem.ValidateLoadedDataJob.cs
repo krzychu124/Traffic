@@ -36,6 +36,8 @@ namespace Traffic.Systems.Serialization
             [ReadOnly] public ComponentLookup<RoadComposition> roadCompositionData;
             [ReadOnly] public ComponentLookup<TrackComposition> trackCompositionData;
             [ReadOnly] public ComponentLookup<TrackLaneData> trackLaneData;
+            [ReadOnly] public ComponentLookup<NetLaneData> netLaneData;
+            [ReadOnly] public ComponentLookup<CarLaneData> carLaneData;
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public Entity fakePrefabEntity;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, Entity>.ReadOnly dataOwnerRefs;
@@ -195,20 +197,21 @@ namespace Traffic.Systems.Serialization
                         Logger.Serialization($"Lane with index {generatedConnection.laneIndexMap.y} not found! {modifiedConnection.modifiedConnections}[{i}] - {generatedConnection.targetEntity}. Reset all connections at {nodeEntity}");
                         return false;
                     }
-                    if (((generatedConnection.method & PathMethod.Road) != 0) && !edgeComposition.isRoad ||
+                    if ((((generatedConnection.method & PathMethod.Road) != 0) && !edgeComposition.isRoad) ||
+                        ((generatedConnection.method == PathMethod.Bicycle) && !edgeComposition.isBike) ||
                         (!generatedConnection.isUnsafe && (generatedConnection.method & PathMethod.Track) != 0) && (edgeComposition.trackTypes == 0))
                     {
-                        Logger.Serialization($"Incorrect lane type! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} track:{edgeComposition.trackTypes}] in {modifiedConnection.modifiedConnections}[{i}] - {generatedConnection.targetEntity}. Reset all connections at {nodeEntity}");
+                        Logger.Serialization($"Incorrect lane type! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} isBike:{edgeComposition.isBike} track:{edgeComposition.trackTypes}] in {modifiedConnection.modifiedConnections}[{i}] - {generatedConnection.targetEntity}. Reset all connections at {nodeEntity}");
                         return false;
                     }
 
                     if (generatedConnection.isUnsafe && (generatedConnection.method & PathMethod.Track) != 0 && edgeComposition.trackTypes == 0)
                     {
-                        Logger.Serialization($"Incorrect lane type! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} track:{edgeComposition.trackTypes}]. Fix method type");
+                        Logger.Serialization($"Incorrect lane type! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} isBike:{edgeComposition.isBike} track:{edgeComposition.trackTypes}]. Fix method type");
                         generatedConnection.method &= ~PathMethod.Track;
                         if ((generatedConnection.method & PathMethod.Road) == 0)
                         {
-                            Logger.Serialization($"Invalid method type for unsafe connection! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} track:{edgeComposition.trackTypes}]. Reset all connections at {nodeEntity}");
+                            Logger.Serialization($"Invalid method type for unsafe connection! G: {generatedConnection.method} composition:[isRoad:{edgeComposition.isRoad} isBike:{edgeComposition.isBike} track:{edgeComposition.trackTypes}]. Reset all connections at {nodeEntity}");
                             return false;
                         }
                     }
@@ -263,17 +266,19 @@ namespace Traffic.Systems.Serialization
                     EdgeComposition edgeComposition = new EdgeComposition()
                     {
                         isRoad = isRoad,
+                        isBike = false, //evaluated below
                         trackTypes = trackTypes,
                         composition = composition,
                         compositionLanes = new NativeHashMap<int, NetCompositionLane>(2, Allocator.Temp),
                     };
+                    bool isBike = false;
 
                     DynamicBuffer<NetCompositionLane> compositionLanes = netCompositionLaneBuffer[composition];
                     trackTypes = TrackTypes.None;
                     for (var j = 0; j < compositionLanes.Length; j++)
                     {
                         NetCompositionLane lane = compositionLanes[j];
-                        if ((lane.m_Flags & (LaneFlags.Road | LaneFlags.Slave | LaneFlags.Track)) != 0)
+                        if ((lane.m_Flags & (LaneFlags.Road | LaneFlags.BicyclesOnly | LaneFlags.Slave | LaneFlags.Track)) != 0)
                         {
                             edgeComposition.compositionLanes.Add(j, lane);
                             if ((lane.m_Flags & LaneFlags.Track) != 0 && lane.m_Lane != Entity.Null &&
@@ -281,8 +286,19 @@ namespace Traffic.Systems.Serialization
                             {
                                 trackTypes |= trackLane.m_TrackTypes;
                             }
+                            if ((lane.m_Flags & LaneFlags.Road) != 0 && lane.m_Lane != Entity.Null &&
+                                carLaneData.TryGetComponent(lane.m_Lane, out CarLaneData carLane))
+                            {
+                                isBike |= ((carLane.m_RoadTypes & RoadTypes.Bicycle) != 0);
+                            }
+                            if ((lane.m_Flags & LaneFlags.BicyclesOnly) != 0 && lane.m_Lane != Entity.Null &&
+                                netLaneData.TryGetComponent(lane.m_Lane, out NetLaneData laneData))
+                            {
+                                isBike |= ((laneData.m_Flags & LaneFlags.BicyclesOnly) != 0);
+                            }
                         }
                     }
+                    edgeComposition.isBike = isBike;
                     
                     if (edgeComposition.trackTypes == 0 && trackTypes != TrackTypes.None)
                     {
@@ -290,9 +306,9 @@ namespace Traffic.Systems.Serialization
                     }
                     Logger.Serialization($"EdgeComposition ({nodeEntity}): {connectedEdge.m_Edge} | {edgeComposition.isRoad} {edgeComposition.trackTypes} {edgeComposition.composition} {edgeComposition.compositionLanes.Count}");
                     
-                    if (!isRoad && trackTypes == 0)
+                    if (!isRoad && !isBike && trackTypes == 0)
                     {
-                        Logger.Serialization($"Not supported non-road composition, ({trackTypes}) remove settings!");
+                        Logger.Serialization($"Not supported non-road composition, skip Edge!");
                         continue; // skip edge with not supported lanes
                     }
                     
@@ -431,6 +447,7 @@ namespace Traffic.Systems.Serialization
             {
                 public Entity composition;
                 public bool isRoad;
+                public bool isBike;
                 public TrackTypes trackTypes;
                 public NativeHashMap<int, NetCompositionLane> compositionLanes;
             }

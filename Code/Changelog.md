@@ -1,3 +1,3 @@
-﻿## v.0.2.10.2
+## v.0.2.11.0
 
-- Fixed incorrect validation of intersections with bike-only paths modified by the mod
+_Compatibility fix for the game update 1.5.2f1_

@@ -25,7 +25,7 @@ namespace Traffic.Systems.ModCompatibility
         protected override void OnCreate()
         {
             base.OnCreate();
-            ExecutableAsset rbAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("RoadBuilder")));
+            ExecutableAsset rbAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isLoaded && asset.name.Equals("RoadBuilder")));
             Type rbType = rbAsset?.assembly.GetType("RoadBuilder.Domain.Components.RoadBuilderUpdateFlagComponent", false);;
             if (rbType == null)
             {

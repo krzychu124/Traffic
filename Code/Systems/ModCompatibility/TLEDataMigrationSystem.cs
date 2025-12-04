@@ -31,7 +31,7 @@ namespace Traffic.Systems.ModCompatibility
         {
             base.OnCreate();
             Logger.Info($"Initializing {nameof(TLEDataMigrationSystem)}!");
-            ExecutableAsset tleAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")));
+            ExecutableAsset tleAsset = AssetDatabase.global.GetAsset<ExecutableAsset>(SearchFilter<ExecutableAsset>.ByCondition(asset => asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")));
             Type customLaneDirectionType = tleAsset?.assembly.GetType("C2VM.CommonLibraries.LaneSystem.CustomLaneDirection", false);
             if (customLaneDirectionType == null)
             {

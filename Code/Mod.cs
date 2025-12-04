@@ -109,10 +109,10 @@ namespace Traffic
             // updateSystem.UpdateAt<ClearTool>(SystemUpdatePhase.ClearTool);
 #endif
             Logger.Info($"Registering check TLE installed and enabled. RenderedFrame: {Time.renderedFrameCount}");
-            GameManager.instance.RegisterUpdater(TLECompatibilityFix);
-            GameManager.instance.RegisterUpdater(RoadBuilderCompatibilityHandler);
-            GameManager.instance.RegisterUpdater(ListEnabledMods);
-            GameManager.instance.RegisterUpdater(UpdateUIBindings);
+            Colossal.Core.MainThreadDispatcher.RegisterUpdater(TLECompatibilityFix);
+            Colossal.Core.MainThreadDispatcher.RegisterUpdater(RoadBuilderCompatibilityHandler);
+            Colossal.Core.MainThreadDispatcher.RegisterUpdater(ListEnabledMods);
+            Colossal.Core.MainThreadDispatcher.RegisterUpdater(UpdateUIBindings);
             // Unity.Collections.NativeLeakDetection.Mode = Unity.Collections.NativeLeakDetectionMode.EnabledWithStackTrace;
 #if LOCALIZATION_EXPORT
             Localization.LocalizationExport(this, Settings);
@@ -143,7 +143,7 @@ namespace Traffic
                 {
                     Type type = null;
                     if (Colossal.IO.AssetDatabase.AssetDatabase.global.TryGetAsset(
-                            Colossal.IO.AssetDatabase.SearchFilter<Colossal.IO.AssetDatabase.ExecutableAsset>.ByCondition(asset => asset.isEnabled && asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")),
+                            Colossal.IO.AssetDatabase.SearchFilter<Colossal.IO.AssetDatabase.ExecutableAsset>.ByCondition(asset => asset.isLoaded && asset.name.Equals("C2VM.CommonLibraries.LaneSystem")),
                             out Colossal.IO.AssetDatabase.ExecutableAsset tleAsset
                         ))
                     {

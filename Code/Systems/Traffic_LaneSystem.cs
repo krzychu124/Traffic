@@ -509,6 +509,9 @@ namespace Traffic.Systems
             public ComponentTypeHandle<UnderConstruction> m_UnderConstructionType;
             
             [ReadOnly]
+            public ComponentTypeHandle<Game.Buildings.ServiceUpgrade> m_ServiceUpgradeType;
+
+            [ReadOnly]
             public ComponentTypeHandle<Temp> m_TempType;
             
             [ReadOnly]
@@ -881,7 +884,7 @@ namespace Traffic.Systems
                 {
                     Logger.DebugLaneSystem($"Has Transforms {transforms.Length}");
                     NativeArray<PrefabRef> nativeArray11 = chunk.GetNativeArray(ref m_PrefabRefType);
-                    bool flag = m_EditorMode && !chunk.Has(ref m_OwnerType);
+                    bool flag = m_EditorMode && (!chunk.Has(ref m_OwnerType) || chunk.Has(ref m_ServiceUpgradeType));
                     bool flag2 = !chunk.Has(ref m_ElevationType);
                     bool flag3 = chunk.Has(ref m_UnderConstructionType);
                     bool flag4 = chunk.Has(ref m_DestroyedType);

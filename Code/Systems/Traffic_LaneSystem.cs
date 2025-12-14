@@ -1978,7 +1978,7 @@ namespace Traffic.Systems
                             else
                             {
                                 index = math.max(0, m + math.min(0, num6 - num12));
-                                index = num4 + math.select(index, num6 - index - 1, m_LeftHandTraffic);
+                                index = num4 + math.select(index, math.max(0, num6 - index - 1), m_LeftHandTraffic);
                                 num20 = middleRadius + ((float)(m + totalLaneCount - math.max(num6, num12)) + 0.5f) * spaceForLanes / (float)totalLaneCount;
                                 rhs5 = middleRadius + ((float)m + 0.5f) * spaceForLanes / (float)totalLaneCount;
                                 connectPosition2.m_LaneData.m_Flags = (lane.m_LaneData.m_Flags & (LaneFlags.Road | LaneFlags.Track | LaneFlags.PublicOnly | LaneFlags.HasAuxiliary | LaneFlags.BicyclesOnly));

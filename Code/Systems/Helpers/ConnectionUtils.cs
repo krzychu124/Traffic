@@ -54,7 +54,8 @@ namespace Traffic.Systems.Helpers
                 return false;
             }
             VehicleGroup toIgnoreTrack = toGroup & ~VehicleGroup.TrackGroup;
-            return (toIgnoreTrack & VehicleGroup.Bike) != 0 && (fromIgnoreTrack & VehicleGroup.Highway) == 0 && (fromIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car)) != (toIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car));
+            return ((fromIgnoreTrack & VehicleGroup.SharedCarBike) == VehicleGroup.SharedCarBike && (toIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car)) == VehicleGroup.Bike) ||
+                (fromIgnoreTrack & (VehicleGroup.Bike | VehicleGroup.Car)) == VehicleGroup.Bike && (toIgnoreTrack & VehicleGroup.SharedCarBike) == VehicleGroup.SharedCarBike;
         }
 
         public static bool UnsafeAllowed(VehicleGroup group, LaneConnectorToolSystem.StateModifier modifier)

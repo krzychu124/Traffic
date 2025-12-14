@@ -13,6 +13,7 @@ namespace Traffic.CommonData
         Subway = 1 << 3,
         TrackGroup = Train | Tram | Subway,
         Bike = 1 << 4,
+        SharedCarBike = Car | Bike,
         Highway = 1 << 5,
         All = Car | Train | Tram | Subway | Bike
     }

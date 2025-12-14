@@ -88,15 +88,18 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.11.0" />
+  <ModVersion Value="0.2.11.1" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.5.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.11.0
+  <ChangeLog>## v.0.2.11.1
 
-_Compatibility fix for the game update 1.5.2f1_</ChangeLog>
+- fixed crash when connecting or drawing bike-only path through a roundabout (Left-hand traffic maps only)
+- minor compatibility improvements to force-unsafe lane connections on custom-made roads
+
+Note regarding the inability to connect bike lanes or the lack of bike connections at intersections: neither the vanilla, nor the mod (reusing vanilla code) supports networks that combine highway lanes and bike lanes on a single road section (without a median/splitting lane). I haven't found any reliable solution yet.</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
   <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />

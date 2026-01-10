@@ -10,7 +10,6 @@ using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
 using Traffic.Helpers.Comparers;
-using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -25,7 +24,7 @@ namespace Traffic.Systems.PrioritySigns
     public partial class GenerateHandles
     {
 #if WITH_BURST
-        [BurstCompile]
+        [Unity.Burst.BurstCompile]
 #endif
         private struct GenerateLaneHandlesJob : IJobChunk
         {
@@ -74,7 +73,7 @@ namespace Traffic.Systems.PrioritySigns
                         foreach (SubLane subLane in subLanes)
                         {
                             Entity subLaneEntity = subLane.m_SubLane;
-                            if ((subLane.m_PathMethods & (PathMethod.Road | PathMethod.Track)) == 0 || masterLaneData.HasComponent(subLaneEntity))
+                            if ((subLane.m_PathMethods & (PathMethod.Road | PathMethod.Track | PathMethod.Bicycle)) == 0 || masterLaneData.HasComponent(subLaneEntity))
                             {
                                 continue;
                             }
@@ -161,7 +160,7 @@ namespace Traffic.Systems.PrioritySigns
                             {
                                 Entity subLaneEntity = subLane.m_SubLane;
                                 if (!edgeLaneData.HasComponent(subLaneEntity) ||
-                                    (subLane.m_PathMethods & PathMethod.Road) == 0 ||
+                                    (subLane.m_PathMethods & (PathMethod.Road | PathMethod.Bicycle)) == 0 ||
                                     secondaryLaneData.HasComponent(subLaneEntity) ||
                                     masterLaneData.HasComponent(subLaneEntity))
                                 {

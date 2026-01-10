@@ -1,6 +1,7 @@
-## v.0.2.11.1
+## v.0.2.12.0
 
-- fixed crash when connecting or drawing bike-only path through a roundabout (Left-hand traffic maps only)
-- minor compatibility improvements to force-unsafe lane connections on custom-made roads
-
-Note regarding the inability to connect bike lanes or the lack of bike connections at intersections: neither the vanilla, nor the mod (reusing vanilla code) supports networks that combine highway lanes and bike lanes on a single road section (without a median/splitting lane). I haven't found any reliable solution yet.
+- **Lane Connector Tool** support for pathways (any paths supporting bikes)
+- **Priorities Tool** support for pathways as well as bike-only lanes on regular intersections
+- fixed issue with bike-only connection causing cars and trucks to use bike connection to perform a turn if there was no car connection (reset and recreate connections to apply the fix on affected intersections)
+- fixed issues with custom priority that was applied only if a lane had custom connection(s) under certain conditions
+- fixed Lane Connector tool that allowed selecting an intersection with a roundabout upgrade under certain conditions

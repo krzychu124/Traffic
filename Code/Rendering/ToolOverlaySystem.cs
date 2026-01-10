@@ -138,7 +138,6 @@ namespace Traffic.Rendering
                         jobHandle = new PriorityOverlaysJob()
                         {
                             chunks = chunks,
-                            state = _priorityToolSystem.ToolState,
                             setMode = _priorityToolSystem.ToolSetMode,
                             overlayMode = _priorityToolSystem.ToolOverlayMode,
                             entityTypeHandle = SystemAPI.GetEntityTypeHandle(),

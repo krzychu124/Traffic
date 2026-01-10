@@ -32,7 +32,7 @@ namespace Traffic.Systems.PrioritySigns
                 NativeArray<Entity> entities = chunk.GetNativeArray(entityTypeHandle);
                 NativeArray<Temp> temps = chunk.GetNativeArray(ref tempTypeHandle);
                 BufferAccessor<LanePriority> laneHandlesAccessor = chunk.GetBufferAccessor(ref lanePriorityTypeHandle);
-                bool isEditNodeChunk = chunk.GetNativeArray(ref editIntersectionTypeHandle).Length > 0;
+                bool isEditNodeChunk = chunk.Has(ref editIntersectionTypeHandle);
                 NativeList<LanePriority> nonDefaultPriorities = new NativeList<LanePriority>(Allocator.Temp);
 
                 Logger.DebugTool($"Handle Temp Entities {entities.Length}, isEditNode: {isEditNodeChunk}");
@@ -45,7 +45,7 @@ namespace Traffic.Systems.PrioritySigns
                     if (tempEdge.m_Original != Entity.Null && (tempEdge.m_Flags & TempFlags.Delete) == 0)
                     {
                         nonDefaultPriorities.Clear();
-                        DynamicBuffer<LanePriority> priorities = default;
+                        DynamicBuffer<LanePriority> priorities;
                         for (var j = 0; j < lanePriorities.Length; j++)
                         {
                             LanePriority lanePriority = lanePriorities[j];

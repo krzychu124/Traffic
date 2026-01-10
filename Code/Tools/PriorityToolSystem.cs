@@ -313,7 +313,7 @@ namespace Traffic.Tools
                 m_ToolRaycastSystem.collisionMask = (CollisionMask.OnGround | CollisionMask.Overground);
             }
             m_ToolRaycastSystem.typeMask = (TypeMask.Net);
-            m_ToolRaycastSystem.netLayerMask = Layer.Road;
+            m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.Pathway;
             m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
             m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
         }
@@ -570,7 +570,8 @@ namespace Traffic.Tools
                 prefabRefData = SystemAPI.GetComponentLookup<PrefabRef>(true),
                 dataOwnerData = SystemAPI.GetComponentLookup<DataOwner>(true),
                 edgeData = SystemAPI.GetComponentLookup<Edge>(true),
-                roadData = SystemAPI.GetComponentLookup<Road>(true),
+                compositionData = SystemAPI.GetComponentLookup<Composition>(true),
+                netCompositionLanes = SystemAPI.GetBufferLookup<NetCompositionLane>(true),
                 lanePriorities = SystemAPI.GetBufferLookup<LanePriority>(true),
                 priorityHandles = SystemAPI.GetBufferLookup<PriorityHandle>(true),
                 connectedEdges = SystemAPI.GetBufferLookup<ConnectedEdge>(true),

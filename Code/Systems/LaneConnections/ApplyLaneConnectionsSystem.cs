@@ -6,7 +6,6 @@ using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
 using Traffic.Systems.LaneConnections.SharedJobs;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -17,7 +16,7 @@ namespace Traffic.Systems.LaneConnections
     /// Apply changes in temporary entities containing ModifiedLaneConnections buffer
     /// </summary>
 #if WITH_BURST
-    [BurstCompile]
+    [Unity.Burst.BurstCompile]
 #endif
     public partial class ApplyLaneConnectionsSystem : GameSystemBase
     {

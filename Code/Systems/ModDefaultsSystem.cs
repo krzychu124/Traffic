@@ -11,6 +11,7 @@ namespace Traffic.Systems
     public partial class ModDefaultsSystem : GameSystemBase, IPreDeserialize
     {
         internal static Entity FakePrefabRef;
+        internal static Entity BikeDriveLanePrefabRef;
         private PrefabSystem _prefabSystem;
         private FakePrefab _fakePrefab;
 
@@ -34,7 +35,15 @@ namespace Traffic.Systems
                     _prefabSystem.AddPrefab(_fakePrefab) && 
                     _prefabSystem.TryGetEntity(_fakePrefab, out FakePrefabRef))
                 {
-                    Logger.Serialization($"Created Traffic.FakePrefab entity: {FakePrefabRef}");
+                    Logger.Serialization($"Created 'Traffic.FakePrefab' entity: {FakePrefabRef}");
+                }
+                
+                Logger.Serialization("PreDeserialize: Searching for 'Bike Drive Lane 1.5'...");
+                PrefabID bikeLaneId = new PrefabID(nameof(NetLaneGeometryPrefab), "Bicycle Drive Lane 1.5");
+                if (_prefabSystem.TryGetPrefab(bikeLaneId, out PrefabBase bikePrefabData) &&
+                    _prefabSystem.TryGetEntity(bikePrefabData, out BikeDriveLanePrefabRef))
+                {
+                    Logger.Serialization($"Found 'Bike Drive Lane 1.5' entity: {BikeDriveLanePrefabRef}");
                 }
             }
         }

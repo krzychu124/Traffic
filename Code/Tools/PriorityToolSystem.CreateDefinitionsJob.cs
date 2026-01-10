@@ -29,7 +29,8 @@ namespace Traffic.Tools
             [ReadOnly] public ComponentLookup<PrefabRef> prefabRefData;
             [ReadOnly] public ComponentLookup<DataOwner> dataOwnerData;
             [ReadOnly] public ComponentLookup<Edge> edgeData;
-            [ReadOnly] public ComponentLookup<Road> roadData;
+            [ReadOnly] public ComponentLookup<Composition> compositionData;
+            [ReadOnly] public BufferLookup<NetCompositionLane> netCompositionLanes;
             [ReadOnly] public BufferLookup<PriorityHandle> priorityHandles;
             [ReadOnly] public BufferLookup<ConnectedEdge> connectedEdges;
             [ReadOnly] public NativeList<ControlPoint> controlPoints;
@@ -179,9 +180,13 @@ namespace Traffic.Tools
                     int counter = 0;
                     foreach (ConnectedEdge edge in connectedEdge)
                     {
-                        if (roadData.HasComponent(edge.m_Edge))
+                        if (compositionData.TryGetComponent(edge.m_Edge, out Composition composition) &&
+                            netCompositionLanes.TryGetBuffer(composition.m_Edge, out DynamicBuffer<NetCompositionLane> lanes))
                         {
-                            counter++;
+                            if (ToolHelpers.HasCompositionLaneWithFlag(ref lanes, LaneFlags.Road))
+                            {
+                                counter++;
+                            }
                         }
                     }
                     return counter > 2;

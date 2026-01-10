@@ -1,12 +1,11 @@
 ﻿using System;
 using Colossal.Mathematics;
+using Game.Pathfind;
 using Game.Rendering;
 using Game.Tools;
 using Traffic.Components.LaneConnections;
 using Traffic.Components.PrioritySigns;
-using Traffic.Tools;
 using Traffic.UISystems;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -18,14 +17,13 @@ namespace Traffic.Rendering
     public partial class ToolOverlaySystem
     {
 #if WITH_BURST
-        [BurstCompile]
+        [Unity.Burst.BurstCompile]
 #endif
         private struct PriorityOverlaysJob : IJob
         {
             [ReadOnly] public NativeArray<ArchetypeChunk> chunks;
             [ReadOnly] public EntityTypeHandle entityTypeHandle;
             [ReadOnly] public ComponentTypeHandle<LaneHandle> laneHandleTypeHandle;
-            [ReadOnly] public PriorityToolSystem.State state;
             [ReadOnly] public ModUISystem.PriorityToolSetMode setMode;
             [ReadOnly] public ModUISystem.OverlayMode overlayMode;
             [ReadOnly] public NativeList<ControlPoint> controlPoints;
@@ -36,11 +34,6 @@ namespace Traffic.Rendering
 
             public void Execute()
             {
-                if (state != PriorityToolSystem.State.ChangingPriority)
-                {
-                    return;
-                }
-
                 NativeList<ValueTuple<Entity, LaneHandle>> hoveredHandles = new NativeList<ValueTuple<Entity, LaneHandle>>(4, Allocator.Temp);
                 ControlPoint controlPoint = controlPoints.Length > 0 ? controlPoints[0] : new ControlPoint();
                 LaneHandle laneHandle = default;
@@ -130,14 +123,14 @@ namespace Traffic.Rendering
                     {
                         for (var i = 0; i < connections.Length; i++)
                         {
-                            overlayBuffer.DrawDashedCurve(colorOutline, colorHover, 0.2f, 0, connections[i].curve, 2.8f, 2, 0.4f);
+                            overlayBuffer.DrawDashedCurve(colorOutline, colorHover, 0.2f, 0, connections[i].curve, math.select(2.8f, 1.8f, connections[i].method == PathMethod.Bicycle), 2, 0.4f);
                         }
                     }
                     else
                     {
                         for (var i = 0; i < connections.Length; i++)
                         {
-                            overlayBuffer.DrawCurve(colorOutline, colorHover, 0.2f, 0, connections[i].curve, 2.8f, new float2(0.5f));
+                            overlayBuffer.DrawCurve(colorOutline, colorHover, 0.2f, 0, connections[i].curve, math.select(2.8f, 1.8f, connections[i].method == PathMethod.Bicycle), new float2(0.5f));
                         }
                     }
                 }

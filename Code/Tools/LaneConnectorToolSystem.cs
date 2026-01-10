@@ -14,11 +14,10 @@ using Game.Tools;
 using Traffic.CommonData;
 using Traffic.Components;
 using Traffic.Components.LaneConnections;
-using Traffic.Components.PrioritySigns;
 using Traffic.Systems;
 using Traffic.Systems.Helpers;
+using Traffic.Tools.Helpers;
 using Traffic.UISystems;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -26,11 +25,12 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using LaneConnection = Traffic.Components.LaneConnections.LaneConnection;
+using SubLane = Game.Net.SubLane;
 
 namespace Traffic.Tools
 {
 #if WITH_BURST
-    [BurstCompile]
+    [Unity.Burst.BurstCompile]
 #endif
     public partial class LaneConnectorToolSystem : ToolBaseSystem
     {
@@ -402,7 +402,7 @@ namespace Traffic.Tools
             }
             m_ToolRaycastSystem.typeMask = (TypeMask.Net);
             m_ToolRaycastSystem.raycastFlags = RaycastFlags.SubElements | RaycastFlags.Cargo | RaycastFlags.Passenger | RaycastFlags.EditorContainers;
-            m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.TrainTrack | Layer.TramTrack | Layer.SubwayTrack | Layer.PublicTransportRoad;
+            m_ToolRaycastSystem.netLayerMask = Layer.Road | Layer.TrainTrack | Layer.TramTrack | Layer.SubwayTrack | Layer.PublicTransportRoad | Layer.Pathway;
             m_ToolRaycastSystem.iconLayerMask = IconLayerMask.None;
             m_ToolRaycastSystem.utilityTypeMask = UtilityTypes.None;
         }
@@ -518,11 +518,31 @@ namespace Traffic.Tools
                 return false;
             }
             if (!EntityManager.TryGetBuffer(entity, true, out DynamicBuffer<ConnectedEdge> edges) ||
-                edges.Length < 2)
+                edges.Length < 2 ||
+                !EntityManager.TryGetBuffer(entity, true, out DynamicBuffer<SubLane> subLanes) || subLanes.IsEmpty ||
+                !IsNodeWithCompatibleEdges(ref edges))
             {
                 return false;
             }
+            
             return !EntityManager.TryGetComponent(entity, out TrafficLights trafficLights) || (trafficLights.m_Flags & TrafficLightFlags.MoveableBridge) == 0;
+        }
+
+        private bool IsNodeWithCompatibleEdges(ref DynamicBuffer<ConnectedEdge> edges)
+        {
+            int count = 0;
+            foreach (ConnectedEdge connectedEdge in edges)
+            {
+                if (EntityManager.TryGetComponent(connectedEdge.m_Edge, out Composition composition) &&
+                    EntityManager.TryGetBuffer(composition.m_Edge, true, out DynamicBuffer<NetCompositionLane> lanes))
+                {
+                    if (ToolHelpers.HasCompositionLaneWithFlag(ref lanes, LaneFlags.Road | LaneFlags.Track))
+                    {
+                        count++;
+                    }
+                }
+            }
+            return count >= 2;
         }
 
         private bool IsApplyAllowed(bool useVanilla = true) {
@@ -591,7 +611,7 @@ namespace Traffic.Tools
                 case State.Default:
                     if (IsApplyAllowed(useVanilla: false) && 
                         GetRaycastResult(out ControlPoint cp, out bool forceUpdate) &&
-                        !forceUpdate)
+                        !forceUpdate && !EntityManager.HasComponent<Roundabout>(cp.m_OriginalEntity))
                     {
                         Entity entity = cp.m_OriginalEntity;
                         Logger.DebugTool($"[Apply {UnityEngine.Time.frameCount}]|Default|Entity: {entity}");

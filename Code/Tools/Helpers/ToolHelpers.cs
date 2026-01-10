@@ -1,12 +1,31 @@
 ﻿using Colossal.Mathematics;
 using Game.Net;
+using Game.Prefabs;
 using Game.Tools;
+using Unity.Entities;
 
 namespace Traffic.Tools.Helpers
 {
     internal static class ToolHelpers
     {
-        
+        /// <summary>
+        /// Test if there's any NetCompositionLane with matching flags
+        /// </summary>
+        /// <param name="lanes"></param>
+        /// <param name="flags">Flags value to match</param>
+        /// <returns></returns>
+        internal static bool HasCompositionLaneWithFlag(ref DynamicBuffer<NetCompositionLane> lanes, LaneFlags flags)
+        {
+            foreach (NetCompositionLane lane in lanes)
+            {
+                if ((lane.m_Flags & flags) != 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Simplified CoursePos calculation, 
         /// </summary>

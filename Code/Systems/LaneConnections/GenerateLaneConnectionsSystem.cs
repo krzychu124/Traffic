@@ -62,7 +62,6 @@ namespace Traffic.Systems.LaneConnections
 
             // UGLY CODE START (improve/redesign)
             NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections = new NativeParallelMultiHashMap<Entity, TempModifiedConnections>(4, Allocator.TempJob);
-            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             GenerateTempConnectionsJob tempConnectionsJob = new GenerateTempConnectionsJob
             {
                 creationDefinitionTypeHandle = SystemAPI.GetComponentTypeHandle<CreationDefinition>(true),
@@ -71,7 +70,6 @@ namespace Traffic.Systems.LaneConnections
                 tempEntityMap = tempEntityMap.AsReadOnly(),
                 createdModifiedLaneConnections = createdModifiedLaneConnections,
                 createdModifiedConnections = createdModifiedConnections,
-                commandBuffer = entityCommandBuffer.AsParallelWriter(),
             };
             jobHandle = tempConnectionsJob.Schedule(_definitionQuery, jobHandle);
             jobHandle.Complete();
@@ -83,6 +81,8 @@ namespace Traffic.Systems.LaneConnections
             entities.ResizeUninitialized(uniqueKeyCount);
             new NativeSlice<Entity>(keys, 0, uniqueKeyCount).CopyTo(entities.AsArray());
             NativeParallelHashSet<Entity> processedEntities = new NativeParallelHashSet<Entity>(entities.Length, Allocator.TempJob);
+            
+            EntityCommandBuffer entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
             MapTempConnectionsJob mapTempConnectionsJob = new MapTempConnectionsJob
             {
                 modifiedConnectionsBuffer = SystemAPI.GetBufferLookup<ModifiedLaneConnections>(true),

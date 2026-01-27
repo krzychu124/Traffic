@@ -808,7 +808,7 @@ namespace Traffic.Systems
                 BufferAccessor<SubLane> subLanesBuffers = chunk.GetBufferAccessor(ref m_SubLaneType);
                 if (edges.Length != 0)
                 {
-                    Logger.DebugLaneSystem($"Has Edges {edges.Length}");
+                    // Logger.DebugLaneSystem($"Has Edges {edges.Length}");
                     NativeList<ConnectPosition> nativeList = new NativeList<ConnectPosition>(32, Allocator.Temp);
                     NativeList<ConnectPosition> nativeList2 = new NativeList<ConnectPosition>(32, Allocator.Temp);
                     NativeList<ConnectPosition> tempBuffer = new NativeList<ConnectPosition>(32, Allocator.Temp);
@@ -893,7 +893,7 @@ namespace Traffic.Systems
                 }
                 else if (transforms.Length != 0)
                 {
-                    Logger.DebugLaneSystem($"Has Transforms {transforms.Length}");
+                    // Logger.DebugLaneSystem($"Has Transforms {transforms.Length}");
                     NativeArray<PrefabRef> nativeArray11 = chunk.GetNativeArray(ref m_PrefabRefType);
                     bool flag = m_EditorMode && (!chunk.Has(ref m_OwnerType) || chunk.Has(ref m_ServiceUpgradeType));
                     bool flag2 = !chunk.Has(ref m_ElevationType);
@@ -7675,7 +7675,7 @@ namespace Traffic.Systems
                         (sourcePosition.m_LaneData.m_Flags & targetPosition.m_LaneData.m_Flags & LaneFlags.PublicOnly) == 0)
                     {
                         laneFlags &= ~LaneFlags.PublicOnly;
-                        prefabRef.m_Prefab = m_CarLaneData[prefabRef.m_Prefab].m_NotBusLanePrefab;
+                        prefabRef.m_Prefab = !forceBicycleOnlyMaster ? m_CarLaneData[prefabRef.m_Prefab].m_NotBusLanePrefab : prefabRef.m_Prefab;
                     }
                     if ((laneFlags & (LaneFlags.Road | LaneFlags.Track)) == (LaneFlags.Road | LaneFlags.Track) && (!CanConnectTrack(isUTurn, isRoundabout, sourcePosition, targetPosition, prefabRef) || forceRoadOnly))
                     {

@@ -88,19 +88,18 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.12.0" />
+  <ModVersion Value="0.2.12.1" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.5.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.12.0
+  <ChangeLog>## v.0.2.12.1
 
-- **Lane Connector Tool** support for pathways (any paths supporting bikes)
-- **Priorities Tool** support for pathways as well as bike-only lanes on regular intersections
-- fixed issue with bike-only connection causing cars and trucks to use bike connection to perform a turn if there was no car connection (reset and recreate connections to apply the fix on affected intersections)
-- fixed issues with custom priority that was applied only if a lane had custom connection(s) under certain conditions
-- fixed Lane Connector tool that allowed selecting an intersection with a roundabout upgrade under certain conditions</ChangeLog>
+- fixed a rare issue causing the game to crash (on load or in-game) after loading/creating a bike connection between a bus lane and a non-bus lane.
+- fixed a rare issue corrupting custom connections data if a source segment was split
+- fixed a rare issue corrupting custom connections data if a source segment was replaced by merging short segments (the game may replace two short segments with one longer one if it determines the node connecting them is no longer needed)
+- fixed an issue with the Reset to vanilla action when data contains broken custom lane connections (the previously mentioned corrupt lane connection data)</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
   <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />

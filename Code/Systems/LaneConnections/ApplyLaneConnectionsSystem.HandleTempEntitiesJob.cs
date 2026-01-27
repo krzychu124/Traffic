@@ -139,7 +139,6 @@ namespace Traffic.Systems.LaneConnections
                                 if (wasModified)
                                 {
                                     Logger.DebugTool($"[{j}] Delete connection: {tempModifiedLaneConnection.modifiedConnections} | {tempConnection.original}");
-                                    // DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
                                     Logger.DebugTool($"[{j}] {tempNode.m_Original} has connections ({originalLaneConnections.Length})");
 
                                     DeleteModifiedConnection(j, originalLaneConnections, tempConnection, tempNode, false, ref updated);
@@ -153,7 +152,7 @@ namespace Traffic.Systems.LaneConnections
                                     Logger.DebugTool($"[{j}] has Temp edge: {tempEdge.m_Original} ({tempModifiedLaneConnection.edgeEntity})");
                                     if ((tempEdge.m_Flags & TempFlags.Delete) == 0)
                                     {
-                                        CreateModifiedConnections(j, modifiedLaneConnections, originalLaneConnections, tempNode, tempEdge, ref tempModifiedLaneConnection, ref updated);
+                                        CreateModifiedConnections(j, ref modifiedLaneConnections, ref originalLaneConnections, tempNode, tempEdge, ref tempModifiedLaneConnection, ref updated);
                                     }
                                 }
                                 else if ((tempConnection.flags & TempFlags.Modify) != 0 && tempConnection.original != Entity.Null)
@@ -163,15 +162,15 @@ namespace Traffic.Systems.LaneConnections
                                     {
                                         if (tempEdge.m_Original == Entity.Null)
                                         {
-                                            ReplaceModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref updated);
+                                            ReplaceModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref originalLaneConnections, ref updated);
                                         }
                                         else if ((tempEdge.m_Flags & TempFlags.Combine) != 0)
                                         {
-                                            CombineModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref updated);
+                                            CombineModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref originalLaneConnections, ref updated);
                                         }
                                         else
                                         {
-                                            EditModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref updated);
+                                            EditModifiedConnections(j, entity, tempNode, tempEdge, tempConnection, ref tempModifiedLaneConnection, ref originalLaneConnections, ref updated);
                                         }
                                     }
                                 }
@@ -184,8 +183,7 @@ namespace Traffic.Systems.LaneConnections
                         if (wasModified)
                         {
                             originalLaneConnections.Sort(default(ModifiedLaneConnectionsComparer));
-                            modifiedLaneConnectionData[tempNode.m_Original].Clear();
-                            modifiedLaneConnectionData[tempNode.m_Original].AddRange(originalLaneConnections.AsArray());
+                            modifiedLaneConnectionData[tempNode.m_Original].CopyFrom(originalLaneConnections.AsArray());
                         }
                         else
                         {
@@ -202,9 +200,10 @@ namespace Traffic.Systems.LaneConnections
             {
                 if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
                 {
-                    NativeList<ModifiedLaneConnections> list = new NativeList<ModifiedLaneConnections>(Allocator.Temp);
-                    list.AddRange(modifiedLaneConnectionData[tempNode.m_Original].AsNativeArray());
-                    return list;
+                    DynamicBuffer<ModifiedLaneConnections> originalConnections = modifiedLaneConnectionData[tempNode.m_Original];
+                    NativeList<ModifiedLaneConnections> result = new NativeList<ModifiedLaneConnections>(originalConnections.Length, Allocator.Temp);
+                    result.CopyFrom(originalConnections.AsNativeArray());
+                    return result;
                 }
                 
                 return new NativeList<ModifiedLaneConnections>(Allocator.Temp);
@@ -234,13 +233,11 @@ namespace Traffic.Systems.LaneConnections
                 }
             }
 
-            private void EditModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref bool updated)
+            private void EditModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref NativeList<ModifiedLaneConnections> originalLaneConnections, ref bool updated)
             {
                 Logger.DebugTool($"[{index}] no delete, patch references and swap GeneratedConnections");
                 if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
                 {
-                    DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
-
                     Logger.DebugTool($"[{index}] {tempNode.m_Original} has connections ({originalLaneConnections.Length})");
                     Entity tempConnectionsEntityOwner = tempModifiedLaneConnection.modifiedConnections;
                     if (generatedConnectionData.HasBuffer(tempConnectionsEntityOwner))
@@ -301,13 +298,11 @@ namespace Traffic.Systems.LaneConnections
                 }
             }
 
-            private void CombineModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref bool updated )
+            private void CombineModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref NativeList<ModifiedLaneConnections> originalLaneConnections, ref bool updated )
             {
                 Logger.DebugTool($"[{index}] no delete, combine old references and copy GeneratedConnections. Combine?:{(tempEdge.m_Flags & TempFlags.Combine) != 0} | hasOrgE:{tempEdge.m_Original}");
                 if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
                 {
-                    DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
-
                     Logger.DebugTool($"[{index}] Original node {tempNode.m_Original} has {originalLaneConnections.Length} connections");
                     Entity tempConnectionsEntityOwner = tempModifiedLaneConnection.modifiedConnections;
                     if (generatedConnectionData.HasBuffer(tempConnectionsEntityOwner))
@@ -369,13 +364,11 @@ namespace Traffic.Systems.LaneConnections
                 }
             }
             
-            private void ReplaceModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref bool updated )
+            private void ReplaceModifiedConnections(int index, Entity tempNodeEntity, Temp tempNode, Temp tempEdge, DataTemp tempConnection, ref ModifiedLaneConnections tempModifiedLaneConnection, ref NativeList<ModifiedLaneConnections> originalLaneConnections, ref bool updated )
             {
                 Logger.DebugTool($"[{index}] no delete, replace old references and copy GeneratedConnections. Combine?:{(tempEdge.m_Flags & TempFlags.Combine) != 0} | hasOrgE:{tempEdge.m_Original}");
                 if (tempNode.m_Original != Entity.Null && modifiedLaneConnectionData.HasBuffer(tempNode.m_Original))
                 {
-                    DynamicBuffer<ModifiedLaneConnections> originalLaneConnections = modifiedLaneConnectionData[tempNode.m_Original];
-
                     Logger.DebugTool($"[{index}] Original node {tempNode.m_Original} has {originalLaneConnections.Length} connections");
                     Entity tempConnectionsEntityOwner = tempModifiedLaneConnection.modifiedConnections;
                     if (generatedConnectionData.HasBuffer(tempConnectionsEntityOwner))
@@ -432,7 +425,7 @@ namespace Traffic.Systems.LaneConnections
                 }
             }
 
-            private void CreateModifiedConnections(int index, DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections, NativeList<ModifiedLaneConnections> originalLaneConnections, Temp tempNode, Temp tempEdge, ref ModifiedLaneConnections modifiedLaneConnection, ref bool updated)
+            private void CreateModifiedConnections(int index, ref DynamicBuffer<ModifiedLaneConnections> modifiedLaneConnections, ref NativeList<ModifiedLaneConnections> originalLaneConnections, Temp tempNode, Temp tempEdge, ref ModifiedLaneConnections modifiedLaneConnection, ref bool updated)
             {
                 modifiedLaneConnection.edgeEntity = tempEdge.m_Original;
                 modifiedLaneConnections[index] = modifiedLaneConnection;

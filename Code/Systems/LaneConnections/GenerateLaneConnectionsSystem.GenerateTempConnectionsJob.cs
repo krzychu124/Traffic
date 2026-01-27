@@ -21,7 +21,6 @@ namespace Traffic.Systems.LaneConnections
 
             public NativeParallelHashSet<Entity> createdModifiedLaneConnections;
             public NativeParallelMultiHashMap<Entity, TempModifiedConnections> createdModifiedConnections;
-            public EntityCommandBuffer.ParallelWriter commandBuffer;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask) {
                 NativeArray<CreationDefinition> definitions = chunk.GetNativeArray(ref creationDefinitionTypeHandle);
@@ -34,9 +33,14 @@ namespace Traffic.Systems.LaneConnections
                     CreationDefinition definition = definitions[i];
                     ConnectionDefinition connectionDefinition = connectionDefinitions[i];
                     tempConnections.Clear();
-                    if (tempEntityMap.TryGetValue(definition.m_Original, out Entity tempNodeEntity) &&
-                        tempEntityMap.TryGetValue(connectionDefinition.edge, out Entity sourceEdgeEntity))
+                    if (tempEntityMap.TryGetValue(definition.m_Original, out Entity tempNodeEntity))
                     {
+                        Entity sourceEdgeEntity = connectionDefinition.edge;
+                        if (tempEntityMap.TryGetValue(connectionDefinition.edge, out Entity edgeEntity))
+                        {
+                            Logger.Debug($"Found original source edge Entity: {edgeEntity} definitionEntity[{connectionDefinition.edge}]");
+                            sourceEdgeEntity = edgeEntity;
+                        } 
                         if (tempConnectionsAccessor.Length > 0)
                         {
                             DynamicBuffer<TempLaneConnection> tempLaneConnections = tempConnectionsAccessor[i];

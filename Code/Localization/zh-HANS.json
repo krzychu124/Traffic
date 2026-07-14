@@ -138,5 +138,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "道路车道连线工具",
     "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "轨道车道连线工具",
     "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "任意车道连接点类型",
-    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的车道连线"
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的车道连线",
+    "Traffic.Tooltip.Tools[LaneConnector][BikeOnly, MakeUnsafe]": "不安全的自行车道连线",
+    "Options.OPTION[Traffic.Traffic.Mod/PrioritiesToggleDisplayMode/binding]": "切换优先级显示模式"
 }

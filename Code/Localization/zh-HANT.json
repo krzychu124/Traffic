@@ -138,5 +138,7 @@
     "Traffic.Tooltip.Tools[LaneConnector][RoadOnly]": "道路車道連線工具",
     "Traffic.Tooltip.Tools[LaneConnector][TrackOnly]": "軌道車道連線工具",
     "Traffic.Tooltip.Tools[LaneConnector][SharedLaneOnly]": "任意車道連接點類型",
-    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的車道連線"
+    "Traffic.Tooltip.Tools[LaneConnector][RoadOnly, MakeUnsafe]": "不安全的車道連線",
+    "Traffic.Tooltip.Tools[LaneConnector][BikeOnly, MakeUnsafe]": "不安全的自行車道連線",
+    "Options.OPTION[Traffic.Traffic.Mod/PrioritiesToggleDisplayMode/binding]": "切換優先權顯示模式"
 }

@@ -383,6 +383,8 @@ namespace Traffic.Systems
                 m_OwnerData = SystemAPI.GetComponentLookup<Owner>(true),
                 m_OverriddenData = SystemAPI.GetComponentLookup<Overridden>(true),
                 m_PseudoRandomSeedData = SystemAPI.GetComponentLookup<PseudoRandomSeed>(true),
+                m_CustomColorVariationData = SystemAPI.GetComponentLookup<NetCustomColorVariation>(true),
+                m_CustomColorData = SystemAPI.GetComponentLookup<NetCustomColorData>(true),
                 m_TransformData = SystemAPI.GetComponentLookup<Transform>(true),
                 m_AreaClearData = SystemAPI.GetComponentLookup<Clear>(true),
                 m_TempData = SystemAPI.GetComponentLookup<Temp>(true),
@@ -584,6 +586,12 @@ namespace Traffic.Systems
 
             [ReadOnly]
             public ComponentLookup<PseudoRandomSeed> m_PseudoRandomSeedData;
+
+            [ReadOnly]
+            public ComponentLookup<NetCustomColorVariation> m_CustomColorVariationData;
+
+            [ReadOnly]
+            public ComponentLookup<NetCustomColorData> m_CustomColorData;
 
             [ReadOnly]
             public ComponentLookup<Game.Objects.Transform> m_TransformData;
@@ -1704,6 +1712,50 @@ namespace Traffic.Systems
                 return method;
             }
 
+            private void ApplyCustomColor(int jobIndex, Entity laneEntity, Entity lanePrefab, Entity owner)
+            {
+                if (!TryGetCustomColor(owner, out NetCustomColorVariation customColor))
+                {
+                    m_CommandBuffer.SetComponentEnabled<CustomMeshColor>(jobIndex, laneEntity, value: false);
+                    return;
+                }
+                m_CommandBuffer.SetBuffer<CustomMeshColor>(jobIndex, laneEntity).Add(new CustomMeshColor
+                {
+                    m_ColorSet = customColor.m_ColorSet
+                });
+                m_CommandBuffer.SetComponentEnabled<CustomMeshColor>(jobIndex, laneEntity, value: true);
+            }
+
+            private bool TryGetCustomColor(Entity owner, out NetCustomColorVariation customColor)
+            {
+                if (m_CustomColorVariationData.TryGetComponent(owner, out customColor) && SupportsCustomColor(owner))
+                {
+                    return true;
+                }
+                if (m_Edges.TryGetBuffer(owner, out DynamicBuffer<ConnectedEdge> bufferData))
+                {
+                    for (int i = 0; i < bufferData.Length; i++)
+                    {
+                        Entity edge = bufferData[i].m_Edge;
+                        if (m_CustomColorVariationData.TryGetComponent(edge, out customColor) && SupportsCustomColor(edge))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                customColor = default(NetCustomColorVariation);
+                return false;
+            }
+
+            private bool SupportsCustomColor(Entity netEntity)
+            {
+                if (m_PrefabRefData.TryGetComponent(netEntity, out PrefabRef componentData))
+                {
+                    return m_CustomColorData.HasComponent(componentData.m_Prefab);
+                }
+                return false;
+            }
+            
             private void CreateOrphanLanes(int jobIndex, ref Unity.Mathematics.Random random, Entity owner, LaneBuffer laneBuffer, Orphan orphan, float3 middlePosition, Entity prefab, ref int nodeLaneIndex, bool isTemp, Temp ownerTemp)
             {
                 if (!m_DefaultNetLanes.HasBuffer(prefab))
@@ -4130,6 +4182,7 @@ namespace Traffic.Systems
                         {
                             m_CommandBuffer.SetComponent(jobIndex, item, componentData6);
                         }
+                        ApplyCustomColor(jobIndex, item, component2.m_Prefab, middleConnection.m_ConnectPosition.m_Owner);
                     }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -4196,6 +4249,7 @@ namespace Traffic.Systems
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, componentData6);
+                        ApplyCustomColor(jobIndex, e, component2.m_Prefab, middleConnection.m_ConnectPosition.m_Owner);
                     }
                     if ((middleConnection.m_ConnectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -4542,6 +4596,7 @@ namespace Traffic.Systems
                         {
                             m_CommandBuffer.SetComponent(jobIndex, item, componentData6);
                         }
+                        ApplyCustomColor(jobIndex, item, component2.m_Prefab, connectPosition.m_Owner);
                     }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -4601,6 +4656,7 @@ namespace Traffic.Systems
                     if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                     {
                         m_CommandBuffer.SetComponent(jobIndex, e, componentData6);
+                        ApplyCustomColor(jobIndex, e, component2.m_Prefab, connectPosition.m_Owner);
                     }
                     if ((connectPosition.m_LaneData.m_Flags & LaneFlags.Road) != 0)
                     {
@@ -4972,6 +5028,7 @@ namespace Traffic.Systems
                         {
                             m_CommandBuffer.SetComponent(jobIndex, item, componentData4);
                         }
+                        ApplyCustomColor(jobIndex, item, component2.m_Prefab, owner);
                     }
                     if (flag3)
                     {
@@ -5053,6 +5110,7 @@ namespace Traffic.Systems
                 if ((netLaneData.m_Flags & LaneFlags.PseudoRandom) != 0)
                 {
                     m_CommandBuffer.SetComponent(jobIndex, e, componentData4);
+                    ApplyCustomColor(jobIndex, e, component2.m_Prefab, owner);
                 }
                 if (flag3)
                 {

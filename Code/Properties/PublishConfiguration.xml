@@ -88,18 +88,15 @@ You can contact me on _TM:PE_ or _Cities: Skylines Modding_ discord and PDX foru
   <!--Link to the forum post where the mod can be discussed-->
   <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/traffic.1674462" />
   <!--Version of the mod-->
-  <ModVersion Value="0.2.12.1" />
+  <ModVersion Value="0.2.13" />
   <!--Recommended version of the base game to use the mod-->
-  <GameVersion Value="1.5.*" />
+  <GameVersion Value="1.6.*" />
   <!--Dependency for the mod, can be set multiple-->
   <Dependency Id="" DisplayName="" Version="" />
   <!--Change log for new version-->
-  <ChangeLog>## v.0.2.12.1
+  <ChangeLog>## v.0.2.13
 
-- fixed a rare issue causing the game to crash (on load or in-game) after loading/creating a bike connection between a bus lane and a non-bus lane.
-- fixed a rare issue corrupting custom connections data if a source segment was split
-- fixed a rare issue corrupting custom connections data if a source segment was replaced by merging short segments (the game may replace two short segments with one longer one if it determines the node connecting them is no longer needed)
-- fixed an issue with the Reset to vanilla action when data contains broken custom lane connections (the previously mentioned corrupt lane connection data)</ChangeLog>
+- _Compatibility fix for the game update 1.6.2f1_</ChangeLog>
   <ExternalLink Type="github" Url="https://github.com/krzychu124/Traffic" />
   <ExternalLink Type="discord" Url="https://discord.gg/wWCHYByRf2" />
   <ExternalLink Type="crowdin" Url="https://crowdin.com/project/traffic-cs2" />
